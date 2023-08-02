@@ -18,19 +18,11 @@ fn get_book(title: &str) -> Option<(i32, NaiveDate)> {
 
 const BUDGET: i32 = 100;
 
+#[derive(ChoreographyLocation)]
 struct Seller;
-impl ChoreographyLocation for Seller {
-    fn name(&self) -> &'static str {
-        "Seller"
-    }
-}
 
+#[derive(ChoreographyLocation)]
 struct Buyer;
-impl ChoreographyLocation for Buyer {
-    fn name(&self) -> &'static str {
-        "Buyer"
-    }
-}
 
 struct BooksellerChoreography;
 impl Choreography for BooksellerChoreography {

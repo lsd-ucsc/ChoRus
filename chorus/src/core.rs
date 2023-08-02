@@ -135,3 +135,6 @@ pub fn epp_and_run<C: Choreography, TARGET: ChoreographyLocation, BACKEND: Backe
     };
     choreo.run(&op);
 }
+
+extern crate chorus_derive;
+pub use chorus_derive::ChoreographyLocation;
