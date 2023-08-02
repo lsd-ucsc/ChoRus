@@ -19,6 +19,24 @@ where
     phantom: PhantomData<L1>,
 }
 
+impl<T, L1> Located<T, L1>
+where
+    T: ChoreographicValue,
+{
+    fn some(value: T) -> Self {
+        Located {
+            value: Some(value),
+            phantom: PhantomData,
+        }
+    }
+    fn none() -> Self {
+        Located {
+            value: None,
+            phantom: PhantomData,
+        }
+    }
+}
+
 pub struct Unwrapper<L1: ChoreographyLocation> {
     phantom: PhantomData<L1>,
 }
@@ -78,15 +96,9 @@ pub fn epp_and_run<C: Choreography, TARGET: ChoreographyLocation, BACKEND: Backe
                     phantom: PhantomData,
                 };
                 let value = computation(unwrapper);
-                Located {
-                    value: Some(value),
-                    phantom: PhantomData,
-                }
+                Located::some(value)
             } else {
-                Located {
-                    value: None,
-                    phantom: PhantomData,
-                }
+                Located::none()
             }
         }
 
@@ -99,21 +111,12 @@ pub fn epp_and_run<C: Choreography, TARGET: ChoreographyLocation, BACKEND: Backe
             if sender.name() == self.target {
                 self.backend
                     .send(sender.name(), receiver.name(), data.value.unwrap());
-                Located {
-                    value: None,
-                    phantom: PhantomData,
-                }
+                Located::none()
             } else if receiver.name() == self.target {
                 let value = self.backend.receive(sender.name(), receiver.name());
-                Located {
-                    value: Some(value),
-                    phantom: PhantomData,
-                }
+                Located::some(value)
             } else {
-                Located {
-                    value: None,
-                    phantom: PhantomData,
-                }
+                Located::none()
             }
         }
 
