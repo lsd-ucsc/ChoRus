@@ -13,34 +13,31 @@ impl ChoreographyLocation for Alice {
         "Alice"
     }
 }
-const ALICE: Alice = Alice;
 
 struct Bob;
-
 impl ChoreographyLocation for Bob {
     fn name(&self) -> &'static str {
         "Bob"
     }
 }
-const BOB: Bob = Bob;
 
 struct HelloWorldChoreography;
 
 // Implement the `Choreography` trait for `HelloWorldChoreography`
 impl Choreography for HelloWorldChoreography {
     fn run(&self, op: &impl ChoreoOp) {
-        let msg_at_alice = op.locally(ALICE, |_| {
+        let msg_at_alice = op.locally(Alice, |_| {
             println!("Hello from Alice!");
             let coin = rand::thread_rng().gen_bool(0.5);
             coin
         });
-        let msg_at_bob = op.comm(ALICE, BOB, msg_at_alice);
-        let msg_at_bob = op.locally(BOB, |un| {
+        let msg_at_bob = op.comm(Alice, Bob, msg_at_alice);
+        let msg_at_bob = op.locally(Bob, |un| {
             let msg = un.unwrap(&msg_at_bob);
             println!("Bob received a message: {}", msg);
             msg
         });
-        let coin = op.broadcast(BOB, msg_at_bob);
+        let coin = op.broadcast(Bob, msg_at_bob);
         if coin {
             println!("TRUE");
         }
@@ -48,16 +45,16 @@ impl Choreography for HelloWorldChoreography {
 }
 
 fn main() {
-    let backend = LocalBackend::from(vec!["Alice", "Bob"].into_iter());
+    let backend = LocalBackend::from(Vec::from([Alice.name(), Bob.name()]).into_iter());
     let alice_backend = backend.clone();
     let bob_backend = backend.clone();
 
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     handles.push(thread::spawn(|| {
-        epp_and_run(HelloWorldChoreography, ALICE, alice_backend);
+        epp_and_run(HelloWorldChoreography, Alice, alice_backend);
     }));
     handles.push(thread::spawn(|| {
-        epp_and_run(HelloWorldChoreography, BOB, bob_backend);
+        epp_and_run(HelloWorldChoreography, Bob, bob_backend);
     }));
     for h in handles {
         h.join().unwrap();

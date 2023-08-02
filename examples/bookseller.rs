@@ -24,7 +24,6 @@ impl ChoreographyLocation for Seller {
         "Seller"
     }
 }
-const SELLER: Seller = Seller;
 
 struct Buyer;
 impl ChoreographyLocation for Buyer {
@@ -32,27 +31,26 @@ impl ChoreographyLocation for Buyer {
         "Buyer"
     }
 }
-const BUYER: Buyer = Buyer;
 
 struct BooksellerChoreography;
 impl Choreography for BooksellerChoreography {
     fn run(&self, op: &impl ChoreoOp) {
-        let title_at_buyer = op.locally(BUYER, |_| {
+        let title_at_buyer = op.locally(Buyer, |_| {
             println!("Enter the title of the book to buy (TAPL or HoTT)");
             let mut title = String::new();
             io::stdin().read_line(&mut title).unwrap();
             title
         });
-        let title_at_seller = op.comm(BUYER, SELLER, title_at_buyer);
-        let price_at_seller = op.locally(SELLER, |un| {
+        let title_at_seller = op.comm(Buyer, Seller, title_at_buyer);
+        let price_at_seller = op.locally(Seller, |un| {
             let title = un.unwrap(&title_at_seller);
             if let Some((price, _)) = get_book(&title) {
                 return Some(price);
             }
             return None;
         });
-        let price_at_buyer = op.comm(SELLER, BUYER, price_at_seller);
-        let decision_at_buyer = op.locally(BUYER, |un| {
+        let price_at_buyer = op.comm(Seller, Buyer, price_at_seller);
+        let decision_at_buyer = op.locally(Buyer, |un| {
             if let Some(price) = un.unwrap(&price_at_buyer) {
                 println!("Price is {}", price);
                 return price < BUDGET;
@@ -60,20 +58,20 @@ impl Choreography for BooksellerChoreography {
             println!("The book does not exist");
             return false;
         });
-        let decision = op.broadcast(BUYER, decision_at_buyer);
+        let decision = op.broadcast(Buyer, decision_at_buyer);
         if decision {
-            let delivery_date_at_seller = op.locally(SELLER, |un| {
+            let delivery_date_at_seller = op.locally(Seller, |un| {
                 let title = un.unwrap(&title_at_seller);
                 let (_, delivery_date) = get_book(&title).unwrap();
                 return delivery_date;
             });
-            let delivery_date_at_buyer = op.comm(SELLER, BUYER, delivery_date_at_seller);
-            op.locally(BUYER, |un| {
+            let delivery_date_at_buyer = op.comm(Seller, Buyer, delivery_date_at_seller);
+            op.locally(Buyer, |un| {
                 let delivery_date = un.unwrap(&delivery_date_at_buyer);
                 println!("The book will be delivered on {}", delivery_date);
             });
         } else {
-            op.locally(BUYER, |_| {
+            op.locally(Buyer, |_| {
                 println!("The buyer cannot buy the book");
             });
         }
@@ -87,10 +85,10 @@ fn main() {
 
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     handles.push(thread::spawn(|| {
-        epp_and_run(BooksellerChoreography, SELLER, seller_backend);
+        epp_and_run(BooksellerChoreography, Seller, seller_backend);
     }));
     handles.push(thread::spawn(|| {
-        epp_and_run(BooksellerChoreography, BUYER, buyer_backend);
+        epp_and_run(BooksellerChoreography, Buyer, buyer_backend);
     }));
     for h in handles {
         h.join().unwrap();
