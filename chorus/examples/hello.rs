@@ -7,19 +7,11 @@ use chorus::core::{epp_and_run, ChoreoOp, Choreography, ChoreographyLocation};
 
 use rand::Rng;
 
+#[derive(ChoreographyLocation)]
 struct Alice;
-impl ChoreographyLocation for Alice {
-    fn name(&self) -> &'static str {
-        "Alice"
-    }
-}
 
+#[derive(ChoreographyLocation)]
 struct Bob;
-impl ChoreographyLocation for Bob {
-    fn name(&self) -> &'static str {
-        "Bob"
-    }
-}
 
 struct HelloWorldChoreography;
 
