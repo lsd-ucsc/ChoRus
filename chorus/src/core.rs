@@ -66,8 +66,8 @@ pub trait ChoreoOp {
     ) -> T;
 }
 
-pub trait Choreography {
-    fn run(&self, op: &impl ChoreoOp);
+pub trait Choreography<T = ()> {
+    fn run(&self, op: &impl ChoreoOp) -> T;
 }
 
 pub trait Backend {
@@ -76,11 +76,11 @@ pub trait Backend {
     fn receive<T: ChoreographicValue>(&self, from: &str, at: &str) -> T;
 }
 
-pub fn epp_and_run<C: Choreography, TARGET: ChoreographyLocation, BACKEND: Backend>(
+pub fn epp_and_run<T, C: Choreography<T>, TARGET: ChoreographyLocation, BACKEND: Backend>(
     choreo: C,
     target: TARGET,
     backend: BACKEND,
-) {
+) -> T {
     struct EppOp<B> {
         target: &'static str,
         backend: B,
@@ -136,7 +136,7 @@ pub fn epp_and_run<C: Choreography, TARGET: ChoreographyLocation, BACKEND: Backe
         target: target.name(),
         backend,
     };
-    choreo.run(&op);
+    choreo.run(&op)
 }
 
 extern crate chorus_derive;
