@@ -11,6 +11,12 @@ pub fn derive(input: TokenStream) -> TokenStream {
                 stringify!(#ident)
             }
         }
+        impl Clone for #ident {
+            fn clone(&self) -> Self {
+                *self
+            }
+        }
+        impl Copy for #ident {}
     };
     output.into()
 }

@@ -1,9 +1,10 @@
 use std::marker::PhantomData;
 
 use serde::de::DeserializeOwned;
-use serde::Serialize;
+// re-export so that users can use derive macros without importing serde
+pub use serde::{Deserialize, Serialize};
 
-pub trait ChoreographyLocation {
+pub trait ChoreographyLocation: Copy {
     fn name(&self) -> &'static str;
 }
 
@@ -64,6 +65,7 @@ pub trait ChoreoOp {
         sender: L1,
         data: Located<T, L1>,
     ) -> T;
+    fn call<T, C: Choreography<T>>(&self, choreo: &C) -> T;
 }
 
 pub trait Choreography<T = ()> {
@@ -130,6 +132,10 @@ pub fn epp_and_run<T, C: Choreography<T>, TARGET: ChoreographyLocation, BACKEND:
             } else {
                 self.backend.receive(sender.name(), self.target)
             }
+        }
+
+        fn call<T, C: Choreography<T>>(&self, choreo: &C) -> T {
+            choreo.run(self)
         }
     }
     let op: EppOp<BACKEND> = EppOp {
