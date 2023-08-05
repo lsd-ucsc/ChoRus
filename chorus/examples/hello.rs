@@ -37,7 +37,7 @@ impl Choreography for HelloWorldChoreography {
 }
 
 fn main() {
-    let backend = LocalBackend::from(Vec::from([Alice.name(), Bob.name()]).into_iter());
+    let backend = LocalBackend::from(&[Alice.name(), Bob.name()]);
     let alice_backend = backend.clone();
     let bob_backend = backend.clone();
 

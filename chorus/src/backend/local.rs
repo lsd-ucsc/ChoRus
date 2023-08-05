@@ -15,18 +15,18 @@ pub struct LocalBackend {
 }
 
 impl LocalBackend {
-    pub fn from<'a, I: Iterator<Item = &'a str> + Clone>(locations: I) -> Self {
+    pub fn from(locations: &[&str]) -> Self {
         let mut queue_map: QueueMap = HashMap::new();
         for sender in locations.clone() {
             let mut n = HashMap::new();
             for receiver in locations.clone() {
-                n.insert(String::from(receiver), BlockingQueue::new());
+                n.insert(receiver.to_string(), BlockingQueue::new());
             }
-            queue_map.insert(String::from(sender), n);
+            queue_map.insert(sender.to_string(), n);
         }
         let mut locations_vec = Vec::new();
         for loc in locations.clone() {
-            locations_vec.push(String::from(loc));
+            locations_vec.push(loc.to_string());
         }
         LocalBackend {
             queue_map: Arc::new(queue_map),

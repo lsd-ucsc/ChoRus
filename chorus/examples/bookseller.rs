@@ -71,7 +71,7 @@ impl Choreography for BooksellerChoreography {
 }
 
 fn main() {
-    let backend = LocalBackend::from(vec!["Seller", "Buyer"].into_iter());
+    let backend = LocalBackend::from(&[Seller.name(), Buyer.name()]);
     let seller_backend = backend.clone();
     let buyer_backend = backend.clone();
 
