@@ -1,9 +1,9 @@
 use proc_macro::{self, TokenStream};
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput};
+use syn::{parse_macro_input, Data, DeriveInput, Fields};
 
 #[proc_macro_derive(ChoreographyLocation)]
-pub fn derive(input: TokenStream) -> TokenStream {
+pub fn derive_choreography_location(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, .. } = parse_macro_input!(input);
     let output = quote! {
         impl ChoreographyLocation for #ident {
@@ -19,4 +19,69 @@ pub fn derive(input: TokenStream) -> TokenStream {
         impl Copy for #ident {}
     };
     output.into()
+}
+
+#[proc_macro_derive(Superposition)]
+pub fn derive_superposition(input: TokenStream) -> TokenStream {
+    // Parse the input tokens into a syntax tree
+    let input = syn::parse_macro_input!(input as DeriveInput);
+
+    // Get the name of the struct or enum
+    let name = &input.ident;
+
+    // Generate the implementation of the Superposition trait
+    let expanded = match input.data {
+        Data::Struct(data) => match data.fields {
+            Fields::Named(fields) => {
+                let field_names = fields.named.iter().map(|field| &field.ident);
+                quote! {
+                    impl Superposition for #name {
+                        fn none() -> Self {
+                            #name {
+                                #( #field_names: <_ as Superposition>::none(), )*
+                            }
+                        }
+                    }
+                }
+            }
+            Fields::Unnamed(fields) => {
+                let fields = (0..fields.unnamed.len()).map(|_| {
+                    quote! {
+                        <_ as Superposition>::none()
+                    }
+                });
+                quote! {
+                    impl Superposition for #name {
+                        fn none() -> Self {
+                            #name(
+                                #(#fields),*
+                            )
+                        }
+                    }
+                }
+            }
+            Fields::Unit => {
+                quote! {
+                    impl Superposition for #name {
+                        fn none() -> Self {
+                            #name
+                        }
+                    }
+                }
+            }
+        },
+        Data::Enum(_) => {
+            quote! {
+                compile_error!("Superposition cannot be derived automatically for enums");
+            }
+        }
+        Data::Union(_) => {
+            quote! {
+                compile_error!("Superposition cannot be derived automatically for unions");
+            }
+        }
+    };
+
+    // Convert the generated tokens back into a TokenStream
+    TokenStream::from(expanded)
 }

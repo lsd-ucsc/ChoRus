@@ -6,7 +6,7 @@ use std::thread;
 use chrono::NaiveDate;
 
 use chorus::backend::local::LocalBackend;
-use chorus::core::{epp_and_run, ChoreoOp, Choreography, ChoreographyLocation};
+use chorus::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
 
 fn get_book(title: &str) -> Option<(i32, NaiveDate)> {
     match title.trim() {
@@ -77,10 +77,10 @@ fn main() {
 
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     handles.push(thread::spawn(|| {
-        epp_and_run(BooksellerChoreography, Seller, seller_backend);
+        Projector::new(Seller, seller_backend).epp_and_run(BooksellerChoreography);
     }));
     handles.push(thread::spawn(|| {
-        epp_and_run(BooksellerChoreography, Buyer, buyer_backend);
+        Projector::new(Buyer, buyer_backend).epp_and_run(BooksellerChoreography);
     }));
     for h in handles {
         h.join().unwrap();

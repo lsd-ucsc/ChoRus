@@ -3,7 +3,7 @@ extern crate chorus;
 use std::thread;
 
 use chorus::backend::local::LocalBackend;
-use chorus::core::{epp_and_run, ChoreoOp, Choreography, ChoreographyLocation};
+use chorus::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
 
 use rand::Rng;
 
@@ -43,10 +43,12 @@ fn main() {
 
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     handles.push(thread::spawn(|| {
-        epp_and_run(HelloWorldChoreography, Alice, alice_backend);
+        let p = Projector::new(Alice, alice_backend);
+        p.epp_and_run(HelloWorldChoreography);
     }));
     handles.push(thread::spawn(|| {
-        epp_and_run(HelloWorldChoreography, Bob, bob_backend);
+        let p = Projector::new(Bob, bob_backend);
+        p.epp_and_run(HelloWorldChoreography);
     }));
     for h in handles {
         h.join().unwrap();
