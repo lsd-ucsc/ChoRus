@@ -68,12 +68,12 @@ pub trait ChoreoOp {
         &self,
         sender: L1,
         receiver: L2,
-        data: Located<T, L1>,
+        data: &Located<T, L1>,
     ) -> Located<T, L2>;
     fn broadcast<L1: ChoreographyLocation, T: ChoreographicValue>(
         &self,
         sender: L1,
-        data: Located<T, L1>,
+        data: &Located<T, L1>,
     ) -> T;
     fn call<T, C: Choreography<T>>(&self, choreo: &C) -> T;
     fn colocally<T: Superposition, C: Choreography<T>>(&self, locations: &[&str], choreo: &C) -> T;
@@ -84,8 +84,8 @@ pub trait Choreography<T = ()> {
 }
 
 pub trait Backend {
+    fn locations(&self) -> Vec<String>;
     fn send<T: ChoreographicValue>(&self, from: &str, to: &str, data: T) -> ();
-    fn broadcast<T: ChoreographicValue>(&self, from: &str, data: T) -> T;
     fn receive<T: ChoreographicValue>(&self, from: &str, at: &str) -> T;
 }
 
@@ -120,8 +120,9 @@ impl<L1: ChoreographyLocation, B: Backend> Projector<L1, B> {
 
     pub fn epp_and_run<'a, T, C: Choreography<T>>(&'a self, choreo: C) -> T {
         struct EppOp<'a, B: Backend> {
-            target: &'static str,
+            target: String,
             backend: &'a B,
+            locations: Vec<String>,
         }
         impl<'a, B: Backend> ChoreoOp for EppOp<'a, B> {
             fn locally<T: ChoreographicValue, L1: ChoreographyLocation>(
@@ -144,11 +145,11 @@ impl<L1: ChoreographyLocation, B: Backend> Projector<L1, B> {
                 &self,
                 sender: L1,
                 receiver: L2,
-                data: Located<T, L1>,
+                data: &Located<T, L1>,
             ) -> Located<T, L2> {
                 if sender.name() == self.target {
                     self.backend
-                        .send(sender.name(), receiver.name(), data.value.unwrap());
+                        .send(sender.name(), receiver.name(), data.value.clone().unwrap());
                     Located::remote()
                 } else if receiver.name() == self.target {
                     let value = self.backend.receive(sender.name(), receiver.name());
@@ -161,12 +162,18 @@ impl<L1: ChoreographyLocation, B: Backend> Projector<L1, B> {
             fn broadcast<L1: ChoreographyLocation, T: ChoreographicValue>(
                 &self,
                 sender: L1,
-                data: Located<T, L1>,
+                data: &Located<T, L1>,
             ) -> T {
                 if sender.name() == self.target {
-                    self.backend.broadcast(sender.name(), data.value.unwrap())
+                    for dest in self.locations.clone() {
+                        if self.target != dest {
+                            self.backend
+                                .send(&self.target, &dest, data.value.clone().unwrap());
+                        }
+                    }
+                    return data.value.clone().unwrap();
                 } else {
-                    self.backend.receive(sender.name(), self.target)
+                    self.backend.receive(sender.name(), &self.target)
                 }
             }
 
@@ -176,20 +183,27 @@ impl<L1: ChoreographyLocation, B: Backend> Projector<L1, B> {
 
             fn colocally<T: Superposition, C: Choreography<T>>(
                 &self,
-                locations: &[&str],
+                locs: &[&str],
                 choreo: &C,
             ) -> T {
-                for location in locations {
-                    if location == &self.target {
-                        return choreo.run(self);
+                let locs_vec = Vec::from_iter(locs.into_iter().map(|s| s.to_string()));
+                for location in locs_vec.clone() {
+                    let op = EppOp {
+                        target: location.clone(),
+                        backend: self.backend,
+                        locations: locs_vec.clone(),
+                    };
+                    if location == self.target.to_string() {
+                        return choreo.run(&op);
                     }
                 }
                 T::remote()
             }
         }
         let op: EppOp<'a, B> = EppOp {
-            target: self.target.name(),
+            target: self.target.name().to_string(),
             backend: &self.backend,
+            locations: self.backend.locations(),
         };
         choreo.run(&op)
     }

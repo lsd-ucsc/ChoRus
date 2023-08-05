@@ -23,13 +23,13 @@ impl Choreography for HelloWorldChoreography {
             let coin = rand::thread_rng().gen_bool(0.5);
             coin
         });
-        let msg_at_bob = op.comm(Alice, Bob, msg_at_alice);
+        let msg_at_bob = op.comm(Alice, Bob, &msg_at_alice);
         let msg_at_bob = op.locally(Bob, |un| {
             let msg = un.unwrap(&msg_at_bob);
             println!("Bob received a message: {}", msg);
             msg
         });
-        let coin = op.broadcast(Bob, msg_at_bob);
+        let coin = op.broadcast(Bob, &msg_at_bob);
         if coin {
             println!("TRUE");
         }

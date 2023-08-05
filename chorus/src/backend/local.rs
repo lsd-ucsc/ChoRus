@@ -10,7 +10,7 @@ type QueueMap = HashMap<String, HashMap<String, BlockingQueue<String>>>;
 
 #[derive(Clone)]
 pub struct LocalBackend {
-    locations: Vec<String>,
+    internal_locations: Vec<String>,
     queue_map: Arc<QueueMap>,
 }
 
@@ -30,12 +30,16 @@ impl LocalBackend {
         }
         LocalBackend {
             queue_map: Arc::new(queue_map),
-            locations: locations_vec,
+            internal_locations: locations_vec,
         }
     }
 }
 
 impl Backend for LocalBackend {
+    fn locations(&self) -> Vec<String> {
+        return self.internal_locations.clone();
+    }
+
     fn send<T: crate::core::ChoreographicValue>(&self, from: &str, to: &str, data: T) -> () {
         let data = serde_json::to_string(&data).unwrap();
         self.queue_map
@@ -44,15 +48,6 @@ impl Backend for LocalBackend {
             .get(to)
             .unwrap()
             .push(data)
-    }
-
-    fn broadcast<T: crate::core::ChoreographicValue>(&self, from: &str, data: T) -> T {
-        for loc in self.locations.clone() {
-            if loc != from {
-                self.send(from, &loc, data.clone());
-            }
-        }
-        data
     }
 
     fn receive<T: crate::core::ChoreographicValue>(&self, from: &str, at: &str) -> T {
