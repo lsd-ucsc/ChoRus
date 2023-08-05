@@ -7,8 +7,8 @@ use std::collections::HashMap;
 use std::thread;
 
 use chorus::{
-    backend::local::LocalBackend,
     core::{ChoreoOp, Choreography, ChoreographyLocation, Located, Projector},
+    transport::local::LocalTransport,
 };
 use chrono::NaiveDate;
 
@@ -131,16 +131,16 @@ impl<D: Choreography<Located<bool, Buyer1>> + Decider>
 }
 
 fn main() {
-    let backend = LocalBackend::from(&[Seller.name(), Buyer1.name(), Buyer2.name()]);
-    let seller_backend = backend.clone();
-    let buyer1_backend = backend.clone();
-    let buyer2_backend = backend.clone();
+    let transport = LocalTransport::from(&[Seller.name(), Buyer1.name(), Buyer2.name()]);
+    let seller_transport = transport.clone();
+    let buyer1_transport = transport.clone();
+    let buyer2_transport = transport.clone();
 
     println!("Tries to buy HoTT with one buyer");
     type OneBuyerBooksellerChoreography = BooksellerChoreography<OneBuyerDecider>;
     let mut handles = Vec::new();
     handles.push(thread::spawn(|| {
-        let p = Projector::new(Seller, seller_backend);
+        let p = Projector::new(Seller, seller_transport);
         p.epp_and_run(OneBuyerBooksellerChoreography {
             _marker: std::marker::PhantomData,
             inventory: p.local({
@@ -159,7 +159,7 @@ fn main() {
         });
     }));
     handles.push(thread::spawn(|| {
-        let p = Projector::new(Buyer1, buyer1_backend);
+        let p = Projector::new(Buyer1, buyer1_transport);
         let result = p.epp_and_run(OneBuyerBooksellerChoreography {
             _marker: std::marker::PhantomData,
             inventory: p.remote(Seller),
@@ -168,7 +168,7 @@ fn main() {
         println!("The book will be delivered on {:?}", p.unwrap(result));
     }));
     handles.push(thread::spawn(|| {
-        let p = Projector::new(Buyer2, buyer2_backend);
+        let p = Projector::new(Buyer2, buyer2_transport);
         p.epp_and_run(OneBuyerBooksellerChoreography {
             _marker: std::marker::PhantomData,
             inventory: p.remote(Seller),
@@ -181,12 +181,12 @@ fn main() {
 
     println!("Tries to buy HoTT with two buyer");
     type TwoBuyerBooksellerChoreography = BooksellerChoreography<TwoBuyerDecider>;
-    let seller_backend = backend.clone();
-    let buyer1_backend = backend.clone();
-    let buyer2_backend = backend.clone();
+    let seller_transport = transport.clone();
+    let buyer1_transport = transport.clone();
+    let buyer2_transport = transport.clone();
     let mut handles = Vec::new();
     handles.push(thread::spawn(|| {
-        let p = Projector::new(Seller, seller_backend);
+        let p = Projector::new(Seller, seller_transport);
         p.epp_and_run(TwoBuyerBooksellerChoreography {
             _marker: std::marker::PhantomData,
             inventory: p.local({
@@ -205,7 +205,7 @@ fn main() {
         });
     }));
     handles.push(thread::spawn(|| {
-        let p = Projector::new(Buyer1, buyer1_backend);
+        let p = Projector::new(Buyer1, buyer1_transport);
         let result = p.epp_and_run(TwoBuyerBooksellerChoreography {
             _marker: std::marker::PhantomData,
             inventory: p.remote(Seller),
@@ -214,7 +214,7 @@ fn main() {
         println!("The book will be delivered on {:?}", p.unwrap(result));
     }));
     handles.push(thread::spawn(|| {
-        let p = Projector::new(Buyer2, buyer2_backend);
+        let p = Projector::new(Buyer2, buyer2_transport);
         p.epp_and_run(TwoBuyerBooksellerChoreography {
             _marker: std::marker::PhantomData,
             inventory: p.remote(Seller),

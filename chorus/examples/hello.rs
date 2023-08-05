@@ -2,8 +2,8 @@ extern crate chorus;
 
 use std::thread;
 
-use chorus::backend::local::LocalBackend;
 use chorus::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
+use chorus::transport::local::LocalTransport;
 
 use rand::Rng;
 
@@ -37,17 +37,17 @@ impl Choreography for HelloWorldChoreography {
 }
 
 fn main() {
-    let backend = LocalBackend::from(&[Alice.name(), Bob.name()]);
-    let alice_backend = backend.clone();
-    let bob_backend = backend.clone();
+    let transport = LocalTransport::from(&[Alice.name(), Bob.name()]);
+    let alice_transport = transport.clone();
+    let bob_transport = transport.clone();
 
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     handles.push(thread::spawn(|| {
-        let p = Projector::new(Alice, alice_backend);
+        let p = Projector::new(Alice, alice_transport);
         p.epp_and_run(HelloWorldChoreography);
     }));
     handles.push(thread::spawn(|| {
-        let p = Projector::new(Bob, bob_backend);
+        let p = Projector::new(Bob, bob_transport);
         p.epp_and_run(HelloWorldChoreography);
     }));
     for h in handles {

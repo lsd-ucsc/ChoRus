@@ -5,8 +5,8 @@ use std::thread;
 
 use chrono::NaiveDate;
 
-use chorus::backend::local::LocalBackend;
 use chorus::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
+use chorus::transport::local::LocalTransport;
 
 fn get_book(title: &str) -> Option<(i32, NaiveDate)> {
     match title.trim() {
@@ -71,16 +71,16 @@ impl Choreography for BooksellerChoreography {
 }
 
 fn main() {
-    let backend = LocalBackend::from(&[Seller.name(), Buyer.name()]);
-    let seller_backend = backend.clone();
-    let buyer_backend = backend.clone();
+    let transport = LocalTransport::from(&[Seller.name(), Buyer.name()]);
+    let seller_transport = transport.clone();
+    let buyer_transport = transport.clone();
 
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     handles.push(thread::spawn(|| {
-        Projector::new(Seller, seller_backend).epp_and_run(BooksellerChoreography);
+        Projector::new(Seller, seller_transport).epp_and_run(BooksellerChoreography);
     }));
     handles.push(thread::spawn(|| {
-        Projector::new(Buyer, buyer_backend).epp_and_run(BooksellerChoreography);
+        Projector::new(Buyer, buyer_transport).epp_and_run(BooksellerChoreography);
     }));
     for h in handles {
         h.join().unwrap();

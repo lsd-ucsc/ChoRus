@@ -16,19 +16,19 @@ pub trait Superposition {
 }
 
 #[derive(PartialEq)]
-pub struct Located<T, L1>
+pub struct Located<V, L1>
 where
-    T: ChoreographicValue,
+    V: ChoreographicValue,
 {
-    value: Option<T>,
+    value: Option<V>,
     phantom: PhantomData<L1>,
 }
 
-impl<T, L1> Located<T, L1>
+impl<V, L1> Located<V, L1>
 where
-    T: ChoreographicValue,
+    V: ChoreographicValue,
 {
-    fn local(value: T) -> Self {
+    fn local(value: V) -> Self {
         Located {
             value: Some(value),
             phantom: PhantomData,
@@ -36,9 +36,9 @@ where
     }
 }
 
-impl<T, L1> Superposition for Located<T, L1>
+impl<V, L1> Superposition for Located<V, L1>
 where
-    T: ChoreographicValue,
+    V: ChoreographicValue,
 {
     fn remote() -> Self {
         Located {
@@ -53,60 +53,60 @@ pub struct Unwrapper<L1: ChoreographyLocation> {
 }
 
 impl<L1: ChoreographyLocation> Unwrapper<L1> {
-    pub fn unwrap<T: ChoreographicValue>(&self, located: &Located<T, L1>) -> T {
+    pub fn unwrap<V: ChoreographicValue>(&self, located: &Located<V, L1>) -> V {
         located.value.clone().unwrap()
     }
 }
 
 pub trait ChoreoOp {
-    fn locally<T: ChoreographicValue, L1: ChoreographyLocation>(
+    fn locally<V: ChoreographicValue, L1: ChoreographyLocation>(
         &self,
         location: L1,
-        computation: impl FnOnce(Unwrapper<L1>) -> T,
-    ) -> Located<T, L1>;
-    fn comm<L1: ChoreographyLocation, L2: ChoreographyLocation, T: ChoreographicValue>(
+        computation: impl FnOnce(Unwrapper<L1>) -> V,
+    ) -> Located<V, L1>;
+    fn comm<L1: ChoreographyLocation, L2: ChoreographyLocation, V: ChoreographicValue>(
         &self,
         sender: L1,
         receiver: L2,
-        data: &Located<T, L1>,
-    ) -> Located<T, L2>;
-    fn broadcast<L1: ChoreographyLocation, T: ChoreographicValue>(
+        data: &Located<V, L1>,
+    ) -> Located<V, L2>;
+    fn broadcast<L1: ChoreographyLocation, V: ChoreographicValue>(
         &self,
         sender: L1,
-        data: &Located<T, L1>,
-    ) -> T;
-    fn call<T, C: Choreography<T>>(&self, choreo: &C) -> T;
-    fn colocally<T: Superposition, C: Choreography<T>>(&self, locations: &[&str], choreo: &C) -> T;
+        data: &Located<V, L1>,
+    ) -> V;
+    fn call<R, C: Choreography<R>>(&self, choreo: &C) -> R;
+    fn colocally<R: Superposition, C: Choreography<R>>(&self, locations: &[&str], choreo: &C) -> R;
 }
 
-pub trait Choreography<T = ()> {
-    fn run(&self, op: &impl ChoreoOp) -> T;
+pub trait Choreography<R = ()> {
+    fn run(&self, op: &impl ChoreoOp) -> R;
 }
 
-pub trait Backend {
+pub trait Transport {
     fn locations(&self) -> Vec<String>;
-    fn send<T: ChoreographicValue>(&self, from: &str, to: &str, data: T) -> ();
-    fn receive<T: ChoreographicValue>(&self, from: &str, at: &str) -> T;
+    fn send<V: ChoreographicValue>(&self, from: &str, to: &str, data: V) -> ();
+    fn receive<V: ChoreographicValue>(&self, from: &str, at: &str) -> V;
 }
 
-pub struct Projector<L1: ChoreographyLocation, B: Backend> {
+pub struct Projector<L1: ChoreographyLocation, T: Transport> {
     target: L1,
-    backend: B,
+    transport: T,
 }
 
-impl<L1: ChoreographyLocation, B: Backend> Projector<L1, B> {
-    pub fn new(target: L1, backend: B) -> Self {
-        Projector { target, backend }
+impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
+    pub fn new(target: L1, transport: B) -> Self {
+        Projector { target, transport }
     }
 
-    pub fn local<T: ChoreographicValue>(&self, value: T) -> Located<T, L1> {
+    pub fn local<V: ChoreographicValue>(&self, value: V) -> Located<V, L1> {
         Located::local(value)
     }
 
-    pub fn remote<T: ChoreographicValue, L2: ChoreographyLocation>(
+    pub fn remote<V: ChoreographicValue, L2: ChoreographyLocation>(
         &self,
         l2: L2,
-    ) -> Located<T, L2> {
+    ) -> Located<V, L2> {
         // NOTE(shumbo): Ideally, this check should be done at the type level.
         if self.target.name() == l2.name() {
             panic!("Cannot create a remote value at the same location");
@@ -114,17 +114,17 @@ impl<L1: ChoreographyLocation, B: Backend> Projector<L1, B> {
         Located::remote()
     }
 
-    pub fn unwrap<T: ChoreographicValue>(&self, located: Located<T, L1>) -> T {
+    pub fn unwrap<V: ChoreographicValue>(&self, located: Located<V, L1>) -> V {
         located.value.unwrap()
     }
 
-    pub fn epp_and_run<'a, T, C: Choreography<T>>(&'a self, choreo: C) -> T {
-        struct EppOp<'a, B: Backend> {
+    pub fn epp_and_run<'a, V, C: Choreography<V>>(&'a self, choreo: C) -> V {
+        struct EppOp<'a, B: Transport> {
             target: String,
-            backend: &'a B,
+            transport: &'a B,
             locations: Vec<String>,
         }
-        impl<'a, B: Backend> ChoreoOp for EppOp<'a, B> {
+        impl<'a, B: Transport> ChoreoOp for EppOp<'a, B> {
             fn locally<T: ChoreographicValue, L1: ChoreographyLocation>(
                 &self,
                 location: L1,
@@ -148,11 +148,14 @@ impl<L1: ChoreographyLocation, B: Backend> Projector<L1, B> {
                 data: &Located<T, L1>,
             ) -> Located<T, L2> {
                 if sender.name() == self.target {
-                    self.backend
-                        .send(sender.name(), receiver.name(), data.value.clone().unwrap());
+                    self.transport.send(
+                        sender.name(),
+                        receiver.name(),
+                        data.value.clone().unwrap(),
+                    );
                     Located::remote()
                 } else if receiver.name() == self.target {
-                    let value = self.backend.receive(sender.name(), receiver.name());
+                    let value = self.transport.receive(sender.name(), receiver.name());
                     Located::local(value)
                 } else {
                     Located::remote()
@@ -165,15 +168,15 @@ impl<L1: ChoreographyLocation, B: Backend> Projector<L1, B> {
                 data: &Located<T, L1>,
             ) -> T {
                 if sender.name() == self.target {
-                    for dest in self.locations.clone() {
-                        if self.target != dest {
-                            self.backend
+                    for dest in &self.locations {
+                        if self.target != *dest {
+                            self.transport
                                 .send(&self.target, &dest, data.value.clone().unwrap());
                         }
                     }
                     return data.value.clone().unwrap();
                 } else {
-                    self.backend.receive(sender.name(), &self.target)
+                    self.transport.receive(sender.name(), &self.target)
                 }
             }
 
@@ -187,13 +190,13 @@ impl<L1: ChoreographyLocation, B: Backend> Projector<L1, B> {
                 choreo: &C,
             ) -> T {
                 let locs_vec = Vec::from_iter(locs.into_iter().map(|s| s.to_string()));
-                for location in locs_vec.clone() {
+                for location in &locs_vec {
                     let op = EppOp {
                         target: location.clone(),
-                        backend: self.backend,
+                        transport: self.transport,
                         locations: locs_vec.clone(),
                     };
-                    if location == self.target.to_string() {
+                    if *location == self.target.to_string() {
                         return choreo.run(&op);
                     }
                 }
@@ -202,8 +205,8 @@ impl<L1: ChoreographyLocation, B: Backend> Projector<L1, B> {
         }
         let op: EppOp<'a, B> = EppOp {
             target: self.target.name().to_string(),
-            backend: &self.backend,
-            locations: self.backend.locations(),
+            transport: &self.transport,
+            locations: self.transport.locations(),
         };
         choreo.run(&op)
     }

@@ -3,18 +3,18 @@ use std::sync::Arc;
 
 use serde_json;
 
-use crate::core::Backend;
+use crate::core::Transport;
 use crate::utils::queue::BlockingQueue;
 
 type QueueMap = HashMap<String, HashMap<String, BlockingQueue<String>>>;
 
 #[derive(Clone)]
-pub struct LocalBackend {
+pub struct LocalTransport {
     internal_locations: Vec<String>,
     queue_map: Arc<QueueMap>,
 }
 
-impl LocalBackend {
+impl LocalTransport {
     pub fn from(locations: &[&str]) -> Self {
         let mut queue_map: QueueMap = HashMap::new();
         for sender in locations.clone() {
@@ -28,14 +28,14 @@ impl LocalBackend {
         for loc in locations.clone() {
             locations_vec.push(loc.to_string());
         }
-        LocalBackend {
+        LocalTransport {
             queue_map: Arc::new(queue_map),
             internal_locations: locations_vec,
         }
     }
 }
 
-impl Backend for LocalBackend {
+impl Transport for LocalTransport {
     fn locations(&self) -> Vec<String> {
         return self.internal_locations.clone();
     }
