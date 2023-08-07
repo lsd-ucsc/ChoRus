@@ -10,8 +10,10 @@ use tiny_http::Server;
 
 use crate::{core::Transport, utils::queue::BlockingQueue};
 
+/// The header name for the source location.
 const HEADER_SRC: &str = "X-CHORUS-SOURCE";
 
+/// The HTTP transport.
 pub struct HttpTransport {
     config: HashMap<String, (String, u32)>,
     client: Client,
@@ -21,7 +23,12 @@ pub struct HttpTransport {
 }
 
 impl HttpTransport {
-    pub fn new(at: &'static str, config: HashMap<String, (String, u32)>) -> Self {
+    pub fn new(at: &'static str, config: &HashMap<&'static str, (&'static str, u32)>) -> Self {
+        let config = HashMap::from_iter(
+            config
+                .iter()
+                .map(|(k, (hostname, port))| (k.to_string(), (hostname.to_string(), *port))),
+        );
         let locs = Vec::from_iter(config.keys().map(|s| s.clone()));
 
         let queue_map = {
@@ -34,32 +41,35 @@ impl HttpTransport {
 
         let (hostname, port) = config.get(at).unwrap();
         let server = Arc::new(Server::http(format!("{}:{}", hostname, port)).unwrap());
-        let server_clone = server.clone();
-        let queue_map_clone = queue_map.clone();
-        let join_handle = Some(thread::spawn(move || {
-            for mut request in server_clone.incoming_requests() {
-                let mut body = String::new();
-                request
-                    .as_reader()
-                    .read_to_string(&mut body)
-                    .expect("Failed to read body");
-                let mut headers = request.headers().iter();
-                let src = headers.find(|header| header.field.equiv(HEADER_SRC));
-                if let Some(src) = src {
-                    let src = &src.value;
-                    queue_map_clone.get(src.as_str()).unwrap().push(body);
+        let join_handle = Some({
+            let server = server.clone();
+            let queue_map = queue_map.clone();
+            thread::spawn(move || {
+                for mut request in server.incoming_requests() {
+                    let mut body = String::new();
                     request
-                        .respond(tiny_http::Response::from_string("OK").with_status_code(200))
-                        .unwrap();
-                } else {
-                    request
-                        .respond(
-                            tiny_http::Response::from_string("Bad Request").with_status_code(400),
-                        )
-                        .unwrap();
+                        .as_reader()
+                        .read_to_string(&mut body)
+                        .expect("Failed to read body");
+                    let mut headers = request.headers().iter();
+                    let src = headers.find(|header| header.field.equiv(HEADER_SRC));
+                    if let Some(src) = src {
+                        let src = &src.value;
+                        queue_map.get(src.as_str()).unwrap().push(body);
+                        request
+                            .respond(tiny_http::Response::from_string("OK").with_status_code(200))
+                            .unwrap();
+                    } else {
+                        request
+                            .respond(
+                                tiny_http::Response::from_string("Bad Request")
+                                    .with_status_code(400),
+                            )
+                            .unwrap();
+                    }
                 }
-            }
-        }));
+            })
+        });
 
         Self {
             config,

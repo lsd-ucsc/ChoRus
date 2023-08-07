@@ -1,9 +1,11 @@
 extern crate chorus;
 
+use std::collections::HashMap;
+use std::sync::Arc;
 use std::thread;
 
 use chorus::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
-use chorus::transport::local::LocalTransport;
+use chorus::transport::http::HttpTransport;
 
 use rand::Rng;
 
@@ -37,19 +39,27 @@ impl Choreography for HelloWorldChoreography {
 }
 
 fn main() {
-    let transport = LocalTransport::from(&[Alice.name(), Bob.name()]);
-    let alice_transport = transport.clone();
-    let bob_transport = transport.clone();
-
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
-    handles.push(thread::spawn(|| {
-        let p = Projector::new(Alice, alice_transport);
-        p.epp_and_run(HelloWorldChoreography);
-    }));
-    handles.push(thread::spawn(|| {
-        let p = Projector::new(Bob, bob_transport);
-        p.epp_and_run(HelloWorldChoreography);
-    }));
+    let config = Arc::new(HashMap::from([
+        (Alice.name(), ("0.0.0.0", 8000)),
+        (Bob.name(), ("0.0.0.0", 8001)),
+    ]));
+    {
+        let config = config.clone();
+        handles.push(thread::spawn(move || {
+            let http_alice = HttpTransport::new(Alice.name(), &config);
+            let p = Projector::new(Alice, http_alice);
+            p.epp_and_run(HelloWorldChoreography);
+        }));
+    }
+    {
+        let config = config.clone();
+        handles.push(thread::spawn(move || {
+            let http_bob = HttpTransport::new(Bob.name(), &config);
+            let p = Projector::new(Bob, http_bob);
+            p.epp_and_run(HelloWorldChoreography);
+        }));
+    }
     for h in handles {
         h.join().unwrap();
     }

@@ -8,6 +8,11 @@ use crate::utils::queue::BlockingQueue;
 
 type QueueMap = HashMap<String, HashMap<String, BlockingQueue<String>>>;
 
+/// The local transport.
+///
+/// This transport uses a blocking queue to allow for communication between threads. Each location must be executed in its thread.
+///
+/// Unlike network-based transports, all locations must share the same `LocalTransport` instance. The struct implements `Clone` so that it can be shared across threads.
 #[derive(Clone)]
 pub struct LocalTransport {
     internal_locations: Vec<String>,

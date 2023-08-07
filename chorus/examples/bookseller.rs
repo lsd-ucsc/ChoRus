@@ -72,15 +72,15 @@ impl Choreography for BooksellerChoreography {
 
 fn main() {
     let transport = LocalTransport::from(&[Seller.name(), Buyer.name()]);
-    let seller_transport = transport.clone();
-    let buyer_transport = transport.clone();
+    let seller_projector = Projector::new(Seller, transport.clone());
+    let buyer_projector = Projector::new(Buyer, transport.clone());
 
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
-    handles.push(thread::spawn(|| {
-        Projector::new(Seller, seller_transport).epp_and_run(BooksellerChoreography);
+    handles.push(thread::spawn(move || {
+        seller_projector.epp_and_run(BooksellerChoreography);
     }));
-    handles.push(thread::spawn(|| {
-        Projector::new(Buyer, buyer_transport).epp_and_run(BooksellerChoreography);
+    handles.push(thread::spawn(move || {
+        buyer_projector.epp_and_run(BooksellerChoreography);
     }));
     for h in handles {
         h.join().unwrap();
