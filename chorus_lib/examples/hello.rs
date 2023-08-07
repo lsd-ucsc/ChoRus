@@ -1,11 +1,9 @@
-extern crate chorus;
-
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::thread;
 
-use chorus::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
-use chorus::transport::http::HttpTransport;
+use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
+use chorus_lib::transport::http::HttpTransport;
 
 use rand::Rng;
 

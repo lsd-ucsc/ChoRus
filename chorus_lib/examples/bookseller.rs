@@ -1,12 +1,12 @@
-extern crate chorus;
+extern crate chorus_lib;
 
 use std::io;
 use std::thread;
 
 use chrono::NaiveDate;
 
-use chorus::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
-use chorus::transport::local::LocalTransport;
+use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
+use chorus_lib::transport::local::LocalTransport;
 
 fn get_book(title: &str) -> Option<(i32, NaiveDate)> {
     match title.trim() {

@@ -6,7 +6,7 @@
 use std::thread;
 use std::{collections::HashMap, sync::Arc};
 
-use chorus::{
+use chorus_lib::{
     core::{ChoreoOp, Choreography, ChoreographyLocation, Located, Projector},
     transport::local::LocalTransport,
 };
