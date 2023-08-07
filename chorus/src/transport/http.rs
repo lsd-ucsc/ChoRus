@@ -1,3 +1,5 @@
+//! The HTTP transport.
+
 use std::thread;
 use std::{collections::HashMap, sync::Arc};
 
@@ -23,6 +25,7 @@ pub struct HttpTransport {
 }
 
 impl HttpTransport {
+    /// Creates a new `HttpTransport` instance from the projection target and a configuration.
     pub fn new(at: &'static str, config: &HashMap<&'static str, (&'static str, u32)>) -> Self {
         let config = HashMap::from_iter(
             config

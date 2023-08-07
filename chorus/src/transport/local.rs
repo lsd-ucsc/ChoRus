@@ -1,3 +1,5 @@
+//! The local transport.
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -20,6 +22,7 @@ pub struct LocalTransport {
 }
 
 impl LocalTransport {
+    /// Creates a new `LocalTransport` instance from a list of locations.
     pub fn from(locations: &[&str]) -> Self {
         let mut queue_map: QueueMap = HashMap::new();
         for sender in locations.clone() {

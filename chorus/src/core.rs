@@ -10,6 +10,7 @@ pub use serde::{Deserialize, Serialize};
 
 /// Represents a location. It can be derived using `#[derive(ChoreographyLocation)]`.
 pub trait ChoreographyLocation: Copy {
+    /// Returns the name of the location as a string.
     fn name(&self) -> &'static str;
 }
 
@@ -22,6 +23,7 @@ impl<T: Serialize + DeserializeOwned + Clone> ChoreographicValue for T {}
 ///
 /// In most cases, you don't need to implement this trait manually. You can derive it using `#[derive(Superposition)]` as long as all the fields consist of located values.
 pub trait Superposition {
+    /// Constructs a struct that is *NOT* located at a location.
     fn remote() -> Self;
 }
 
@@ -136,6 +138,11 @@ pub trait ChoreoOp {
 ///
 /// The trait provides a method `run` that takes an implementation of `ChoreoOp` and returns a value of type `R`.
 pub trait Choreography<R = ()> {
+    /// A method that executes a choreography.
+    ///
+    /// The method takes an implementation of `ChoreoOp`. Inside the method, you can use the operators provided by `ChoreoOp` to define a choreography.
+    ///
+    /// The method returns a value of type `R`, which is the return type of the choreography.
     fn run(&self, op: &impl ChoreoOp) -> R;
 }
 
