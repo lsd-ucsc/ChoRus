@@ -29,3 +29,37 @@ impl<T> BlockingQueue<T> {
         item
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_blocking_queue_push_pop() {
+        let queue = BlockingQueue::<i32>::new();
+        queue.push(1);
+        queue.push(2);
+        queue.push(3);
+        assert_eq!(queue.pop(), 1);
+        assert_eq!(queue.pop(), 2);
+        assert_eq!(queue.pop(), 3);
+    }
+
+    #[test]
+    fn test_blocking_queue_pop_push() {
+        let queue = std::sync::Arc::new(BlockingQueue::<i32>::new());
+        let handle = {
+            let queue = queue.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                queue.push(1);
+                queue.push(2);
+                queue.push(3);
+            })
+        };
+        assert_eq!(queue.pop(), 1);
+        assert_eq!(queue.pop(), 2);
+        assert_eq!(queue.pop(), 3);
+        handle.join().unwrap();
+    }
+}
