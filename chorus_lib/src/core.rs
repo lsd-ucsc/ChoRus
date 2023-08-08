@@ -27,6 +27,12 @@ pub trait Superposition {
     fn remote() -> Self;
 }
 
+impl Superposition for () {
+    fn remote() -> Self {
+        ()
+    }
+}
+
 /// Represents a value located at a location.
 ///
 /// The struct takes two type parameters: `V` and `L1`.

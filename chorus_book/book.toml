@@ -1,0 +1,6 @@
+[book]
+authors = ["Shun Kashiwa"]
+language = "en"
+multilingual = false
+src = "src"
+title = "ChoRus"

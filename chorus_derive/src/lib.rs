@@ -36,9 +36,9 @@ pub fn derive_superposition(input: TokenStream) -> TokenStream {
                 let field_names = fields.named.iter().map(|field| &field.ident);
                 quote! {
                     impl Superposition for #name {
-                        fn none() -> Self {
+                        fn remote() -> Self {
                             #name {
-                                #( #field_names: <_ as Superposition>::none(), )*
+                                #( #field_names: <_ as Superposition>::remote(), )*
                             }
                         }
                     }
@@ -47,12 +47,12 @@ pub fn derive_superposition(input: TokenStream) -> TokenStream {
             Fields::Unnamed(fields) => {
                 let fields = (0..fields.unnamed.len()).map(|_| {
                     quote! {
-                        <_ as Superposition>::none()
+                        <_ as Superposition>::remote()
                     }
                 });
                 quote! {
                     impl Superposition for #name {
-                        fn none() -> Self {
+                        fn remote() -> Self {
                             #name(
                                 #(#fields),*
                             )
@@ -63,7 +63,7 @@ pub fn derive_superposition(input: TokenStream) -> TokenStream {
             Fields::Unit => {
                 quote! {
                     impl Superposition for #name {
-                        fn none() -> Self {
+                        fn remote() -> Self {
                             #name
                         }
                     }

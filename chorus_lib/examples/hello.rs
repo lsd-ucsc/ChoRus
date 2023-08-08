@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-use std::sync::Arc;
 use std::thread;
 
 use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
-use chorus_lib::transport::http::HttpTransport;
+use chorus_lib::transport::local::LocalTransport;
 
-use rand::Rng;
+// --- Define two locations (Alice and Bob) ---
 
 #[derive(ChoreographyLocation)]
 struct Alice;
@@ -13,48 +11,44 @@ struct Alice;
 #[derive(ChoreographyLocation)]
 struct Bob;
 
+// --- Define a choreography ---
 struct HelloWorldChoreography;
 
 // Implement the `Choreography` trait for `HelloWorldChoreography`
 impl Choreography for HelloWorldChoreography {
     fn run(&self, op: &impl ChoreoOp) {
+        // Create a located value at Alice
         let msg_at_alice = op.locally(Alice, |_| {
             println!("Hello from Alice!");
-            let coin = rand::thread_rng().gen_bool(0.5);
-            coin
+            "Hello from Alice!".to_string()
         });
+        // Send the located value to Bob
         let msg_at_bob = op.comm(Alice, Bob, &msg_at_alice);
-        let msg_at_bob = op.locally(Bob, |un| {
+        // Print the received message at Bob
+        op.locally(Bob, |un| {
             let msg = un.unwrap(&msg_at_bob);
             println!("Bob received a message: {}", msg);
             msg
         });
-        let coin = op.broadcast(Bob, &msg_at_bob);
-        if coin {
-            println!("TRUE");
-        }
     }
 }
 
 fn main() {
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
-    let config = Arc::new(HashMap::from([
-        (Alice.name(), ("0.0.0.0", 8000)),
-        (Bob.name(), ("0.0.0.0", 8001)),
-    ]));
+    // Create a local transport
+    let transport = LocalTransport::from(&[Alice.name(), Bob.name()]);
+    // Run the choreography in two threads
     {
-        let config = config.clone();
+        let transport = transport.clone();
         handles.push(thread::spawn(move || {
-            let http_alice = HttpTransport::new(Alice.name(), &config);
-            let p = Projector::new(Alice, http_alice);
+            let p = Projector::new(Alice, transport);
             p.epp_and_run(HelloWorldChoreography);
         }));
     }
     {
-        let config = config.clone();
+        let transport = transport.clone();
         handles.push(thread::spawn(move || {
-            let http_bob = HttpTransport::new(Bob.name(), &config);
-            let p = Projector::new(Bob, http_bob);
+            let p = Projector::new(Bob, transport);
             p.epp_and_run(HelloWorldChoreography);
         }));
     }
