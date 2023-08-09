@@ -3,7 +3,7 @@
 members = ["chorus_lib", "chorus_derive"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Shun Kashiwa <shunthedev@gmail.com>"]
 homepage = "https://lsd-ucsc.github.io/ChoRus/"
