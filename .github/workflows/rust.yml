@@ -30,7 +30,7 @@ jobs:
         with:
           command: test
 
-  publish-book:
+  build-book:
     runs-on: ubuntu-22.04
     needs: ["build-and-test"]
     if: ${{ github.ref == 'refs/heads/main' }}
@@ -38,8 +38,22 @@ jobs:
       - uses: actions/checkout@v3
       - uses: peaceiris/actions-mdbook@v1
       - run: mdbook build chorus_book
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./chorus_book/book
+          path: ./chorus_book/book
+
+  deploy-book:
+    runs-on: ubuntu-22.04
+    needs: ["build-book"]
+    if: ${{ github.ref == 'refs/heads/main' }}
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
