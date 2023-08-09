@@ -117,3 +117,81 @@ impl Transport for HttpTransport {
         serde_json::from_str(&str).unwrap()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::mpsc;
+    use std::thread::{self, sleep};
+    use std::time::Duration;
+
+    use super::*;
+    use crate::core::ChoreographyLocation;
+
+    #[derive(ChoreographyLocation)]
+    struct Alice;
+
+    #[derive(ChoreographyLocation)]
+    struct Bob;
+
+    #[test]
+    fn test_http_transport() {
+        let v = 42;
+        let mut config = HashMap::new();
+        let (signal, wait) = mpsc::channel::<()>();
+        config.insert(Alice.name(), ("localhost", 9010));
+        config.insert(Bob.name(), ("localhost", 9011));
+        let mut handles = Vec::new();
+        {
+            let config = config.clone();
+            handles.push(thread::spawn(move || {
+                wait.recv().unwrap(); // wait for Bob to start
+                let transport = HttpTransport::new(Alice.name(), &config);
+                transport.send::<i32>(Alice.name(), Bob.name(), v);
+            }));
+        }
+        {
+            let config = config.clone();
+            handles.push(thread::spawn(move || {
+                let transport = HttpTransport::new(Bob.name(), &config);
+                signal.send(()).unwrap();
+                let v2 = transport.receive::<i32>(Alice.name(), Bob.name());
+                assert_eq!(v, v2);
+            }));
+        }
+        for handle in handles {
+            handle.join().unwrap();
+        }
+    }
+
+    #[test]
+    fn test_http_transport_retry() {
+        let v = 42;
+        let mut config = HashMap::new();
+        let (signal, wait) = mpsc::channel::<()>();
+        config.insert(Alice.name(), ("localhost", 9020));
+        config.insert(Bob.name(), ("localhost", 9021));
+        let mut handles = Vec::new();
+        {
+            let config = config.clone();
+            handles.push(thread::spawn(move || {
+                signal.send(()).unwrap();
+                let transport = HttpTransport::new(Alice.name(), &config);
+                transport.send::<i32>(Alice.name(), Bob.name(), v);
+            }));
+        }
+        {
+            let config = config.clone();
+            handles.push(thread::spawn(move || {
+                // wait for Alice to start, which forces Alice to retry
+                wait.recv().unwrap();
+                sleep(Duration::from_millis(100));
+                let transport = HttpTransport::new(Bob.name(), &config);
+                let v2 = transport.receive::<i32>(Alice.name(), Bob.name());
+                assert_eq!(v, v2);
+            }));
+        }
+        for handle in handles {
+            handle.join().unwrap();
+        }
+    }
+}

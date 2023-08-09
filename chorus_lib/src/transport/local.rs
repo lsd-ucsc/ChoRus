@@ -63,3 +63,39 @@ impl Transport for LocalTransport {
         serde_json::from_str(&data).unwrap()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::ChoreographyLocation;
+    use std::thread;
+
+    #[derive(ChoreographyLocation)]
+    struct Alice;
+
+    #[derive(ChoreographyLocation)]
+    struct Bob;
+
+    #[test]
+    fn test_local_transport() {
+        let v = 42;
+        let transport = LocalTransport::from(&[Alice.name(), Bob.name()]);
+        let mut handles = Vec::new();
+        {
+            let transport = transport.clone();
+            handles.push(thread::spawn(move || {
+                transport.send::<i32>(Alice.name(), Bob.name(), v);
+            }));
+        }
+        {
+            let transport = transport.clone();
+            handles.push(thread::spawn(move || {
+                let v2 = transport.receive::<i32>(Alice.name(), Bob.name());
+                assert_eq!(v, v2);
+            }));
+        }
+        for handle in handles {
+            handle.join().unwrap();
+        }
+    }
+}
