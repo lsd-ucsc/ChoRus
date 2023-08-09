@@ -1,3 +1,12 @@
 [workspace]
 
 members = ["chorus_lib", "chorus_derive"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Shun Kashiwa <shunthedev@gmail.com>"]
+homepage = "https://lsd-ucsc.github.io/ChoRus/"
+repository = "https://github.com/lsd-ucsc/ChoRus"
+readme = "crates-io.md"
+license = "MIT"
