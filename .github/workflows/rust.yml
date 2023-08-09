@@ -30,9 +30,15 @@ jobs:
         with:
           command: test
 
-  build-book:
+  deploy-book:
     runs-on: ubuntu-22.04
     needs: ["build-and-test"]
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     if: ${{ github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v3
@@ -42,18 +48,6 @@ jobs:
         uses: actions/upload-pages-artifact@v2
         with:
           path: ./chorus_book/book
-
-  deploy-book:
-    runs-on: ubuntu-22.04
-    needs: ["build-book"]
-    if: ${{ github.ref == 'refs/heads/main' }}
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v2
