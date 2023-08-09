@@ -77,10 +77,10 @@ fn main() {
 
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     handles.push(thread::spawn(move || {
-        seller_projector.epp_and_run(BooksellerChoreography);
+        seller_projector.epp_and_run(&BooksellerChoreography);
     }));
     handles.push(thread::spawn(move || {
-        buyer_projector.epp_and_run(BooksellerChoreography);
+        buyer_projector.epp_and_run(&BooksellerChoreography);
     }));
     for h in handles {
         h.join().unwrap();

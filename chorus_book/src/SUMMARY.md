@@ -13,4 +13,5 @@
   - [Higher-order Choreography](./guide-higher-order-choreography.md)
   - [Location Polymorphism](./guide-location-polymorphism.md)
   - [Colocally and Efficient Conditional](./guide-colocally.md)
+  - [Runner](./guide-runner.md)
 - [Links](./links.md)
