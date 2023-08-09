@@ -153,7 +153,7 @@ fn main() {
         let seller_projector = seller_projector.clone();
         let inventory = inventory.clone();
         handles.push(thread::spawn(move || {
-            seller_projector.epp_and_run(OneBuyerBooksellerChoreography {
+            seller_projector.epp_and_run(&OneBuyerBooksellerChoreography {
                 _marker: std::marker::PhantomData,
                 inventory: seller_projector.local(inventory),
                 title: seller_projector.remote(Buyer1),
@@ -163,7 +163,7 @@ fn main() {
     {
         let buyer1_projector = buyer1_projector.clone();
         handles.push(thread::spawn(move || {
-            let result = buyer1_projector.epp_and_run(OneBuyerBooksellerChoreography {
+            let result = buyer1_projector.epp_and_run(&OneBuyerBooksellerChoreography {
                 _marker: std::marker::PhantomData,
                 inventory: buyer1_projector.remote(Seller),
                 title: buyer1_projector.local("HoTT".to_string()),
@@ -177,7 +177,7 @@ fn main() {
     {
         let buyer2_projector = buyer2_projector.clone();
         handles.push(thread::spawn(move || {
-            buyer2_projector.epp_and_run(OneBuyerBooksellerChoreography {
+            buyer2_projector.epp_and_run(&OneBuyerBooksellerChoreography {
                 _marker: std::marker::PhantomData,
                 inventory: buyer2_projector.remote(Seller),
                 title: buyer2_projector.remote(Buyer1),
@@ -195,7 +195,7 @@ fn main() {
         let seller_projector = seller_projector.clone();
         let inventory = inventory.clone();
         handles.push(thread::spawn(move || {
-            seller_projector.epp_and_run(TwoBuyerBooksellerChoreography {
+            seller_projector.epp_and_run(&TwoBuyerBooksellerChoreography {
                 _marker: std::marker::PhantomData,
                 inventory: seller_projector.local(inventory),
                 title: seller_projector.remote(Buyer1),
@@ -205,7 +205,7 @@ fn main() {
     {
         let buyer1_projector = buyer1_projector.clone();
         handles.push(thread::spawn(move || {
-            let result = buyer1_projector.epp_and_run(TwoBuyerBooksellerChoreography {
+            let result = buyer1_projector.epp_and_run(&TwoBuyerBooksellerChoreography {
                 _marker: std::marker::PhantomData,
                 inventory: buyer1_projector.remote(Seller),
                 title: buyer1_projector.local("HoTT".to_string()),
@@ -219,7 +219,7 @@ fn main() {
     {
         let buyer2_projector = buyer2_projector.clone();
         handles.push(thread::spawn(move || {
-            buyer2_projector.epp_and_run(TwoBuyerBooksellerChoreography {
+            buyer2_projector.epp_and_run(&TwoBuyerBooksellerChoreography {
                 _marker: std::marker::PhantomData,
                 inventory: buyer2_projector.remote(Seller),
                 title: buyer2_projector.remote(Buyer1),

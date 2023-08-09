@@ -41,7 +41,7 @@ let choreo = DemoChoreography {
     input: "World".to_string(),
 };
 let projector = Projector::new(Alice, transport);
-projector.epp_and_run(choreo);
+projector.epp_and_run(&choreo);
 ```
 
 ## Located Input
@@ -95,7 +95,7 @@ let string_at_alice: Located<String, Alice> = projector_for_alice.local("Hello, 
 let choreo = DemoChoreography {
     input: string_at_alice,
 };
-projector_for_alice.epp_and_run(choreo);
+projector_for_alice.epp_and_run(&choreo);
 ```
 
 For Bob, we use the `remote` method to construct the located value.
@@ -121,7 +121,7 @@ let string_at_alice = projector_for_bob.remote(Alice);
 let choreo = DemoChoreography {
     input: string_at_alice,
 };
-projector_for_bob.epp_and_run(choreo);
+projector_for_bob.epp_and_run(&choreo);
 ```
 
 ## Output
@@ -154,7 +154,7 @@ impl Choreography<String> for DemoChoreography {
 # }
 let choreo = DemoChoreography;
 let projector = Projector::new(Alice, transport);
-let output = projector.epp_and_run(choreo);
+let output = projector.epp_and_run(&choreo);
 assert_eq!(output, "Hello, World!".to_string());
 ```
 
@@ -175,7 +175,7 @@ impl Choreography<Located<String, Alice>> for DemoChoreography {
 }
 
 let projector = Projector::new(Alice, transport);
-let output = projector.epp_and_run(DemoChoreography);
+let output = projector.epp_and_run(&DemoChoreography);
 let string_at_alice = projector.unwrap(output);
 assert_eq!(string_at_alice, "Hello, World!".to_string());
 ```

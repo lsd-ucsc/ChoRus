@@ -164,7 +164,7 @@ pub trait Transport {
     fn receive<V: ChoreographicValue>(&self, from: &str, at: &str) -> V;
 }
 
-/// Provides a method to run a choreography.
+/// Provides a method to perform end-point projection.
 pub struct Projector<L1: ChoreographyLocation, T: Transport> {
     target: L1,
     transport: T,
@@ -210,7 +210,7 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
     }
 
     /// Performs end-point projection and runs a choreography.
-    pub fn epp_and_run<'a, V, C: Choreography<V>>(&'a self, choreo: C) -> V {
+    pub fn epp_and_run<'a, V, C: Choreography<V>>(&'a self, choreo: &C) -> V {
         struct EppOp<'a, B: Transport> {
             target: String,
             transport: &'a B,
@@ -301,6 +301,85 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
             locations: self.transport.locations(),
         };
         choreo.run(&op)
+    }
+}
+
+/// Provides a method to run a choreography without end-point projection.
+pub struct Runner;
+
+impl Runner {
+    /// Constructs a runner.
+    pub fn new() -> Self {
+        Runner
+    }
+
+    /// Constructs a located value.
+    ///
+    /// To execute a choreography with a runner, you must provide located values at all locations
+    pub fn local<V: ChoreographicValue, L1: ChoreographyLocation>(
+        &self,
+        value: V,
+    ) -> Located<V, L1> {
+        Located::local(value)
+    }
+
+    /// Unwraps a located value
+    ///
+    /// Runner can unwrap a located value at any location
+    pub fn unwrap<V: ChoreographicValue, L1: ChoreographyLocation>(
+        &self,
+        located: Located<V, L1>,
+    ) -> V {
+        located.value.unwrap()
+    }
+
+    /// Runs a choreography directly
+    pub fn run<'a, V, C: Choreography<V>>(&'a self, choreo: &C) -> V {
+        struct RunOp;
+        impl ChoreoOp for RunOp {
+            fn locally<V: ChoreographicValue, L1: ChoreographyLocation>(
+                &self,
+                _location: L1,
+                computation: impl FnOnce(Unwrapper<L1>) -> V,
+            ) -> Located<V, L1> {
+                let unwrapper = Unwrapper {
+                    phantom: PhantomData,
+                };
+                let value = computation(unwrapper);
+                Located::local(value)
+            }
+
+            fn comm<L1: ChoreographyLocation, L2: ChoreographyLocation, V: ChoreographicValue>(
+                &self,
+                _sender: L1,
+                _receiver: L2,
+                data: &Located<V, L1>,
+            ) -> Located<V, L2> {
+                let value = data.value.clone().unwrap();
+                Located::local(value)
+            }
+
+            fn broadcast<L1: ChoreographyLocation, V: ChoreographicValue>(
+                &self,
+                _sender: L1,
+                data: &Located<V, L1>,
+            ) -> V {
+                data.value.clone().unwrap()
+            }
+
+            fn call<R, C: Choreography<R>>(&self, choreo: &C) -> R {
+                choreo.run(self)
+            }
+
+            fn colocally<R: Superposition, C: Choreography<R>>(
+                &self,
+                _locations: &[&str],
+                choreo: &C,
+            ) -> R {
+                choreo.run(self)
+            }
+        }
+        choreo.run(&RunOp)
     }
 }
 
