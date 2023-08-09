@@ -170,7 +170,7 @@ fn main() {
             });
             println!(
                 "The book will be delivered on {:?}",
-                buyer1_projector.unwrap(result)
+                buyer1_projector.unwrap(&result)
             );
         }));
     }
@@ -212,7 +212,7 @@ fn main() {
             });
             println!(
                 "The book will be delivered on {:?}",
-                buyer1_projector.unwrap(result)
+                buyer1_projector.unwrap(&result)
             );
         }));
     }

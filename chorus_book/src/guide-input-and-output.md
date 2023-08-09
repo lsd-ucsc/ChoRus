@@ -176,7 +176,7 @@ impl Choreography<Located<String, Alice>> for DemoChoreography {
 
 let projector = Projector::new(Alice, transport);
 let output = projector.epp_and_run(&DemoChoreography);
-let string_at_alice = projector.unwrap(output);
+let string_at_alice = projector.unwrap(&output);
 assert_eq!(string_at_alice, "Hello, World!".to_string());
 ```
 

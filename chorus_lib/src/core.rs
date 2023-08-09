@@ -205,8 +205,8 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
     /// Unwraps a located value at the projection target.
     ///
     /// Use this method to access the located value returned by a choreography.
-    pub fn unwrap<V: ChoreographicValue>(&self, located: Located<V, L1>) -> V {
-        located.value.unwrap()
+    pub fn unwrap<V: ChoreographicValue>(&self, located: &Located<V, L1>) -> V {
+        located.value.clone().unwrap()
     }
 
     /// Performs end-point projection and runs a choreography.
@@ -328,9 +328,9 @@ impl Runner {
     /// Runner can unwrap a located value at any location
     pub fn unwrap<V: ChoreographicValue, L1: ChoreographyLocation>(
         &self,
-        located: Located<V, L1>,
+        located: &Located<V, L1>,
     ) -> V {
-        located.value.unwrap()
+        located.value.clone().unwrap()
     }
 
     /// Runs a choreography directly
