@@ -1,3 +1,5 @@
+extern crate chorus_lib;
+
 use std::thread;
 
 use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};

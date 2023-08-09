@@ -1,7 +1,4 @@
-//! This example shows how to achieve higher-order choreographies and location polymorphism using the two-buyer protocol.
-//!
-//! In the two-buyer protocol, there are one seller and two buyers who coordinate to buy a book.
-//! The buyer1
+extern crate chorus_lib;
 
 use std::thread;
 use std::{collections::HashMap, sync::Arc};

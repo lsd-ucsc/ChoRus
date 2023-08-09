@@ -17,6 +17,5 @@ cargo add --git https://github.com/lsd-ucsc/ChoRus.git chorus_lib
 Once you have installed ChoRus, you can run the Hello World example by copy-pasting the following code into `main.rs`:
 
 ```rust
-# extern crate chorus_lib;
 {{#include ../../chorus_lib/examples/hello.rs}}
 ```

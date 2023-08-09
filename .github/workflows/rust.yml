@@ -22,12 +22,13 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
+      # must run mdbook test right after `cargo build` or it fails to find the crate
+      - name: mdbook test
+        run: mdbook test chorus_book -L ./target/debug/deps
       - name: cargo test
         uses: actions-rs/cargo@v1
         with:
           command: test
-      - name: mdbook test
-        run: mdbook test chorus_book -L ./target/debug/deps
 
   publish-book:
     runs-on: ubuntu-22.04
