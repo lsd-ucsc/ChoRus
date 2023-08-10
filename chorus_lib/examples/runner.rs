@@ -2,6 +2,7 @@ extern crate chorus_lib;
 use chorus_lib::core::{
     ChoreoOp, Choreography, ChoreographyLocation, Located, Runner, Superposition,
 };
+
 #[derive(ChoreographyLocation)]
 struct Alice;
 #[derive(ChoreographyLocation)]
@@ -24,7 +25,7 @@ struct BobCarolChoreography {
 }
 
 impl Choreography<BobCarolResult> for BobCarolChoreography {
-    fn run(&self, op: &impl ChoreoOp) -> BobCarolResult {
+    fn run(self, op: &impl ChoreoOp) -> BobCarolResult {
         let is_even_at_bob: Located<bool, Bob> = op.locally(Bob, |un| {
             let x = un.unwrap(self.x_at_bob.clone());
             x % 2 == 0
@@ -47,7 +48,7 @@ impl Choreography<BobCarolResult> for BobCarolChoreography {
 struct MainChoreography;
 
 impl Choreography for MainChoreography {
-    fn run(&self, op: &impl ChoreoOp) {
+    fn run(self, op: &impl ChoreoOp) {
         let x_at_alice = op.locally(Alice, |_| get_random_number());
         let x_at_bob = op.comm(Alice, Bob, &x_at_alice);
         let BobCarolResult {
@@ -55,7 +56,7 @@ impl Choreography for MainChoreography {
             is_even_at_carol,
         } = op.colocally(
             &[Bob.name(), Carol.name()],
-            &BobCarolChoreography { x_at_bob },
+            BobCarolChoreography { x_at_bob },
         );
         op.locally(Bob, |un| {
             let is_even = un.unwrap(is_even_at_bob);
@@ -72,7 +73,7 @@ impl Choreography for MainChoreography {
 
 fn main() {
     let runner = Runner::new();
-    runner.run(&MainChoreography);
+    runner.run(MainChoreography);
 }
 
 #[cfg(test)]
@@ -82,6 +83,6 @@ mod tests {
     #[test]
     fn runner_test() {
         let runner = Runner::new();
-        runner.run(&MainChoreography);
+        runner.run(MainChoreography);
     }
 }

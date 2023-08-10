@@ -18,7 +18,7 @@ struct HelloWorldChoreography;
 
 // Implement the `Choreography` trait for `HelloWorldChoreography`
 impl Choreography for HelloWorldChoreography {
-    fn run(&self, op: &impl ChoreoOp) {
+    fn run(self, op: &impl ChoreoOp) {
         // Create a located value at Alice
         let msg_at_alice = op.locally(Alice, |_| {
             println!("Hello from Alice!");
@@ -44,14 +44,14 @@ fn main() {
         let transport = transport.clone();
         handles.push(thread::spawn(move || {
             let p = Projector::new(Alice, transport);
-            p.epp_and_run(&HelloWorldChoreography);
+            p.epp_and_run(HelloWorldChoreography);
         }));
     }
     {
         let transport = transport.clone();
         handles.push(thread::spawn(move || {
             let p = Projector::new(Bob, transport);
-            p.epp_and_run(&HelloWorldChoreography);
+            p.epp_and_run(HelloWorldChoreography);
         }));
     }
     for h in handles {

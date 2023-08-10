@@ -26,7 +26,7 @@ struct Buyer;
 
 struct BooksellerChoreography;
 impl Choreography for BooksellerChoreography {
-    fn run(&self, op: &impl ChoreoOp) {
+    fn run(self, op: &impl ChoreoOp) {
         let title_at_buyer = op.locally(Buyer, |_| {
             println!("Enter the title of the book to buy (TAPL or HoTT)");
             let mut title = String::new();
@@ -77,10 +77,10 @@ fn main() {
 
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     handles.push(thread::spawn(move || {
-        seller_projector.epp_and_run(&BooksellerChoreography);
+        seller_projector.epp_and_run(BooksellerChoreography);
     }));
     handles.push(thread::spawn(move || {
-        buyer_projector.epp_and_run(&BooksellerChoreography);
+        buyer_projector.epp_and_run(BooksellerChoreography);
     }));
     for h in handles {
         h.join().unwrap();

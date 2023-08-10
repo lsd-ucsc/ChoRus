@@ -141,10 +141,10 @@ pub trait ChoreoOp {
     ) -> V;
 
     /// Calls a choreography.
-    fn call<R, C: Choreography<R>>(&self, choreo: &C) -> R;
+    fn call<R, C: Choreography<R>>(&self, choreo: C) -> R;
 
     /// Calls a choreography on a subset of locations.
-    fn colocally<R: Superposition, C: Choreography<R>>(&self, locations: &[&str], choreo: &C) -> R;
+    fn colocally<R: Superposition, C: Choreography<R>>(&self, locations: &[&str], choreo: C) -> R;
 }
 
 /// Represents a choreography.
@@ -160,7 +160,7 @@ pub trait Choreography<R = ()> {
     /// The method takes an implementation of `ChoreoOp`. Inside the method, you can use the operators provided by `ChoreoOp` to define a choreography.
     ///
     /// The method returns a value of type `R`, which is the return type of the choreography.
-    fn run(&self, op: &impl ChoreoOp) -> R;
+    fn run(self, op: &impl ChoreoOp) -> R;
 }
 
 /// Provides methods to send and receive messages.
@@ -218,7 +218,7 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
     }
 
     /// Performs end-point projection and runs a choreography.
-    pub fn epp_and_run<'a, V, C: Choreography<V>>(&'a self, choreo: &C) -> V {
+    pub fn epp_and_run<'a, V, C: Choreography<V>>(&'a self, choreo: C) -> V {
         struct EppOp<'a, B: Transport> {
             target: String,
             transport: &'a B,
@@ -276,14 +276,14 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
                 }
             }
 
-            fn call<T, C: Choreography<T>>(&self, choreo: &C) -> T {
+            fn call<T, C: Choreography<T>>(&self, choreo: C) -> T {
                 choreo.run(self)
             }
 
             fn colocally<T: Superposition, C: Choreography<T>>(
                 &self,
                 locs: &[&str],
-                choreo: &C,
+                choreo: C,
             ) -> T {
                 let locs_vec = Vec::from_iter(locs.into_iter().map(|s| s.to_string()));
                 for location in &locs_vec {
@@ -332,7 +332,7 @@ impl Runner {
     }
 
     /// Runs a choreography directly
-    pub fn run<'a, V, C: Choreography<V>>(&'a self, choreo: &C) -> V {
+    pub fn run<'a, V, C: Choreography<V>>(&'a self, choreo: C) -> V {
         struct RunOp;
         impl ChoreoOp for RunOp {
             fn locally<V, L1: ChoreographyLocation>(
@@ -365,14 +365,14 @@ impl Runner {
                 data.value.clone().unwrap()
             }
 
-            fn call<R, C: Choreography<R>>(&self, choreo: &C) -> R {
+            fn call<R, C: Choreography<R>>(&self, choreo: C) -> R {
                 choreo.run(self)
             }
 
             fn colocally<R: Superposition, C: Choreography<R>>(
                 &self,
                 _locations: &[&str],
-                choreo: &C,
+                choreo: C,
             ) -> R {
                 choreo.run(self)
             }

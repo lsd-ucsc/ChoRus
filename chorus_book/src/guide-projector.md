@@ -36,12 +36,12 @@ To execute a choreography, you need to call the `epp_and_run` method on the `Pro
 # struct Bob;
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     fn run(&self, op: &impl ChoreoOp) {
+#     fn run(self, op: &impl ChoreoOp) {
 #     }
 # }
 #
 # let projector = Projector::new(Alice, transport);
-projector.epp_and_run(&HelloWorldChoreography);
+projector.epp_and_run(HelloWorldChoreography);
 ```
 
 If the choreography has a return value, the `epp_and_run` method will return the value. We will discuss the return values in the [Input and Output](./guide-input-and-output.md) section.

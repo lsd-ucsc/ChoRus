@@ -32,7 +32,7 @@ Because of the nature of the `Local` transport, you must use the same `LocalTran
 # struct Bob;
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     fn run(&self, op: &impl ChoreoOp) {
+#     fn run(self, op: &impl ChoreoOp) {
 #     }
 # }
 let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
@@ -42,7 +42,7 @@ let transport = LocalTransport::from(&[Alice.name(), Bob.name()]);
     let transport = transport.clone();
     handles.push(thread::spawn(move || {
         let p = Projector::new(Alice, transport);
-        p.epp_and_run(&HelloWorldChoreography);
+        p.epp_and_run(HelloWorldChoreography);
     }));
 }
 {
@@ -50,7 +50,7 @@ let transport = LocalTransport::from(&[Alice.name(), Bob.name()]);
     let transport = transport.clone();
     handles.push(thread::spawn(move || {
         let p = Projector::new(Bob, transport);
-        p.epp_and_run(&HelloWorldChoreography);
+        p.epp_and_run(HelloWorldChoreography);
     }));
 }
 ```
