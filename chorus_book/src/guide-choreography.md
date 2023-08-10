@@ -137,7 +137,7 @@ let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
     42
 });
 // Broadcast the value from Alice to all other locations
-let num: i32 = op.broadcast(Alice, &num_at_alice);
+let num: i32 = op.broadcast(Alice, num_at_alice);
 #     }
 # }
 ```

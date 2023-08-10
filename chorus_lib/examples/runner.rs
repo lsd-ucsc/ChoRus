@@ -30,7 +30,7 @@ impl Choreography<BobCarolResult> for BobCarolChoreography {
             let x = un.unwrap(self.x_at_bob.clone());
             x % 2 == 0
         });
-        let is_even: bool = op.broadcast(Bob, &is_even_at_bob);
+        let is_even: bool = op.broadcast(Bob, is_even_at_bob.clone());
         if is_even {
             let x_at_carol = op.comm(Bob, Carol, &self.x_at_bob);
             op.locally(Carol, |un| {

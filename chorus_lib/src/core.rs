@@ -137,7 +137,7 @@ pub trait ChoreoOp {
     fn broadcast<L1: ChoreographyLocation, V: ChoreographicValue>(
         &self,
         sender: L1,
-        data: &Located<V, L1>,
+        data: Located<V, L1>,
     ) -> V;
 
     /// Calls a choreography.
@@ -262,7 +262,7 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
             fn broadcast<L1: ChoreographyLocation, V: ChoreographicValue>(
                 &self,
                 sender: L1,
-                data: &Located<V, L1>,
+                data: Located<V, L1>,
             ) -> V {
                 if sender.name() == self.target {
                     for dest in &self.locations {
@@ -270,7 +270,7 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
                             self.transport.send(&self.target, &dest, &data.value);
                         }
                     }
-                    return data.value.clone().unwrap();
+                    return data.value.unwrap();
                 } else {
                     self.transport.receive(sender.name(), &self.target)
                 }
@@ -360,9 +360,9 @@ impl Runner {
             fn broadcast<L1: ChoreographyLocation, V: ChoreographicValue>(
                 &self,
                 _sender: L1,
-                data: &Located<V, L1>,
+                data: Located<V, L1>,
             ) -> V {
-                data.value.clone().unwrap()
+                data.value.unwrap()
             }
 
             fn call<R, C: Choreography<R>>(&self, choreo: C) -> R {

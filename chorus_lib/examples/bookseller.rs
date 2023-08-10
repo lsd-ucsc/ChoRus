@@ -50,7 +50,7 @@ impl Choreography for BooksellerChoreography {
             println!("The book does not exist");
             return false;
         });
-        let decision = op.broadcast(Buyer, &decision_at_buyer);
+        let decision = op.broadcast(Buyer, decision_at_buyer);
         if decision {
             let delivery_date_at_seller = op.locally(Seller, |un| {
                 let title = un.unwrap(title_at_seller);

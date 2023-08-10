@@ -36,7 +36,7 @@ impl Decider for OneBuyerDecider {
 
 impl Choreography<Located<bool, Buyer1>> for OneBuyerDecider {
     fn run(self, op: &impl ChoreoOp) -> Located<bool, Buyer1> {
-        let price = op.broadcast(Buyer1, &self.price);
+        let price = op.broadcast(Buyer1, self.price);
         return op.locally(Buyer1, |_| {
             const BUYER1_BUDGET: i32 = 100;
             return price < BUYER1_BUDGET;
@@ -100,7 +100,7 @@ impl<D: Choreography<Located<bool, Buyer1>> + Decider>
         }
         impl Choreography<Located<Option<NaiveDate>, Buyer1>> for GetDeliveryDateChoreography {
             fn run(self, op: &impl ChoreoOp) -> Located<Option<NaiveDate>, Buyer1> {
-                let decision = op.broadcast(Buyer1, &self.decision_at_buyer1);
+                let decision = op.broadcast(Buyer1, self.decision_at_buyer1);
                 if decision {
                     let delivery_date_at_seller = op.locally(Seller, |un| {
                         let title = un.unwrap(self.title_at_seller.clone());
