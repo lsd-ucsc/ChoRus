@@ -35,7 +35,7 @@ impl Choreography for BooksellerChoreography {
         });
         let title_at_seller = op.comm(Buyer, Seller, &title_at_buyer);
         let price_at_seller = op.locally(Seller, |un| {
-            let title = un.unwrap(&title_at_seller);
+            let title = un.unwrap(title_at_seller.clone());
             if let Some((price, _)) = get_book(&title) {
                 return Some(price);
             }
@@ -43,7 +43,7 @@ impl Choreography for BooksellerChoreography {
         });
         let price_at_buyer = op.comm(Seller, Buyer, &price_at_seller);
         let decision_at_buyer = op.locally(Buyer, |un| {
-            if let Some(price) = un.unwrap(&price_at_buyer) {
+            if let Some(price) = un.unwrap(price_at_buyer) {
                 println!("Price is {}", price);
                 return price < BUDGET;
             }
@@ -53,13 +53,13 @@ impl Choreography for BooksellerChoreography {
         let decision = op.broadcast(Buyer, &decision_at_buyer);
         if decision {
             let delivery_date_at_seller = op.locally(Seller, |un| {
-                let title = un.unwrap(&title_at_seller);
+                let title = un.unwrap(title_at_seller);
                 let (_, delivery_date) = get_book(&title).unwrap();
                 return delivery_date;
             });
             let delivery_date_at_buyer = op.comm(Seller, Buyer, &delivery_date_at_seller);
             op.locally(Buyer, |un| {
-                let delivery_date = un.unwrap(&delivery_date_at_buyer);
+                let delivery_date = un.unwrap(delivery_date_at_buyer);
                 println!("The book will be delivered on {}", delivery_date);
             });
         } else {

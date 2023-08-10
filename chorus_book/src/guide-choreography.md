@@ -69,7 +69,7 @@ let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
     42
 });
 op.locally(Alice, |unwrapper| {
-    let num: i32 = unwrapper.unwrap(&num_at_alice);
+    let num: i32 = unwrapper.unwrap(num_at_alice);
     println!("The number at Alice is {}", num);
     assert_eq!(num, 42);
 });
@@ -89,7 +89,7 @@ Note that you can unwrap a located value only at the location where the located 
 let num_at_alice = op.locally(Alice, |_| { 42 });
 op.locally(Bob, |unwrapper| {
     // Only values located at Bob can be unwrapped here
-    let num_at_alice: i32 = unwrapper.unwrap(&num_at_alice);
+    let num_at_alice: i32 = unwrapper.unwrap(num_at_alice);
 });
 #     }
 # }
@@ -115,7 +115,7 @@ let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
 let num_at_bob: Located<i32, Bob> = op.comm(Alice, Bob, &num_at_alice);
 // Bob can now access the value
 op.locally(Bob, |unwrapper| {
-    let num_at_bob: i32 = unwrapper.unwrap(&num_at_bob);
+    let num_at_bob: i32 = unwrapper.unwrap(num_at_bob);
     println!("The number at Bob is {}", num_at_bob);
 });
 #     }

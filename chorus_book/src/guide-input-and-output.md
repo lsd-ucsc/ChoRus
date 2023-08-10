@@ -57,7 +57,7 @@ struct DemoChoreography {
 impl Choreography for DemoChoreography {
     fn run(&self, op: &impl ChoreoOp) {
         op.locally(Alice, |unwrapper| {
-            let input = unwrapper.unwrap(&self.input);
+            let input = unwrapper.unwrap(self.input.clone());
             println!("Input at Alice: {}", input);
         });
     }
@@ -83,7 +83,7 @@ To run the sample choreography above at Alice, we use the `local` method to cons
 # impl Choreography for DemoChoreography {
 #     fn run(&self, op: &impl ChoreoOp) {
 #         op.locally(Alice, |unwrapper| {
-#             let input = unwrapper.unwrap(&self.input);
+#             let input = unwrapper.unwrap(self.input.clone());
 #             println!("Input at Alice: {}", input);
 #         });
 #     }
@@ -109,7 +109,7 @@ For Bob, we use the `remote` method to construct the located value.
 # impl Choreography for DemoChoreography {
 #     fn run(&self, op: &impl ChoreoOp) {
 #         op.locally(Alice, |unwrapper| {
-#             let input = unwrapper.unwrap(&self.input);
+#             let input = unwrapper.unwrap(self.input.clone());
 #             println!("Input at Alice: {}", input);
 #         });
 #     }
@@ -176,7 +176,7 @@ impl Choreography<Located<String, Alice>> for DemoChoreography {
 
 let projector = Projector::new(Alice, transport);
 let output = projector.epp_and_run(&DemoChoreography);
-let string_at_alice = projector.unwrap(&output);
+let string_at_alice = projector.unwrap(output);
 assert_eq!(string_at_alice, "Hello, World!".to_string());
 ```
 

@@ -48,8 +48,8 @@ impl Transport for LocalTransport {
         return self.internal_locations.clone();
     }
 
-    fn send<T: crate::core::ChoreographicValue>(&self, from: &str, to: &str, data: T) -> () {
-        let data = serde_json::to_string(&data).unwrap();
+    fn send<T: crate::core::ChoreographicValue>(&self, from: &str, to: &str, data: &T) -> () {
+        let data = serde_json::to_string(data).unwrap();
         self.queue_map
             .get(from)
             .unwrap()
@@ -84,7 +84,7 @@ mod tests {
         {
             let transport = transport.clone();
             handles.push(thread::spawn(move || {
-                transport.send::<i32>(Alice.name(), Bob.name(), v);
+                transport.send::<i32>(Alice.name(), Bob.name(), &v);
             }));
         }
         {
