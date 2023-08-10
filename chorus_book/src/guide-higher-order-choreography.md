@@ -23,8 +23,8 @@ When you implement the `Choreography` trait, you have access to the `sub_choreo`
 #     sub_choreo: C,
 # };
 impl<C: Choreography> Choreography for HigherOrderChoreography<C> {
-    fn run(&self, op: &impl ChoreoOp) {
-        op.call(&self.sub_choreo);
+    fn run(self, op: &impl ChoreoOp) {
+        op.call(self.sub_choreo);
     }
 }
 ```
@@ -46,12 +46,12 @@ struct HigherOrderChoreography<C: Choreography<Located<bool, Alice>> + SubChoreo
 };
 
 impl<C: Choreography<Located<bool, Alice>> + SubChoreography> Choreography for HigherOrderChoreography<C> {
-    fn run(&self, op: &impl ChoreoOp) {
+    fn run(self, op: &impl ChoreoOp) {
         let num_at_alice = op.locally(Alice, |_| {
             42
         });
         let sub_choreo = C::new(num_at_alice);
-        op.call(&sub_choreo);
+        op.call(sub_choreo);
     }
 }
 ```

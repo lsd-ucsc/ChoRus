@@ -10,7 +10,10 @@ use retry::{
 };
 use tiny_http::Server;
 
-use crate::{core::Transport, utils::queue::BlockingQueue};
+use crate::{
+    core::{Portable, Transport},
+    utils::queue::BlockingQueue,
+};
 
 /// The header name for the source location.
 const HEADER_SRC: &str = "X-CHORUS-SOURCE";
@@ -96,15 +99,14 @@ impl Transport for HttpTransport {
         Vec::from_iter(self.config.keys().map(|s| s.clone()))
     }
 
-    fn send<V: crate::core::ChoreographicValue>(&self, from: &str, to: &str, data: V) -> () {
+    fn send<V: Portable>(&self, from: &str, to: &str, data: &V) -> () {
         let (hostname, port) = self.config.get(to).unwrap();
         retry(
             Exponential::from_millis(10).map(jitter).take(10),
             move || {
-                let d = data.clone();
                 self.client
                     .post(format!("http://{}:{}", hostname, port))
-                    .body(serde_json::to_string(&d).unwrap())
+                    .body(serde_json::to_string(data).unwrap())
                     .header(HEADER_SRC, from)
                     .send()
             },
@@ -112,7 +114,7 @@ impl Transport for HttpTransport {
         .unwrap();
     }
 
-    fn receive<V: crate::core::ChoreographicValue>(&self, from: &str, _at: &str) -> V {
+    fn receive<V: Portable>(&self, from: &str, _at: &str) -> V {
         let str = self.queue_map.get(from).unwrap().pop();
         serde_json::from_str(&str).unwrap()
     }
@@ -146,7 +148,7 @@ mod tests {
             handles.push(thread::spawn(move || {
                 wait.recv().unwrap(); // wait for Bob to start
                 let transport = HttpTransport::new(Alice.name(), &config);
-                transport.send::<i32>(Alice.name(), Bob.name(), v);
+                transport.send::<i32>(Alice.name(), Bob.name(), &v);
             }));
         }
         {
@@ -176,7 +178,7 @@ mod tests {
             handles.push(thread::spawn(move || {
                 signal.send(()).unwrap();
                 let transport = HttpTransport::new(Alice.name(), &config);
-                transport.send::<i32>(Alice.name(), Bob.name(), v);
+                transport.send::<i32>(Alice.name(), Bob.name(), &v);
             }));
         }
         {

@@ -1,0 +1,23 @@
+// cSpell Settings
+{
+  // Version of the setting file.  Always 0.2
+  "version": "0.2",
+  // language - current active spelling language
+  "language": "en",
+  // words - list of words to be always considered correct
+  "words": [
+    "Choreo",
+    "choreographies",
+    "chrono",
+    "colocally",
+    "Condvar",
+    "Deque",
+    "Pluggable",
+    "println",
+    "reqwest",
+    "serde",
+    "struct",
+    "TAPL",
+    "unwrapper"
+  ]
+}

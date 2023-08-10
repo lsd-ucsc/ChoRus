@@ -9,7 +9,7 @@ struct HelloWorldChoreography;
 
 // 2. Implement the `Choreography` trait
 impl Choreography for HelloWorldChoreography {
-    fn run(&self, op: &impl ChoreoOp) {
+    fn run(self, op: &impl ChoreoOp) {
         // 3. Use the `op` parameter to access operators
         op.locally(Alice, |_| {
             println!("Hello, World!");
@@ -33,7 +33,7 @@ The `locally` operator is used to perform a computation at a single location. It
 #
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     fn run(&self, op: &impl ChoreoOp) {
+#     fn run(self, op: &impl ChoreoOp) {
 op.locally(Alice, |_| {
     println!("Hello, World!");
 });
@@ -48,7 +48,7 @@ The closure can return a value to create a located value. Located values are val
 #
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     fn run(&self, op: &impl ChoreoOp) {
+#     fn run(self, op: &impl ChoreoOp) {
 // This value is only available at Alice
 let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
     42
@@ -64,12 +64,12 @@ The computation closure takes `Unwrapper`. Using the `Unwrapper`, you can access
 #
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     fn run(&self, op: &impl ChoreoOp) {
+#     fn run(self, op: &impl ChoreoOp) {
 let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
     42
 });
 op.locally(Alice, |unwrapper| {
-    let num: i32 = unwrapper.unwrap(&num_at_alice);
+    let num: i32 = unwrapper.unwrap(num_at_alice);
     println!("The number at Alice is {}", num);
     assert_eq!(num, 42);
 });
@@ -84,12 +84,12 @@ Note that you can unwrap a located value only at the location where the located 
 #
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     fn run(&self, op: &impl ChoreoOp) {
+#     fn run(self, op: &impl ChoreoOp) {
 // This code will fail to compile
 let num_at_alice = op.locally(Alice, |_| { 42 });
 op.locally(Bob, |unwrapper| {
     // Only values located at Bob can be unwrapped here
-    let num_at_alice: i32 = unwrapper.unwrap(&num_at_alice);
+    let num_at_alice: i32 = unwrapper.unwrap(num_at_alice);
 });
 #     }
 # }
@@ -106,7 +106,7 @@ The `comm` operator is used to perform a communication between two locations. It
 #
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     fn run(&self, op: &impl ChoreoOp) {
+#     fn run(self, op: &impl ChoreoOp) {
 // This value is only available at Alice
 let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
     42
@@ -115,7 +115,7 @@ let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
 let num_at_bob: Located<i32, Bob> = op.comm(Alice, Bob, &num_at_alice);
 // Bob can now access the value
 op.locally(Bob, |unwrapper| {
-    let num_at_bob: i32 = unwrapper.unwrap(&num_at_bob);
+    let num_at_bob: i32 = unwrapper.unwrap(num_at_bob);
     println!("The number at Bob is {}", num_at_bob);
 });
 #     }
@@ -131,13 +131,13 @@ The `broadcast` operator is used to perform a broadcast from a single location t
 #
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     fn run(&self, op: &impl ChoreoOp) {
+#     fn run(self, op: &impl ChoreoOp) {
 // This value is only available at Alice
 let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
     42
 });
 // Broadcast the value from Alice to all other locations
-let num: i32 = op.broadcast(Alice, &num_at_alice);
+let num: i32 = op.broadcast(Alice, num_at_alice);
 #     }
 # }
 ```

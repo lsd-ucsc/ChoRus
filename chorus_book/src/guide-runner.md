@@ -8,11 +8,11 @@ To use `Runner`, construct an instance using the `new` constructor, and then cal
 {{#include ./header.txt}}
 # struct DemoChoreography;
 # impl Choreography for DemoChoreography {
-#     fn run(&self, op: &impl ChoreoOp) {
+#     fn run(self, op: &impl ChoreoOp) {
 #     }
 # }
 let runner = Runner::new();
-runner.run(&DemoChoreography);
+runner.run(DemoChoreography);
 ```
 
 As described in the [Input and Output](./guide-input-and-output.md) section, `Runner` can also pass values to the `Choreography` and receive values from it.
@@ -26,12 +26,12 @@ struct SumChoreography {
     y_at_bob: Located<u32, Bob>,
 }
 impl Choreography<Located<u32, Carol>> for SumChoreography {
-    fn run(&self, op: &impl ChoreoOp) -> Located<u32, Carol> {
+    fn run(self, op: &impl ChoreoOp) -> Located<u32, Carol> {
         let x_at_carol = op.comm(Alice, Carol, &self.x_at_alice);
         let y_at_carol = op.comm(Bob, Carol, &self.y_at_bob);
         op.locally(Carol, |un| {
-            let x = un.unwrap(&x_at_carol);
-            let y = un.unwrap(&y_at_carol);
+            let x = un.unwrap(x_at_carol);
+            let y = un.unwrap(y_at_carol);
             x + y
         })
     }
@@ -40,9 +40,9 @@ impl Choreography<Located<u32, Carol>> for SumChoreography {
 let runner = Runner::new();
 let x_at_alice = runner.local(1);
 let y_at_bob = runner.local(2);
-let sum_at_carol = runner.run(&SumChoreography {
+let sum_at_carol = runner.run(SumChoreography {
     x_at_alice,
     y_at_bob,
 });
-assert_eq!(runner.unwrap(&sum_at_carol), 3);
+assert_eq!(runner.unwrap(sum_at_carol), 3);
 ```

@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use serde_json;
 
-use crate::core::Transport;
+use crate::core::{Portable, Transport};
 use crate::utils::queue::BlockingQueue;
 
 type QueueMap = HashMap<String, HashMap<String, BlockingQueue<String>>>;
@@ -48,8 +48,8 @@ impl Transport for LocalTransport {
         return self.internal_locations.clone();
     }
 
-    fn send<T: crate::core::ChoreographicValue>(&self, from: &str, to: &str, data: T) -> () {
-        let data = serde_json::to_string(&data).unwrap();
+    fn send<T: Portable>(&self, from: &str, to: &str, data: &T) -> () {
+        let data = serde_json::to_string(data).unwrap();
         self.queue_map
             .get(from)
             .unwrap()
@@ -58,7 +58,7 @@ impl Transport for LocalTransport {
             .push(data)
     }
 
-    fn receive<T: crate::core::ChoreographicValue>(&self, from: &str, at: &str) -> T {
+    fn receive<T: Portable>(&self, from: &str, at: &str) -> T {
         let data = self.queue_map.get(from).unwrap().get(at).unwrap().pop();
         serde_json::from_str(&data).unwrap()
     }
@@ -84,7 +84,7 @@ mod tests {
         {
             let transport = transport.clone();
             handles.push(thread::spawn(move || {
-                transport.send::<i32>(Alice.name(), Bob.name(), v);
+                transport.send::<i32>(Alice.name(), Bob.name(), &v);
             }));
         }
         {
