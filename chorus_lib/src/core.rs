@@ -113,7 +113,7 @@ pub trait ChoreoOp {
     /// - `location` is a location where the computation is performed.
     /// - `computation` is a function that takes an `Unwrapper`. Using the `Unwrapper`, the function can access located values at the location.
     ///
-    /// The function can return a value of type `V` that satisfies the `ChoreographicValue` trait. The returned value is stored in a `Located` struct at the choreography level.
+    /// The `computation` can return a value of type `V` and the value will be stored in a `Located` struct at the choreography level.
     fn locally<V, L1: ChoreographyLocation>(
         &self,
         location: L1,
