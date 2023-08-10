@@ -27,6 +27,6 @@ trait Portable: Serialize + DeserializeOwned {}
 
 The `Portable` is defined as above. The `Serialize` and `DeserializeOwned` traits are from the `serde` crate and are used to serialize and deserialize the value for communication.
 
-The `chorus_lib` crate re-exports the `Serialize` and `Deserialize` from `serde`. In many cases, those traits can automatically be derived using the `#[derive(Serialize, Deserialize, Clone)]` attribute.
+The `chorus_lib` crate re-exports the `Serialize` and `Deserialize` from `serde`. In many cases, those traits can automatically be derived using the `#[derive(Serialize, Deserialize)]` attribute.
 
 For the complete list of types that supports automatic derivation of `Serialize` and `Deserialize`, see the [serde documentation](https://serde.rs/data-model.html#types). The documentation also explains how to implement `Serialize` and `Deserialize` for custom types.
