@@ -9,7 +9,6 @@ The `Located` struct represents a located value. It is a generic struct that tak
 ```rust,ignore
 pub struct Located<V, L1>
 where
-    V: ChoreographicValue,
     L1: ChoreographyLocation,
 {
     // ...
@@ -18,15 +17,15 @@ where
 
 The `Located` struct can be in one of the two states: `Local` and `Remote`. The `Local` state represents a located value that is available at the current location. The `Remote` state represents a located value that is available at a different location.
 
-## `ChoreographicValue` trait
+## `Portable` trait
 
-Values that can be used as located values must implement the `ChoreographicValue` trait. This trait ensures that the value can be sent to a different location.
+Located values can be sent from one location to another using the `comm` operator and unwrapped using the `broadcast` operator if the value type implements the `Portable` trait.
 
 ```rust,ignore
-trait ChoreographicValue: Serialize + DeserializeOwned + Clone {}
+trait Portable: Serialize + DeserializeOwned {}
 ```
 
-The `ChoreographicValue` is defined as above. The `Serialize` and `DeserializeOwned` traits are from the `serde` crate and are used to serialize and deserialize the value for communication. The `Clone` trait is used to clone the value.
+The `Portable` is defined as above. The `Serialize` and `DeserializeOwned` traits are from the `serde` crate and are used to serialize and deserialize the value for communication.
 
 The `chorus_lib` crate re-exports the `Serialize` and `Deserialize` from `serde`. In many cases, those traits can automatically be derived using the `#[derive(Serialize, Deserialize, Clone)]` attribute.
 

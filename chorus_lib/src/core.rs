@@ -15,9 +15,9 @@ pub trait ChoreographyLocation: Copy {
 }
 
 /// Represents a value that can be used in a choreography. ChoRus uses [serde](https://serde.rs/) to serialize and deserialize values.
-/// It can be derived using `#[derive(Serialize, Deserialize, Clone)]` as long as all the fields satisfy the `ChoreographicValue` trait.
-pub trait ChoreographicValue: Serialize + DeserializeOwned + Clone {} // TODO(shumbo): Is `Clone` really necessary?
-impl<T: Serialize + DeserializeOwned + Clone> ChoreographicValue for T {}
+/// It can be derived using `#[derive(Serialize, Deserialize)]` as long as all the fields satisfy the `Portable` trait.
+pub trait Portable: Serialize + DeserializeOwned {}
+impl<T: Serialize + DeserializeOwned> Portable for T {}
 
 /// Represents a value that might *NOT* be located at a location. Values returned by `colocally` must satisfy this trait.
 ///
@@ -122,8 +122,8 @@ pub trait ChoreoOp {
     /// Performs a communication between two locations.
     ///
     /// `comm` sends `data` from `sender` to `receiver`. The `data` must be a `Located` struct at the `sender` location
-    /// and the value type must implement `ChoreographicValue`.
-    fn comm<L1: ChoreographyLocation, L2: ChoreographyLocation, V: ChoreographicValue>(
+    /// and the value type must implement `Portable`.
+    fn comm<L1: ChoreographyLocation, L2: ChoreographyLocation, V: Portable>(
         &self,
         sender: L1,
         receiver: L2,
@@ -134,7 +134,7 @@ pub trait ChoreoOp {
     ///
     /// `broadcast` broadcasts `data` from `sender` to all other locations. The `data` must be a `Located` struct at the `sender` location.
     /// The method returns the non-located value.
-    fn broadcast<L1: ChoreographyLocation, V: ChoreographicValue>(
+    fn broadcast<L1: ChoreographyLocation, V: Portable>(
         &self,
         sender: L1,
         data: Located<V, L1>,
@@ -170,9 +170,9 @@ pub trait Transport {
     /// Returns a list of locations.
     fn locations(&self) -> Vec<String>;
     /// Sends a message from `from` to `to`.
-    fn send<V: ChoreographicValue>(&self, from: &str, to: &str, data: &V) -> ();
+    fn send<V: Portable>(&self, from: &str, to: &str, data: &V) -> ();
     /// Receives a message from `from` to `at`.
-    fn receive<V: ChoreographicValue>(&self, from: &str, at: &str) -> V;
+    fn receive<V: Portable>(&self, from: &str, at: &str) -> V;
 }
 
 /// Provides a method to perform end-point projection.
@@ -241,15 +241,18 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
                 }
             }
 
-            fn comm<L1: ChoreographyLocation, L2: ChoreographyLocation, V: ChoreographicValue>(
+            fn comm<L1: ChoreographyLocation, L2: ChoreographyLocation, V: Portable>(
                 &self,
                 sender: L1,
                 receiver: L2,
                 data: &Located<V, L1>,
             ) -> Located<V, L2> {
                 if sender.name() == self.target {
-                    self.transport
-                        .send(sender.name(), receiver.name(), &data.value);
+                    self.transport.send(
+                        sender.name(),
+                        receiver.name(),
+                        data.value.as_ref().unwrap(),
+                    );
                     Located::remote()
                 } else if receiver.name() == self.target {
                     let value = self.transport.receive(sender.name(), receiver.name());
@@ -259,7 +262,7 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
                 }
             }
 
-            fn broadcast<L1: ChoreographyLocation, V: ChoreographicValue>(
+            fn broadcast<L1: ChoreographyLocation, V: Portable>(
                 &self,
                 sender: L1,
                 data: Located<V, L1>,
@@ -347,17 +350,19 @@ impl Runner {
                 Located::local(value)
             }
 
-            fn comm<L1: ChoreographyLocation, L2: ChoreographyLocation, V: ChoreographicValue>(
+            fn comm<L1: ChoreographyLocation, L2: ChoreographyLocation, V: Portable>(
                 &self,
                 _sender: L1,
                 _receiver: L2,
                 data: &Located<V, L1>,
             ) -> Located<V, L2> {
-                let value = data.value.clone().unwrap();
-                Located::local(value)
+                // clone the value by encoding and decoding it. Requiring `Clone` could improve the performance but is not necessary.
+                // Also, this is closer to what happens to the value with end-point projection.
+                let s = serde_json::to_string(data.value.as_ref().unwrap()).unwrap();
+                Located::local(serde_json::from_str(s.as_str()).unwrap())
             }
 
-            fn broadcast<L1: ChoreographyLocation, V: ChoreographicValue>(
+            fn broadcast<L1: ChoreographyLocation, V: Portable>(
                 &self,
                 _sender: L1,
                 data: Located<V, L1>,
