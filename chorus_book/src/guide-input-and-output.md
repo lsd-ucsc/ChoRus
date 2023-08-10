@@ -57,7 +57,7 @@ struct DemoChoreography {
 impl Choreography for DemoChoreography {
     fn run(self, op: &impl ChoreoOp) {
         op.locally(Alice, |unwrapper| {
-            let input = unwrapper.unwrap(self.input.clone());
+            let input = unwrapper.unwrap(self.input);
             println!("Input at Alice: {}", input);
         });
     }
@@ -83,7 +83,7 @@ To run the sample choreography above at Alice, we use the `local` method to cons
 # impl Choreography for DemoChoreography {
 #     fn run(self, op: &impl ChoreoOp) {
 #         op.locally(Alice, |unwrapper| {
-#             let input = unwrapper.unwrap(self.input.clone());
+#             let input = unwrapper.unwrap(self.input);
 #             println!("Input at Alice: {}", input);
 #         });
 #     }
@@ -109,7 +109,7 @@ For Bob, we use the `remote` method to construct the located value.
 # impl Choreography for DemoChoreography {
 #     fn run(self, op: &impl ChoreoOp) {
 #         op.locally(Alice, |unwrapper| {
-#             let input = unwrapper.unwrap(self.input.clone());
+#             let input = unwrapper.unwrap(self.input);
 #             println!("Input at Alice: {}", input);
 #         });
 #     }
