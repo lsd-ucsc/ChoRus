@@ -58,12 +58,12 @@ impl Choreography<Located<bool, Buyer1>> for TwoBuyerDecider {
     fn run(self, op: &impl ChoreoOp) -> Located<bool, Buyer1> {
         let remaining = op.locally(Buyer1, |un| {
             const BUYER1_BUDGET: i32 = 100;
-            return un.unwrap(self.price.clone()) - BUYER1_BUDGET;
+            return un.unwrap(&self.price) - BUYER1_BUDGET;
         });
         let remaining = op.comm(Buyer1, Buyer2, &remaining);
         let decision = op.locally(Buyer2, |un| {
             const BUYER2_BUDGET: i32 = 200;
-            return un.unwrap(remaining) < BUYER2_BUDGET;
+            return *un.unwrap(&remaining) < BUYER2_BUDGET;
         });
         op.comm(Buyer2, Buyer1, &decision)
     }
@@ -82,9 +82,9 @@ impl<D: Choreography<Located<bool, Buyer1>> + Decider>
     fn run(self, op: &impl ChoreoOp) -> Located<Option<NaiveDate>, Buyer1> {
         let title_at_seller = op.comm(Buyer1, Seller, &self.title);
         let price_at_seller = op.locally(Seller, |un| {
-            let inventory = un.unwrap(self.inventory.clone());
-            let title = un.unwrap(title_at_seller.clone());
-            if let Some((price, _)) = inventory.get(&title) {
+            let inventory = un.unwrap(&self.inventory);
+            let title = un.unwrap(&title_at_seller);
+            if let Some((price, _)) = inventory.get(title) {
                 return *price;
             }
             return i32::MAX;
@@ -103,9 +103,9 @@ impl<D: Choreography<Located<bool, Buyer1>> + Decider>
                 let decision = op.broadcast(Buyer1, self.decision_at_buyer1);
                 if decision {
                     let delivery_date_at_seller = op.locally(Seller, |un| {
-                        let title = un.unwrap(self.title_at_seller.clone());
-                        let inventory = un.unwrap(self.inventory.clone());
-                        let (_, delivery_date) = inventory.get(&title).unwrap();
+                        let title = un.unwrap(&self.title_at_seller);
+                        let inventory = un.unwrap(&self.inventory);
+                        let (_, delivery_date) = inventory.get(title).unwrap();
                         return Some(*delivery_date);
                     });
                     let delivery_date_at_buyer1 = op.comm(Seller, Buyer1, &delivery_date_at_seller);

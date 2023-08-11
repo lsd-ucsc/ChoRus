@@ -14,10 +14,8 @@ struct DemoChoreography {
 impl Choreography for DemoChoreography {
     fn run(self, op: &impl ChoreoOp) {
         op.locally(Alice, |un| {
-            let _s = un.unwrap(self.input.clone());
-        });
-        op.locally(Alice, |un| {
-            let _s = un.unwrap(self.input);
+            let s = un.unwrap(&self.input);
+            println!("Alice received: {}", s);
         });
     }
 }

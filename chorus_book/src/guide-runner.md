@@ -30,8 +30,8 @@ impl Choreography<Located<u32, Carol>> for SumChoreography {
         let x_at_carol = op.comm(Alice, Carol, &self.x_at_alice);
         let y_at_carol = op.comm(Bob, Carol, &self.y_at_bob);
         op.locally(Carol, |un| {
-            let x = un.unwrap(x_at_carol);
-            let y = un.unwrap(y_at_carol);
+            let x = un.unwrap(&x_at_carol);
+            let y = un.unwrap(&y_at_carol);
             x + y
         })
     }
