@@ -55,6 +55,9 @@ jobs:
   publish-crates:
     runs-on: ubuntu-22.04
     needs: ["build-and-test"]
+    environment:
+      name: crates-io
+      url: "https://crates.io/crates/chorus_lib"
     if: ${{ github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v3
