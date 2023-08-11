@@ -14,10 +14,10 @@
     "Deque",
     "Pluggable",
     "println",
-    "reqwest",
     "serde",
     "struct",
     "TAPL",
-    "unwrapper"
+    "unwrapper",
+    "ureq"
   ]
 }
