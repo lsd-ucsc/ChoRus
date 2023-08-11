@@ -57,7 +57,7 @@ let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
 # }
 ```
 
-The computation closure takes `Unwrapper`. Using the `Unwrapper`, you can access the value of a located value.
+The computation closure takes `Unwrapper`. Using the `Unwrapper`, you can get a reference out of a located value.
 
 ```rust
 {{#include ./header.txt}}
@@ -68,10 +68,10 @@ The computation closure takes `Unwrapper`. Using the `Unwrapper`, you can access
 let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
     42
 });
-op.locally(Alice, |unwrapper| {
-    let num: i32 = unwrapper.unwrap(num_at_alice);
+op.locally(Alice, |un| {
+    let num: &i32 = un.unwrap(&num_at_alice);
     println!("The number at Alice is {}", num);
-    assert_eq!(num, 42);
+    assert_eq!(*num, 42);
 });
 #     }
 # }
@@ -87,9 +87,9 @@ Note that you can unwrap a located value only at the location where the located 
 #     fn run(self, op: &impl ChoreoOp) {
 // This code will fail to compile
 let num_at_alice = op.locally(Alice, |_| { 42 });
-op.locally(Bob, |unwrapper| {
+op.locally(Bob, |un| {
     // Only values located at Bob can be unwrapped here
-    let num_at_alice: i32 = unwrapper.unwrap(num_at_alice);
+    let num_at_alice: &i32 = un.unwrap(&num_at_alice);
 });
 #     }
 # }
@@ -114,8 +114,8 @@ let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
 // Send the value from Alice to Bob
 let num_at_bob: Located<i32, Bob> = op.comm(Alice, Bob, &num_at_alice);
 // Bob can now access the value
-op.locally(Bob, |unwrapper| {
-    let num_at_bob: i32 = unwrapper.unwrap(num_at_bob);
+op.locally(Bob, |un| {
+    let num_at_bob: &i32 = un.unwrap(&num_at_bob);
     println!("The number at Bob is {}", num_at_bob);
 });
 #     }

@@ -7,7 +7,7 @@ use chorus_lib::{
     transport::http::HttpTransport,
 };
 use clap::Parser;
-use std::{collections::HashMap, io::Write, rc::Rc};
+use std::{collections::HashMap, io::Write};
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -221,8 +221,8 @@ impl Brain for MinimaxBrain {
 }
 
 struct TicTacToeChoreography {
-    brain_for_x: Located<Rc<dyn Brain>, PlayerX>,
-    brain_for_y: Located<Rc<dyn Brain>, PlayerO>,
+    brain_for_x: Located<Box<dyn Brain>, PlayerX>,
+    brain_for_y: Located<Box<dyn Brain>, PlayerO>,
 }
 
 impl Choreography for TicTacToeChoreography {
@@ -230,7 +230,7 @@ impl Choreography for TicTacToeChoreography {
         let mut board = Board::new();
         loop {
             let board_x = op.locally(PlayerX, |un| {
-                let brain = un.unwrap(self.brain_for_x.clone());
+                let brain = un.unwrap(&self.brain_for_x);
                 return brain.think(&board);
             });
             board = op.broadcast(PlayerX, board_x);
@@ -238,7 +238,7 @@ impl Choreography for TicTacToeChoreography {
                 break;
             }
             let board_o = op.locally(PlayerO, |un| {
-                let brain = un.unwrap(self.brain_for_y.clone());
+                let brain = un.unwrap(&self.brain_for_y);
                 return brain.think(&board);
             });
             board = op.broadcast(PlayerO, board_o);
@@ -282,10 +282,10 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let brain: Rc<dyn Brain> = if args.minimax_brain {
-        Rc::new(MinimaxBrain::new(args.player))
+    let brain: Box<dyn Brain> = if args.minimax_brain {
+        Box::new(MinimaxBrain::new(args.player))
     } else {
-        Rc::new(UserBrain::new(args.player))
+        Box::new(UserBrain::new(args.player))
     };
     match args.player {
         'X' => {

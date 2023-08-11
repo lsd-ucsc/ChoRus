@@ -95,9 +95,9 @@ pub struct Unwrapper<L1: ChoreographyLocation> {
 }
 
 impl<L1: ChoreographyLocation> Unwrapper<L1> {
-    /// Takes the value located at the current location and returns its value
-    pub fn unwrap<V>(&self, located: Located<V, L1>) -> V {
-        located.value.unwrap()
+    /// Takes a reference to the located value at the current location and returns its reference
+    pub fn unwrap<'a, V>(&self, located: &'a Located<V, L1>) -> &'a V {
+        located.value.as_ref().unwrap()
     }
 }
 
@@ -117,7 +117,7 @@ pub trait ChoreoOp {
     fn locally<V, L1: ChoreographyLocation>(
         &self,
         location: L1,
-        computation: impl FnOnce(Unwrapper<L1>) -> V,
+        computation: impl Fn(Unwrapper<L1>) -> V,
     ) -> Located<V, L1>;
     /// Performs a communication between two locations.
     ///
@@ -228,7 +228,7 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
             fn locally<V, L1: ChoreographyLocation>(
                 &self,
                 location: L1,
-                computation: impl FnOnce(Unwrapper<L1>) -> V,
+                computation: impl Fn(Unwrapper<L1>) -> V,
             ) -> Located<V, L1> {
                 if location.name() == self.target {
                     let unwrapper = Unwrapper {
@@ -341,7 +341,7 @@ impl Runner {
             fn locally<V, L1: ChoreographyLocation>(
                 &self,
                 _location: L1,
-                computation: impl FnOnce(Unwrapper<L1>) -> V,
+                computation: impl Fn(Unwrapper<L1>) -> V,
             ) -> Located<V, L1> {
                 let unwrapper = Unwrapper {
                     phantom: PhantomData,

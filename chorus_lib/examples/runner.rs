@@ -27,15 +27,15 @@ struct BobCarolChoreography {
 impl Choreography<BobCarolResult> for BobCarolChoreography {
     fn run(self, op: &impl ChoreoOp) -> BobCarolResult {
         let is_even_at_bob: Located<bool, Bob> = op.locally(Bob, |un| {
-            let x = un.unwrap(self.x_at_bob.clone());
+            let x = un.unwrap(&self.x_at_bob);
             x % 2 == 0
         });
         let is_even: bool = op.broadcast(Bob, is_even_at_bob.clone());
         if is_even {
             let x_at_carol = op.comm(Bob, Carol, &self.x_at_bob);
             op.locally(Carol, |un| {
-                let x = un.unwrap(x_at_carol);
-                println!("x is even: {}", x);
+                let x = un.unwrap(&x_at_carol);
+                println!("x is even: {}", *x);
             });
         }
         BobCarolResult {
@@ -59,12 +59,12 @@ impl Choreography for MainChoreography {
             BobCarolChoreography { x_at_bob },
         );
         op.locally(Bob, |un| {
-            let is_even = un.unwrap(is_even_at_bob);
+            let is_even = un.unwrap(&is_even_at_bob);
             assert!(is_even);
             println!("Bob: x is even: {}", is_even);
         });
         op.locally(Carol, |un| {
-            let is_even = un.unwrap(is_even_at_carol);
+            let is_even = un.unwrap(&is_even_at_carol);
             assert!(is_even);
             println!("Carol: x is even: {}", is_even);
         });

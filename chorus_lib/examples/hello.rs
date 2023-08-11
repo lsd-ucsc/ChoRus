@@ -28,7 +28,7 @@ impl Choreography for HelloWorldChoreography {
         let msg_at_bob = op.comm(Alice, Bob, &msg_at_alice);
         // Print the received message at Bob
         op.locally(Bob, |un| {
-            let msg = un.unwrap(msg_at_bob);
+            let msg = un.unwrap(&msg_at_bob);
             println!("Bob received a message: {}", msg);
             msg
         });
