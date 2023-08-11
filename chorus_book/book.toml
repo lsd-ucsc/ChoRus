@@ -4,3 +4,9 @@ language = "en"
 multilingual = false
 src = "src"
 title = "ChoRus"
+
+[output.html]
+git-repository-url = "https://github.com/lsd-ucsc/Chorus"
+git-repository-icon = "fa-github"
+edit-url-template = "https://github.com/lsd-ucsc/ChoRus/edit/main/chorus_book/{path}"
+site-url = "/ChoRus/"
