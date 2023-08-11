@@ -150,6 +150,76 @@ impl Brain for UserBrain {
     }
 }
 
+struct MinimaxBrain {
+    player: char,
+}
+
+impl MinimaxBrain {
+    fn new(player: char) -> Self {
+        Self { player }
+    }
+    fn minimax(&self, board: Board, player: char) -> (i32, usize) {
+        let status = board.check();
+        if status.is_in_progress() {
+            let mut best_score = if player == self.player {
+                std::i32::MIN
+            } else {
+                std::i32::MAX
+            };
+            let mut best_move = 0;
+            for i in 0..9 {
+                if board.board[i] != std::char::from_digit(i as u32, 10).unwrap() {
+                    continue;
+                }
+                let mut new_board = board.clone();
+                new_board.mark(player, i);
+                let (score, _) = self.minimax(new_board, if player == 'X' { 'O' } else { 'X' });
+                if player == self.player {
+                    if score > best_score {
+                        best_score = score;
+                        best_move = i;
+                    }
+                } else {
+                    if score < best_score {
+                        best_score = score;
+                        best_move = i;
+                    }
+                }
+            }
+            return (best_score, best_move);
+        } else {
+            match status {
+                Status::PlayerWon(player) => {
+                    if player == self.player {
+                        return (1, 0);
+                    } else {
+                        return (-1, 0);
+                    }
+                }
+                Status::Tie => return (0, 0),
+                _ => unreachable!(),
+            }
+        }
+    }
+}
+
+impl Brain for MinimaxBrain {
+    fn get_player(&self) -> char {
+        self.player
+    }
+    fn think(&self, board: Board) -> Board {
+        // return the board with the best move
+        board.draw();
+        println!("Player {}: Thinking...", self.player);
+        let (_, best_move) = self.minimax(board.clone(), self.player);
+        let mut new_board = board.clone();
+        new_board.mark(self.player, best_move);
+        println!("{}: Marked position {}", self.player, best_move);
+        new_board.draw();
+        return new_board;
+    }
+}
+
 struct TicTacToeChoreography {
     brain_for_x: Located<Rc<dyn Brain>, PlayerX>,
     brain_for_y: Located<Rc<dyn Brain>, PlayerO>,
@@ -195,15 +265,28 @@ impl Choreography for TicTacToeChoreography {
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
+    /// Player to play as (X or O)
     player: char,
+    /// Hostname to listen on
     hostname: String,
+    /// Port to listen on
     port: u16,
+    /// Hostname of opponent
     opponent_hostname: String,
+    /// Port of opponent
     opponent_port: u16,
+    /// Use minimax brain instead of user brain
+    #[arg(short, long)]
+    minimax_brain: bool,
 }
 
 fn main() {
     let args = Args::parse();
+    let brain: Rc<dyn Brain> = if args.minimax_brain {
+        Rc::new(MinimaxBrain::new(args.player))
+    } else {
+        Rc::new(UserBrain::new(args.player))
+    };
     match args.player {
         'X' => {
             let mut config = HashMap::new();
@@ -215,7 +298,7 @@ fn main() {
             let transport = HttpTransport::new(PlayerX.name(), &config);
             let projector = Projector::new(PlayerX, transport);
             projector.epp_and_run(TicTacToeChoreography {
-                brain_for_x: projector.local(Rc::new(UserBrain::new('X'))),
+                brain_for_x: projector.local(brain),
                 brain_for_y: projector.remote(PlayerO),
             });
         }
@@ -230,9 +313,12 @@ fn main() {
             let projector = Projector::new(PlayerO, transport);
             projector.epp_and_run(TicTacToeChoreography {
                 brain_for_x: projector.remote(PlayerX),
-                brain_for_y: projector.local(Rc::new(UserBrain::new('O'))),
+                brain_for_y: projector.local(brain),
             });
         }
-        _ => unreachable!(),
+        _ => {
+            println!("Invalid player; must be X or O");
+            std::process::exit(1);
+        }
     }
 }
