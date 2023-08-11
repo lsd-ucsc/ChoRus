@@ -3,12 +3,12 @@
 use std::thread;
 use std::{collections::HashMap, sync::Arc};
 
-use reqwest::blocking::Client;
 use retry::{
     delay::{jitter, Fixed},
     retry,
 };
 use tiny_http::Server;
+use ureq::{Agent, AgentBuilder};
 
 use crate::{
     core::{Portable, Transport},
@@ -21,7 +21,7 @@ const HEADER_SRC: &str = "X-CHORUS-SOURCE";
 /// The HTTP transport.
 pub struct HttpTransport {
     config: HashMap<String, (String, u16)>,
-    client: Client,
+    agent: Agent,
     queue_map: Arc<HashMap<String, BlockingQueue<String>>>,
     server: Arc<Server>,
     join_handle: Option<thread::JoinHandle<()>>,
@@ -77,9 +77,11 @@ impl HttpTransport {
             })
         });
 
+        let agent = AgentBuilder::new().build();
+
         Self {
             config,
-            client: Client::new(),
+            agent,
             queue_map,
             join_handle,
             server,
@@ -102,11 +104,10 @@ impl Transport for HttpTransport {
     fn send<V: Portable>(&self, from: &str, to: &str, data: &V) -> () {
         let (hostname, port) = self.config.get(to).unwrap();
         retry(Fixed::from_millis(1000).map(jitter), move || {
-            self.client
-                .post(format!("http://{}:{}", hostname, port))
-                .body(serde_json::to_string(data).unwrap())
-                .header(HEADER_SRC, from)
-                .send()
+            self.agent
+                .post(format!("http://{}:{}", hostname, port).as_str())
+                .set(HEADER_SRC, from)
+                .send_string(serde_json::to_string(data).unwrap().as_str())
         })
         .unwrap();
     }
