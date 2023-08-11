@@ -20,7 +20,7 @@ const HEADER_SRC: &str = "X-CHORUS-SOURCE";
 
 /// The HTTP transport.
 pub struct HttpTransport {
-    config: HashMap<String, (String, u32)>,
+    config: HashMap<String, (String, u16)>,
     client: Client,
     queue_map: Arc<HashMap<String, BlockingQueue<String>>>,
     server: Arc<Server>,
@@ -29,7 +29,7 @@ pub struct HttpTransport {
 
 impl HttpTransport {
     /// Creates a new `HttpTransport` instance from the projection target and a configuration.
-    pub fn new(at: &'static str, config: &HashMap<&'static str, (&'static str, u32)>) -> Self {
+    pub fn new(at: &'static str, config: &HashMap<&str, (&str, u16)>) -> Self {
         let config = HashMap::from_iter(
             config
                 .iter()
@@ -101,16 +101,13 @@ impl Transport for HttpTransport {
 
     fn send<V: Portable>(&self, from: &str, to: &str, data: &V) -> () {
         let (hostname, port) = self.config.get(to).unwrap();
-        retry(
-            Exponential::from_millis(10).map(jitter).take(10),
-            move || {
-                self.client
-                    .post(format!("http://{}:{}", hostname, port))
-                    .body(serde_json::to_string(data).unwrap())
-                    .header(HEADER_SRC, from)
-                    .send()
-            },
-        )
+        retry(Exponential::from_millis(10).map(jitter), move || {
+            self.client
+                .post(format!("http://{}:{}", hostname, port))
+                .body(serde_json::to_string(data).unwrap())
+                .header(HEADER_SRC, from)
+                .send()
+        })
         .unwrap();
     }
 
