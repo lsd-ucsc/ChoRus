@@ -5,7 +5,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use reqwest::blocking::Client;
 use retry::{
-    delay::{jitter, Exponential},
+    delay::{jitter, Fixed},
     retry,
 };
 use tiny_http::Server;
@@ -101,7 +101,8 @@ impl Transport for HttpTransport {
 
     fn send<V: Portable>(&self, from: &str, to: &str, data: &V) -> () {
         let (hostname, port) = self.config.get(to).unwrap();
-        retry(Exponential::from_millis(10).map(jitter), move || {
+        retry(Fixed::from_millis(1000).map(jitter), move || {
+            println!("retrying...");
             self.client
                 .post(format!("http://{}:{}", hostname, port))
                 .body(serde_json::to_string(data).unwrap())
