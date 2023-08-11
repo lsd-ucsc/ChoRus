@@ -108,7 +108,7 @@ struct PlayerO;
 
 trait Brain {
     fn get_player(&self) -> char;
-    fn think(&self, board: Board) -> Board;
+    fn think(&self, board: &Board) -> Board;
 }
 
 struct UserBrain {
@@ -125,7 +125,7 @@ impl Brain for UserBrain {
     fn get_player(&self) -> char {
         self.player
     }
-    fn think(&self, board: Board) -> Board {
+    fn think(&self, board: &Board) -> Board {
         println!("Current board:");
         board.draw();
         let mut pos = String::new();
@@ -207,7 +207,7 @@ impl Brain for MinimaxBrain {
     fn get_player(&self) -> char {
         self.player
     }
-    fn think(&self, board: Board) -> Board {
+    fn think(&self, board: &Board) -> Board {
         // return the board with the best move
         board.draw();
         println!("Player {}: Thinking...", self.player);
@@ -231,7 +231,7 @@ impl Choreography for TicTacToeChoreography {
         loop {
             let board_x = op.locally(PlayerX, |un| {
                 let brain = un.unwrap(self.brain_for_x.clone());
-                return brain.think(board);
+                return brain.think(&board);
             });
             board = op.broadcast(PlayerX, board_x);
             if !board.check().is_in_progress() {
@@ -239,7 +239,7 @@ impl Choreography for TicTacToeChoreography {
             }
             let board_o = op.locally(PlayerO, |un| {
                 let brain = un.unwrap(self.brain_for_y.clone());
-                return brain.think(board);
+                return brain.think(&board);
             });
             board = op.broadcast(PlayerO, board_o);
             if !board.check().is_in_progress() {

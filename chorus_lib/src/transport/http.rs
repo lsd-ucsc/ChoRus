@@ -102,7 +102,6 @@ impl Transport for HttpTransport {
     fn send<V: Portable>(&self, from: &str, to: &str, data: &V) -> () {
         let (hostname, port) = self.config.get(to).unwrap();
         retry(Fixed::from_millis(1000).map(jitter), move || {
-            println!("retrying...");
             self.client
                 .post(format!("http://{}:{}", hostname, port))
                 .body(serde_json::to_string(data).unwrap())
