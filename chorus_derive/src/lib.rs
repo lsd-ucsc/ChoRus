@@ -7,7 +7,7 @@ pub fn derive_choreography_location(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, .. } = parse_macro_input!(input);
     let output = quote! {
         impl ChoreographyLocation for #ident {
-            fn name(&self) -> &'static str {
+            fn name() -> &'static str {
                 stringify!(#ident)
             }
         }
