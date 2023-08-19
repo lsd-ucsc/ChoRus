@@ -38,7 +38,7 @@ impl Choreography for HelloWorldChoreography {
 fn main() {
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     // Create a local transport
-    let transport = LocalTransport::from(&[Alice.name(), Bob.name()]);
+    let transport = LocalTransport::from(&[Alice::name(), Bob::name()]);
     // Run the choreography in two threads
     {
         let transport = transport.clone();

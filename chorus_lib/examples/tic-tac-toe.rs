@@ -290,12 +290,12 @@ fn main() {
     match args.player {
         'X' => {
             let mut config = HashMap::new();
-            config.insert(PlayerX.name(), (args.hostname.as_str(), args.port));
+            config.insert(PlayerX::name(), (args.hostname.as_str(), args.port));
             config.insert(
-                PlayerO.name(),
+                PlayerO::name(),
                 (args.opponent_hostname.as_str(), args.opponent_port),
             );
-            let transport = HttpTransport::new(PlayerX.name(), &config);
+            let transport = HttpTransport::new(PlayerX::name(), &config);
             let projector = Projector::new(PlayerX, transport);
             projector.epp_and_run(TicTacToeChoreography {
                 brain_for_x: projector.local(brain),
@@ -304,12 +304,12 @@ fn main() {
         }
         'O' => {
             let mut config = HashMap::new();
-            config.insert(PlayerO.name(), (args.hostname.as_str(), args.port));
+            config.insert(PlayerO::name(), (args.hostname.as_str(), args.port));
             config.insert(
-                PlayerX.name(),
+                PlayerX::name(),
                 (args.opponent_hostname.as_str(), args.opponent_port),
             );
-            let transport = HttpTransport::new(PlayerO.name(), &config);
+            let transport = HttpTransport::new(PlayerO::name(), &config);
             let projector = Projector::new(PlayerO, transport);
             projector.epp_and_run(TicTacToeChoreography {
                 brain_for_x: projector.remote(PlayerX),

@@ -91,7 +91,7 @@ impl<D: Choreography<Located<bool, Buyer1>> + Decider>
         });
         let price_at_buyer1 = op.comm(Seller, Buyer1, &price_at_seller);
         let decision_at_buyer1 =
-            op.colocally(&[Buyer1.name(), Buyer2.name()], D::new(price_at_buyer1));
+            op.colocally(&[Buyer1::name(), Buyer2::name()], D::new(price_at_buyer1));
 
         struct GetDeliveryDateChoreography {
             inventory: Located<Inventory, Seller>,
@@ -117,7 +117,7 @@ impl<D: Choreography<Located<bool, Buyer1>> + Decider>
         }
 
         return op.colocally(
-            &[Seller.name(), Buyer1.name()],
+            &[Seller::name(), Buyer1::name()],
             GetDeliveryDateChoreography {
                 inventory: self.inventory.clone(),
                 title_at_seller: title_at_seller.clone(),
@@ -141,7 +141,7 @@ fn main() {
         i
     };
 
-    let transport = LocalTransport::from(&[Seller.name(), Buyer1.name(), Buyer2.name()]);
+    let transport = LocalTransport::from(&[Seller::name(), Buyer1::name(), Buyer2::name()]);
     let seller_projector = Arc::new(Projector::new(Seller, transport.clone()));
     let buyer1_projector = Arc::new(Projector::new(Buyer1, transport.clone()));
     let buyer2_projector = Arc::new(Projector::new(Buyer2, transport.clone()));

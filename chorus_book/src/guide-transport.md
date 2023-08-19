@@ -36,7 +36,7 @@ Because of the nature of the `Local` transport, you must use the same `LocalTran
 #     }
 # }
 let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
-let transport = LocalTransport::from(&[Alice.name(), Bob.name()]);
+let transport = LocalTransport::from(&[Alice::name(), Bob::name()]);
 {
     // create a clone for Alice
     let transport = transport.clone();
@@ -73,9 +73,9 @@ The `new` constructor takes the name of the projection target and "configuration
 # use chorus_lib::transport::http::HttpTransport;
 # use std::collections::HashMap;
 let mut config = HashMap::new();
-config.insert(Alice.name(), ("localhost", 8080));
-config.insert(Bob.name(), ("localhost", 8081));
-let transport = HttpTransport::new(Alice.name(), &config);
+config.insert(Alice::name(), ("localhost", 8080));
+config.insert(Bob::name(), ("localhost", 8081));
+let transport = HttpTransport::new(Alice::name(), &config);
 ```
 
 In the above example, the transport will start the HTTP server on port 8080 on localhost. If Alice needs to send a message to Bob, it will use `http://localhost:8081` as the destination.

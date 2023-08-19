@@ -71,7 +71,7 @@ impl Choreography for BooksellerChoreography {
 }
 
 fn main() {
-    let transport = LocalTransport::from(&[Seller.name(), Buyer.name()]);
+    let transport = LocalTransport::from(&[Seller::name(), Buyer::name()]);
     let seller_projector = Projector::new(Seller, transport.clone());
     let buyer_projector = Projector::new(Buyer, transport.clone());
 

@@ -55,7 +55,7 @@ impl Choreography for MainChoreography {
             is_even_at_bob,
             is_even_at_carol,
         } = op.colocally(
-            &[Bob.name(), Carol.name()],
+            &[Bob::name(), Carol::name()],
             BobCarolChoreography { x_at_bob },
         );
         op.locally(Bob, |un| {

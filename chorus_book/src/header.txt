@@ -7,4 +7,4 @@
 # struct Bob;
 # #[derive(ChoreographyLocation)]
 # struct Carol;
-# let transport = LocalTransport::from(&[Alice.name(), Bob.name(), Carol.name()]);
+# let transport = LocalTransport::from(&[Alice::name(), Bob::name(), Carol::name()]);

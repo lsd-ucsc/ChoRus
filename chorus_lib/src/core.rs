@@ -11,7 +11,7 @@ pub use serde::{Deserialize, Serialize};
 /// Represents a location. It can be derived using `#[derive(ChoreographyLocation)]`.
 pub trait ChoreographyLocation: Copy {
     /// Returns the name of the location as a string.
-    fn name(&self) -> &'static str;
+    fn name() -> &'static str;
 }
 
 /// Represents a value that can be used in a choreography. ChoRus uses [serde](https://serde.rs/) to serialize and deserialize values.
@@ -177,7 +177,7 @@ pub trait Transport {
 
 /// Provides a method to perform end-point projection.
 pub struct Projector<L1: ChoreographyLocation, T: Transport> {
-    target: L1,
+    _target: L1,
     transport: T,
 }
 
@@ -187,7 +187,10 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
     /// - `target` is the projection target of the choreography.
     /// - `transport` is an implementation of `Transport`.
     pub fn new(target: L1, transport: B) -> Self {
-        Projector { target, transport }
+        Projector {
+            _target: target,
+            transport,
+        }
     }
 
     /// Constructs a `Located` struct located at the projection target using the actual value.
@@ -202,9 +205,9 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
     /// Use this method to run a choreography that takes a located value as an input.
     ///
     /// Note that the method panics at runtime if the projection target and the location of the value are the same.
-    pub fn remote<V, L2: ChoreographyLocation>(&self, l2: L2) -> Located<V, L2> {
+    pub fn remote<V, L2: ChoreographyLocation>(&self, _l2: L2) -> Located<V, L2> {
         // NOTE(shumbo): Ideally, this check should be done at the type level.
-        if self.target.name() == l2.name() {
+        if L1::name() == L2::name() {
             panic!("Cannot create a remote value at the same location");
         }
         Located::remote()
@@ -227,10 +230,10 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
         impl<'a, B: Transport> ChoreoOp for EppOp<'a, B> {
             fn locally<V, L1: ChoreographyLocation>(
                 &self,
-                location: L1,
+                _location: L1,
                 computation: impl Fn(Unwrapper<L1>) -> V,
             ) -> Located<V, L1> {
-                if location.name() == self.target {
+                if L1::name() == self.target {
                     let unwrapper = Unwrapper {
                         phantom: PhantomData,
                     };
@@ -243,19 +246,16 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
 
             fn comm<L1: ChoreographyLocation, L2: ChoreographyLocation, V: Portable>(
                 &self,
-                sender: L1,
-                receiver: L2,
+                _sender: L1,
+                _receiver: L2,
                 data: &Located<V, L1>,
             ) -> Located<V, L2> {
-                if sender.name() == self.target {
-                    self.transport.send(
-                        sender.name(),
-                        receiver.name(),
-                        data.value.as_ref().unwrap(),
-                    );
+                if L1::name() == self.target {
+                    self.transport
+                        .send(L1::name(), L2::name(), data.value.as_ref().unwrap());
                     Located::remote()
-                } else if receiver.name() == self.target {
-                    let value = self.transport.receive(sender.name(), receiver.name());
+                } else if L2::name() == self.target {
+                    let value = self.transport.receive(L1::name(), L2::name());
                     Located::local(value)
                 } else {
                     Located::remote()
@@ -264,10 +264,10 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
 
             fn broadcast<L1: ChoreographyLocation, V: Portable>(
                 &self,
-                sender: L1,
+                _sender: L1,
                 data: Located<V, L1>,
             ) -> V {
-                if sender.name() == self.target {
+                if L1::name() == self.target {
                     for dest in &self.locations {
                         if self.target != *dest {
                             self.transport.send(&self.target, &dest, &data.value);
@@ -275,7 +275,7 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
                     }
                     return data.value.unwrap();
                 } else {
-                    self.transport.receive(sender.name(), &self.target)
+                    self.transport.receive(L1::name(), &self.target)
                 }
             }
 
@@ -303,7 +303,7 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
             }
         }
         let op: EppOp<'a, B> = EppOp {
-            target: self.target.name().to_string(),
+            target: L1::name().to_string(),
             transport: &self.transport,
             locations: self.transport.locations(),
         };
