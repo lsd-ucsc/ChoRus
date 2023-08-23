@@ -1,5 +1,4 @@
 /// Choreographic tik-tak-toe game
-/// Based on https://medium.com/aimonks/rust-tic-tac-toe-game-with-minimax-algorithm-dc64745974b6
 extern crate chorus_lib;
 
 use chorus_lib::{
@@ -222,7 +221,7 @@ impl Brain for MinimaxBrain {
 
 struct TicTacToeChoreography {
     brain_for_x: Located<Box<dyn Brain>, PlayerX>,
-    brain_for_y: Located<Box<dyn Brain>, PlayerO>,
+    brain_for_o: Located<Box<dyn Brain>, PlayerO>,
 }
 
 impl Choreography for TicTacToeChoreography {
@@ -238,7 +237,7 @@ impl Choreography for TicTacToeChoreography {
                 break;
             }
             let board_o = op.locally(PlayerO, |un| {
-                let brain = un.unwrap(&self.brain_for_y);
+                let brain = un.unwrap(&self.brain_for_o);
                 return brain.think(&board);
             });
             board = op.broadcast(PlayerO, board_o);
@@ -299,7 +298,7 @@ fn main() {
             let projector = Projector::new(PlayerX, transport);
             projector.epp_and_run(TicTacToeChoreography {
                 brain_for_x: projector.local(brain),
-                brain_for_y: projector.remote(PlayerO),
+                brain_for_o: projector.remote(PlayerO),
             });
         }
         'O' => {
@@ -313,7 +312,7 @@ fn main() {
             let projector = Projector::new(PlayerO, transport);
             projector.epp_and_run(TicTacToeChoreography {
                 brain_for_x: projector.remote(PlayerX),
-                brain_for_y: projector.local(brain),
+                brain_for_o: projector.local(brain),
             });
         }
         _ => {
