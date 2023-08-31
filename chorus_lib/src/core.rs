@@ -118,7 +118,9 @@ where
     }
 }
 
-///x
+// TODO(shumbo): Export the macro under the `core` module
+
+/// Macro to generate hlist
 #[macro_export]
 macro_rules! hlist {
     () => { $crate::core::HNil };
@@ -132,15 +134,24 @@ pub struct Here;
 pub struct There<Index>(Index);
 
 /// Check membership
-pub trait Member<L, Index> {}
+pub trait Member<L, Index> {
+    /// Return HList of non-member
+    type Remainder: HList;
+}
 
-impl<Head, Tail> Member<HCons<Head, Tail>, Here> for Head {}
-
+impl<Head, Tail> Member<HCons<Head, Tail>, Here> for Head
+where
+    Tail: HList,
+{
+    type Remainder = Tail;
+}
 impl<Head, Head1, Tail, X, TailIndex> Member<HCons<Head, HCons<Head1, Tail>>, There<TailIndex>>
     for X
 where
+    Head: ChoreographyLocation,
     X: Member<HCons<Head1, Tail>, TailIndex>,
 {
+    type Remainder = HCons<Head, X::Remainder>;
 }
 
 /// Check subset
@@ -154,6 +165,21 @@ impl<L: HList, Head, Tail: HList, IHead, ITail> Subset<L, HCons<IHead, ITail>> f
 where
     Head: Member<L, IHead>,
     Tail: Subset<L, ITail>,
+{
+}
+/// Equal
+pub trait Equal<L: HList, Index> {}
+
+// Base case: HNil is equal to HNil
+impl Equal<HNil, Here> for HNil {}
+
+// Recursive case: Head::Tail is equal to L if
+// 1. Head is a member of L
+// 2. Tail is equal to the remainder of L
+impl<L: HList, Head, Tail, Index1, Index2> Equal<L, HCons<Index1, Index2>> for HCons<Head, Tail>
+where
+    Head: Member<L, Index1>,
+    Tail: Equal<Head::Remainder, Index2>,
 {
 }
 
@@ -216,7 +242,9 @@ pub trait ChoreoOp<L: HList> {
         L1: Member<L, Index>;
 
     /// Calls a choreography.
-    fn call<R, C: Choreography<R, L = L>>(&self, choreo: C) -> R;
+    fn call<R, M, C: Choreography<R, L = M>, Index>(&self, choreo: C) -> R
+    where
+        M: HList + Equal<L, Index>;
 
     /// Calls a choreography on a subset of locations.
     fn colocally<R: Superposition, S: HList, C: Choreography<R, L = S>, Index>(
@@ -301,19 +329,19 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
 
     /// Performs end-point projection and runs a choreography.
     pub fn epp_and_run<'a, V, L: HList, C: Choreography<V, L = L>>(&'a self, choreo: C) -> V {
-        struct EppOp<'a, L: HList, B: Transport> {
-            target: String,
+        struct EppOp<'a, L: HList, L1: ChoreographyLocation, B: Transport> {
+            target: PhantomData<L1>,
             transport: &'a B,
             locations: Vec<String>,
             marker: PhantomData<L>,
         }
-        impl<'a, L: HList, B: Transport> ChoreoOp<L> for EppOp<'a, L, B> {
+        impl<'a, L: HList, T: ChoreographyLocation, B: Transport> ChoreoOp<L> for EppOp<'a, L, T, B> {
             fn locally<V, L1: ChoreographyLocation, Index>(
                 &self,
                 _location: L1,
                 computation: impl Fn(Unwrapper<L1>) -> V,
             ) -> Located<V, L1> {
-                if L1::name() == self.target {
+                if L1::name() == T::name() {
                     let unwrapper = Unwrapper {
                         phantom: PhantomData,
                     };
@@ -336,11 +364,11 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
                 _receiver: L2,
                 data: &Located<V, L1>,
             ) -> Located<V, L2> {
-                if L1::name() == self.target {
+                if L1::name() == T::name() {
                     self.transport
                         .send(L1::name(), L2::name(), data.value.as_ref().unwrap());
                     Located::remote()
-                } else if L2::name() == self.target {
+                } else if L2::name() == T::name() {
                     let value = self.transport.receive(L1::name(), L2::name());
                     Located::local(value)
                 } else {
@@ -353,20 +381,29 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
                 _sender: L1,
                 data: Located<V, L1>,
             ) -> V {
-                if L1::name() == self.target {
+                if L1::name() == T::name() {
                     for dest in &self.locations {
-                        if self.target != *dest {
-                            self.transport.send(&self.target, &dest, &data.value);
+                        if T::name() != *dest {
+                            self.transport.send(&T::name(), &dest, &data.value);
                         }
                     }
                     return data.value.unwrap();
                 } else {
-                    self.transport.receive(L1::name(), &self.target)
+                    self.transport.receive(L1::name(), &T::name())
                 }
             }
 
-            fn call<T, C: Choreography<T, L = L>>(&self, choreo: C) -> T {
-                choreo.run(self)
+            fn call<R, M, C: Choreography<R, L = M>, Index>(&self, choreo: C) -> R
+            where
+                M: HList + Equal<L, Index>,
+            {
+                let op: EppOp<'a, M, T, B> = EppOp {
+                    target: PhantomData::<T>,
+                    transport: &self.transport,
+                    locations: self.transport.locations(),
+                    marker: PhantomData::<M>,
+                };
+                choreo.run(&op)
             }
 
             fn colocally<R: Superposition, S: HList, C: Choreography<R, L = S>, Index>(
@@ -377,21 +414,21 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
                     Vec::from_iter(S::to_string_list().into_iter().map(|s| s.to_string()));
 
                 for location in &locs_vec {
-                    let op = EppOp {
-                        target: location.clone(),
-                        transport: self.transport,
-                        locations: locs_vec.clone(),
-                        marker: PhantomData::<S>,
-                    };
-                    if *location == self.target.to_string() {
+                    if *location == T::name().to_string() {
+                        let op = EppOp {
+                            target: PhantomData::<T>,
+                            transport: self.transport,
+                            locations: locs_vec.clone(),
+                            marker: PhantomData::<S>,
+                        };
                         return choreo.run(&op);
                     }
                 }
                 R::remote()
             }
         }
-        let op: EppOp<'a, L, B> = EppOp {
-            target: L1::name().to_string(),
+        let op: EppOp<'a, L, L1, B> = EppOp {
+            target: PhantomData::<L1>,
             transport: &self.transport,
             locations: self.transport.locations(),
             marker: PhantomData::<L>,
@@ -469,8 +506,12 @@ impl<L: HList> Runner<L> {
                 data.value.unwrap()
             }
 
-            fn call<R, C: Choreography<R, L = L>>(&self, choreo: C) -> R {
-                choreo.run(self)
+            fn call<R, M, C: Choreography<R, L = M>, Index>(&self, choreo: C) -> R
+            where
+                M: HList + Equal<L, Index>,
+            {
+                let op: RunOp<M> = RunOp(PhantomData);
+                choreo.run(&op)
             }
 
             fn colocally<R: Superposition, S: HList, C: Choreography<R, L = S>, Index>(
