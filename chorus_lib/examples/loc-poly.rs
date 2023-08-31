@@ -1,8 +1,10 @@
 extern crate chorus_lib;
-use std::marker::PhantomData;
+use std::fmt::Debug;
 use std::thread;
 
-use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, HList, Member, Projector};
+use chorus_lib::core::{
+    ChoreoOp, Choreography, ChoreographyLocation, Located, Portable, Projector,
+};
 use chorus_lib::hlist;
 use chorus_lib::transport::local::LocalTransport;
 
@@ -13,24 +15,43 @@ struct Bob;
 #[derive(ChoreographyLocation)]
 struct Carol;
 
-struct LocationPolymorphicChoreography<L: HList, L1: ChoreographyLocation, Index>
-where
-    L1: Member<L, Index>,
-{
-    index: PhantomData<Index>,
-    phantom: PhantomData<L>,
-    location: L1,
+struct CommAndPrint<V: Portable, L1: ChoreographyLocation, L2: ChoreographyLocation> {
+    sender: L1,
+    receiver: L2,
+    data: Located<V, L1>,
 }
 
-impl<L: HList, L1: ChoreographyLocation, Index> Choreography
-    for LocationPolymorphicChoreography<L, L1, Index>
+impl<V, L1, L2> Choreography<Located<V, L2>> for CommAndPrint<V, L1, L2>
 where
-    L1: Member<L, Index>,
+    V: Portable + Debug,
+    L1: ChoreographyLocation,
+    L2: ChoreographyLocation,
 {
-    type L = L;
-    fn run(self, op: &impl ChoreoOp<Self::L>) {
-        op.locally(self.location, |_| {
-            println!("Hello, World at {:?}", L1::name());
+    type L = hlist!(L1, L2);
+    fn run(self, op: &impl ChoreoOp<Self::L>) -> Located<V, L2> {
+        let v = op.comm(self.sender, self.receiver, &self.data);
+        op.locally(self.receiver, |un| println!("{:?}", un.unwrap(&v)));
+        v
+    }
+}
+
+struct MainChoreography;
+
+impl Choreography<Located<i32, Alice>> for MainChoreography {
+    type L = hlist!(Alice, Bob);
+
+    fn run(self, op: &impl ChoreoOp<Self::L>) -> Located<i32, Alice> {
+        let v1 = op.locally(Alice, |_| 100);
+        let v2 = op.call(CommAndPrint {
+            sender: Alice,
+            receiver: Bob,
+            data: v1,
+        });
+        let v2 = op.locally(Bob, |un| un.unwrap(&v2) + 10);
+        return op.colocally(CommAndPrint {
+            sender: Bob,
+            receiver: Alice,
+            data: v2,
         });
     }
 }
@@ -41,28 +62,17 @@ fn main() {
     let mut handles = vec![];
     {
         let transport = transport.clone();
-        let alice_say_hello: LocationPolymorphicChoreography<hlist!(Alice), Alice, _> =
-            LocationPolymorphicChoreography {
-                location: Alice,
-                phantom: PhantomData,
-                index: PhantomData,
-            };
         handles.push(thread::spawn(|| {
             let p = Projector::new(Alice, transport);
-            p.epp_and_run(alice_say_hello);
+            let v = p.epp_and_run(MainChoreography);
+            assert_eq!(p.unwrap(v), 110);
         }));
     }
     {
         let transport = transport.clone();
-        let bob_say_hello: LocationPolymorphicChoreography<hlist!(Bob), Bob, _> =
-            LocationPolymorphicChoreography {
-                location: Bob,
-                phantom: PhantomData,
-                index: PhantomData,
-            };
         handles.push(thread::spawn(|| {
             let p = Projector::new(Bob, transport);
-            p.epp_and_run(bob_say_hello);
+            p.epp_and_run(MainChoreography);
         }));
     }
     for h in handles {
