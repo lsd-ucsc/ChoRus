@@ -3,6 +3,7 @@ extern crate chorus_lib;
 use std::thread;
 
 use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
+use chorus_lib::hlist;
 use chorus_lib::transport::local::LocalTransport;
 
 // --- Define two locations (Alice and Bob) ---
@@ -18,7 +19,8 @@ struct HelloWorldChoreography;
 
 // Implement the `Choreography` trait for `HelloWorldChoreography`
 impl Choreography for HelloWorldChoreography {
-    fn run(self, op: &impl ChoreoOp) {
+    type L = hlist!(Alice, Bob);
+    fn run(self, op: &impl ChoreoOp<Self::L>) {
         // Create a located value at Alice
         let msg_at_alice = op.locally(Alice, |_| {
             println!("Hello from Alice!");
@@ -38,7 +40,7 @@ impl Choreography for HelloWorldChoreography {
 fn main() {
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     // Create a local transport
-    let transport = LocalTransport::from(&[Alice.name(), Bob.name()]);
+    let transport = LocalTransport::from(&[Alice::name() , Bob::name()]);
     // Run the choreography in two threads
     {
         let transport = transport.clone();
