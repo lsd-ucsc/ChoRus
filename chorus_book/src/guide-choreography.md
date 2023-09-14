@@ -9,7 +9,8 @@ struct HelloWorldChoreography;
 
 // 2. Implement the `Choreography` trait
 impl Choreography for HelloWorldChoreography {
-    fn run(self, op: &impl ChoreoOp) {
+    type L = hlist!(Alice);
+    fn run(self, op: &impl ChoreoOp<Self::L>) {
         // 3. Use the `op` parameter to access operators
         op.locally(Alice, |_| {
             println!("Hello, World!");
@@ -19,6 +20,27 @@ impl Choreography for HelloWorldChoreography {
 ```
 
 `Choreography` must implement the `run` method which defines the behavior of the system. The `run` method takes a reference to an object that implements the `ChoreoOp` trait. The `ChoreoOp` trait provides choreographic operators such as `locally` and `comm`.
+
+Also, each `Choreography` has an associated type `L`, which is the the list of `ChoreographyLocation`s it can operate on. You'll get a compile error if you try to work with a `ChoreographyLocation` that is not a member of `L`. To build a set of locations, you can use the macro `hlist!`.
+
+```rust, compile_fail
+# {{#include ./header.txt}}
+# // 1. Define a struct
+# struct HelloWorldChoreography;
+
+# // 2. Implement the `Choreography` trait
+// ...
+impl Choreography for HelloWorldChoreography {
+    type L = hlist!(Alice);
+    fn run(self, op: &impl ChoreoOp<Self::L>) {
+        // this will fail
+        op.locally(Bob, |_| {
+            println!("Hello, World!");
+        });
+    }
+}
+```
+
 
 ## Choreographic Operators
 
@@ -33,7 +55,8 @@ The `locally` operator is used to perform a computation at a single location. It
 #
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     fn run(self, op: &impl ChoreoOp) {
+#     type L = hlist!(Alice);
+#     fn run(self, op: &impl ChoreoOp<Self::L>) {
 op.locally(Alice, |_| {
     println!("Hello, World!");
 });
@@ -48,7 +71,8 @@ The closure can return a value to create a located value. Located values are val
 #
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     fn run(self, op: &impl ChoreoOp) {
+#     type L = hlist!(Alice);
+#     fn run(self, op: &impl ChoreoOp<Self::L>) {
 // This value is only available at Alice
 let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
     42
@@ -64,7 +88,8 @@ The computation closure takes `Unwrapper`. Using the `Unwrapper`, you can get a 
 #
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     fn run(self, op: &impl ChoreoOp) {
+#     type L = hlist!(Alice);
+#     fn run(self, op: &impl ChoreoOp<Self::L>) {
 let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
     42
 });
@@ -79,12 +104,13 @@ op.locally(Alice, |un| {
 
 Note that you can unwrap a located value only at the location where the located value is available. If you try to unwrap a located value at a different location, the program will fail to compile.
 
-```rust,compile_fail
+```rust, compile_fail
 {{#include ./header.txt}}
 #
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     fn run(self, op: &impl ChoreoOp) {
+#     type L = hlist!(Alice, Bob);
+#     fn run(self, op: &impl ChoreoOp<Self::L>) {
 // This code will fail to compile
 let num_at_alice = op.locally(Alice, |_| { 42 });
 op.locally(Bob, |un| {
@@ -106,7 +132,8 @@ The `comm` operator is used to perform a communication between two locations. It
 #
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     fn run(self, op: &impl ChoreoOp) {
+#     type L = hlist!(Alice, Bob);
+#     fn run(self, op: &impl ChoreoOp<Self::L>) {
 // This value is only available at Alice
 let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
     42
@@ -131,7 +158,8 @@ The `broadcast` operator is used to perform a broadcast from a single location t
 #
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     fn run(self, op: &impl ChoreoOp) {
+#     type L = hlist!(Alice);
+#     fn run(self, op: &impl ChoreoOp<Self::L>) {
 // This value is only available at Alice
 let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
     42
@@ -144,7 +172,7 @@ let num: i32 = op.broadcast(Alice, num_at_alice);
 
 Because all locations receive the value, the return type of the `broadcast` operator is a normal value, not a located value. This means that the value can be used for control flow.
 
-```rust,ignore
+```rust, ignore
 if num == 42 {
     println!("The number is 42!");
 } else {

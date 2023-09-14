@@ -20,7 +20,8 @@ This protocol can be implemented as follows:
 struct DemoChoreography;
 
 impl Choreography for DemoChoreography {
-    fn run(self, op: &impl ChoreoOp) {
+    type L = hlist!(Alice, Bob, Carol);
+    fn run(self, op: &impl ChoreoOp<Self::L>) {
         let x_at_alice = op.locally(Alice, |_| {
             get_random_number()
         });
@@ -51,7 +52,8 @@ struct BobCarolChoreography {
     x_at_bob: Located<u32, Bob>,
 };
 impl Choreography for BobCarolChoreography {
-    fn run(self, op: &impl ChoreoOp) {
+    type L = hlist!(Bob, Carol);
+    fn run(self, op: &impl ChoreoOp<Self::L>) {
         let is_even_at_bob: Located<bool, Bob> = op.locally(Bob, |un| {
             let x = un.unwrap(&self.x_at_bob);
             x % 2 == 0
@@ -79,7 +81,8 @@ Notice that the `BobCarolChoreography` only describes the behavior of Bob and Ca
 #     x_at_bob: Located<u32, Bob>,
 # };
 # impl Choreography for BobCarolChoreography {
-#     fn run(self, op: &impl ChoreoOp) {
+#     type L = hlist!(Bob, Carol);
+#     fn run(self, op: &impl ChoreoOp<Self::L>) {
 #         let is_even_at_bob: Located<bool, Bob> = op.locally(Bob, |un| {
 #             let x = un.unwrap(&self.x_at_bob);
 #             x % 2 == 0
@@ -96,12 +99,13 @@ Notice that the `BobCarolChoreography` only describes the behavior of Bob and Ca
 # }
 struct MainChoreography;
 impl Choreography for MainChoreography {
-    fn run(self, op: &impl ChoreoOp) {
+    type L = hlist!(Alice, Bob, Carol);
+    fn run(self, op: &impl ChoreoOp<Self::L>) {
         let x_at_alice = op.locally(Alice, |_| {
             get_random_number()
         });
         let x_at_bob = op.comm(Alice, Bob, &x_at_alice);
-        op.colocally(&[Bob.name(), Carol.name()], BobCarolChoreography {
+        op.colocally(BobCarolChoreography {
             x_at_bob,
         });
     }
@@ -131,7 +135,8 @@ struct BobCarolChoreography {
 };
 
 impl Choreography<BobCarolResult> for BobCarolChoreography {
-    fn run(self, op: &impl ChoreoOp) -> BobCarolResult {
+    type L = hlist!(Bob, Carol);
+    fn run(self, op: &impl ChoreoOp<Self::L>) -> BobCarolResult {
         let is_even_at_bob: Located<bool, Bob> = op.locally(Bob, |un| {
             let x = un.unwrap(&self.x_at_bob);
             x % 2 == 0
@@ -154,7 +159,8 @@ impl Choreography<BobCarolResult> for BobCarolChoreography {
 struct MainChoreography;
 
 impl Choreography for MainChoreography {
-    fn run(self, op: &impl ChoreoOp) {
+    type L = hlist!(Alice, Bob, Carol);
+    fn run(self, op: &impl ChoreoOp<Self::L>) {
         let x_at_alice = op.locally(Alice, |_| {
             get_random_number()
         });
@@ -162,7 +168,7 @@ impl Choreography for MainChoreography {
         let BobCarolResult {
             is_even_at_bob,
             is_even_at_carol,
-        } = op.colocally(&[Bob.name(), Carol.name()], BobCarolChoreography {
+        } = op.colocally( BobCarolChoreography {
             x_at_bob,
         });
         // can access is_even_at_bob and is_even_at_carol using `locally` on Bob and Carol

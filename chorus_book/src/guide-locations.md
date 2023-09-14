@@ -26,6 +26,6 @@ The `ChoreographyLocation` trait provides the `name` method, which returns the n
 # #[derive(ChoreographyLocation)]
 # struct Bob;
 #
-let name = Alice.name();
+let name = Alice::name();
 assert_eq!(name, "Alice");
 ```

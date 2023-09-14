@@ -18,7 +18,8 @@ struct DemoChoreography {
 }
 
 impl Choreography for DemoChoreography {
-    fn run(self, op: &impl ChoreoOp) {
+    type L = HNil;
+    fn run(self, op: &impl ChoreoOp<Self::L>) {
         println!("Input: {}", self.input);
     }
 }
@@ -32,7 +33,8 @@ You can construct an instance of the choreography with the input and pass it to 
 #     input: String,
 # }
 # impl Choreography for DemoChoreography {
-#     fn run(self, op: &impl ChoreoOp) {
+#     type L = HNil;
+#     fn run(self, op: &impl ChoreoOp<Self::L>) {
 #         println!("Input: {}", self.input);
 #     }
 # }
@@ -55,7 +57,8 @@ struct DemoChoreography {
 }
 
 impl Choreography for DemoChoreography {
-    fn run(self, op: &impl ChoreoOp) {
+    type L = hlist!(Alice);
+    fn run(self, op: &impl ChoreoOp<Self::L>) {
         op.locally(Alice, |un| {
             let input = un.unwrap(&self.input);
             println!("Input at Alice: {}", input);
@@ -81,7 +84,8 @@ To run the sample choreography above at Alice, we use the `local` method to cons
 # }
 #
 # impl Choreography for DemoChoreography {
-#     fn run(self, op: &impl ChoreoOp) {
+#     type L = hlist!(Alice);
+#     fn run(self, op: &impl ChoreoOp<Self::L>) {
 #         op.locally(Alice, |un| {
 #             let input = un.unwrap(&self.input);
 #             println!("Input at Alice: {}", input);
@@ -107,7 +111,8 @@ For Bob, we use the `remote` method to construct the located value.
 # }
 #
 # impl Choreography for DemoChoreography {
-#     fn run(self, op: &impl ChoreoOp) {
+#     type L = hlist!(Alice);
+#     fn run(self, op: &impl ChoreoOp<Self::L>) {
 #         op.locally(Alice, |un| {
 #             let input = un.unwrap(&self.input);
 #             println!("Input at Alice: {}", input);
@@ -135,7 +140,8 @@ To do so, we specify the output type to the `Choreography` trait and return the 
 struct DemoChoreography;
 
 impl Choreography<String> for DemoChoreography {
-    fn run(self, op: &impl ChoreoOp) -> String {
+    type L = HNil;
+    fn run(self, op: &impl ChoreoOp<Self::L>) -> String {
         "Hello, World!".to_string()
     }
 }
@@ -148,7 +154,8 @@ impl Choreography<String> for DemoChoreography {
 # struct DemoChoreography;
 #
 # impl Choreography<String> for DemoChoreography {
-#     fn run(self, op: &impl ChoreoOp) -> String {
+#     type L = hlist!(Alice);
+#     fn run(self, op: &impl ChoreoOp<Self::L>) -> String {
 #         "Hello, World!".to_string()
 #     }
 # }
@@ -167,7 +174,8 @@ You can use the `Located<V, L1>` as a return type of the `run` method to return 
 struct DemoChoreography;
 
 impl Choreography<Located<String, Alice>> for DemoChoreography {
-    fn run(self, op: &impl ChoreoOp) -> Located<String, Alice> {
+    type L = hlist!(Alice);
+    fn run(self, op: &impl ChoreoOp<Self::L>) -> Located<String, Alice> {
         op.locally(Alice, |_| {
             "Hello, World!".to_string()
         })

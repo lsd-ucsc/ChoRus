@@ -8,7 +8,8 @@ To use `Runner`, construct an instance using the `new` constructor, and then cal
 {{#include ./header.txt}}
 # struct DemoChoreography;
 # impl Choreography for DemoChoreography {
-#     fn run(self, op: &impl ChoreoOp) {
+#     type L = HNil;
+#     fn run(self, op: &impl ChoreoOp<Self::L>) {
 #     }
 # }
 let runner = Runner::new();
@@ -26,7 +27,8 @@ struct SumChoreography {
     y_at_bob: Located<u32, Bob>,
 }
 impl Choreography<Located<u32, Carol>> for SumChoreography {
-    fn run(self, op: &impl ChoreoOp) -> Located<u32, Carol> {
+    type L = hlist!(Alice, Bob, Carol);
+    fn run(self, op: &impl ChoreoOp<Self::L>) -> Located<u32, Carol> {
         let x_at_carol = op.comm(Alice, Carol, &self.x_at_alice);
         let y_at_carol = op.comm(Bob, Carol, &self.y_at_bob);
         op.locally(Carol, |un| {

@@ -1,10 +1,11 @@
 # extern crate chorus_lib;
-# use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector, Located, Superposition, Runner};
+# use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector, Located, Superposition, Runner, HNil};
 # use chorus_lib::transport::local::LocalTransport;
+# use chorus_lib::hlist;
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # #[derive(ChoreographyLocation)]
 # struct Bob;
 # #[derive(ChoreographyLocation)]
 # struct Carol;
-# let transport = LocalTransport::from(&[Alice.name(), Bob.name(), Carol.name()]);
+# let transport = LocalTransport::from(&[Alice::name(), Bob::name(), Carol::name()]);
