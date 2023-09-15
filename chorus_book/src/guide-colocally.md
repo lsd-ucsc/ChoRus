@@ -168,7 +168,7 @@ impl Choreography for MainChoreography {
         let BobCarolResult {
             is_even_at_bob,
             is_even_at_carol,
-        } = op.colocally( BobCarolChoreography {
+        } = op.colocally(BobCarolChoreography {
             x_at_bob,
         });
         // can access is_even_at_bob and is_even_at_carol using `locally` on Bob and Carol

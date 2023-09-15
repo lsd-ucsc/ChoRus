@@ -1,7 +1,8 @@
 extern crate chorus_lib;
-use chorus_lib::{core::{
-    ChoreoOp, Choreography, ChoreographyLocation, Located, Runner, Superposition,
-}, hlist};
+use chorus_lib::{
+    core::{ChoreoOp, Choreography, ChoreographyLocation, Located, Runner, Superposition},
+    hlist,
+};
 
 #[derive(ChoreographyLocation)]
 struct Alice;
@@ -56,9 +57,7 @@ impl Choreography for MainChoreography {
         let BobCarolResult {
             is_even_at_bob,
             is_even_at_carol,
-        } = op.colocally(
-            BobCarolChoreography { x_at_bob },
-        );
+        } = op.colocally(BobCarolChoreography { x_at_bob });
         op.locally(Bob, |un| {
             let is_even = un.unwrap(&is_even_at_bob);
             assert!(is_even);
