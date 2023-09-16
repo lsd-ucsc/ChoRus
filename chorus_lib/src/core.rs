@@ -227,9 +227,9 @@ pub trait ChoreoOp<L: HList> {
         L1: Member<L, Index>;
 
     /// Calls a choreography.
-    fn call<R, M, C: Choreography<R, L = M>>(&self, choreo: C) -> R
+    fn call<R, M, Index, C: Choreography<R, L = M>>(&self, choreo: C) -> R
     where
-        M: HList;
+        M: HList + Subset<L, Index>;
 
     /// Calls a choreography on a subset of locations.
     fn colocally<R: Superposition, S: HList, C: Choreography<R, L = S>, Index>(
@@ -378,9 +378,9 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
                 }
             }
 
-            fn call<R, M, C: Choreography<R, L = M>>(&self, choreo: C) -> R
+            fn call<R, M, Index, C: Choreography<R, L = M>>(&self, choreo: C) -> R
             where
-                M: HList,
+                M: HList + Subset<L, Index>,
             {
                 let op: EppOp<'a, M, T, B> = EppOp {
                     target: PhantomData::<T>,
@@ -491,9 +491,9 @@ impl<L: HList> Runner<L> {
                 data.value.unwrap()
             }
 
-            fn call<R, M, C: Choreography<R, L = M>>(&self, choreo: C) -> R
+            fn call<R, M, Index, C: Choreography<R, L = M>>(&self, choreo: C) -> R
             where
-                M: HList,
+                M: HList + Subset<L, Index>,
             {
                 let op: RunOp<M> = RunOp(PhantomData);
                 choreo.run(&op)
