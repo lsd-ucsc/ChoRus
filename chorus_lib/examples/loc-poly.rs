@@ -5,8 +5,8 @@ use std::thread;
 use chorus_lib::core::{
     ChoreoOp, Choreography, ChoreographyLocation, Located, Portable, Projector,
 };
-use chorus_lib::{hlist, projector};
 use chorus_lib::transport::local::LocalTransport;
+use chorus_lib::{hlist, projector};
 
 #[derive(ChoreographyLocation)]
 struct Alice;

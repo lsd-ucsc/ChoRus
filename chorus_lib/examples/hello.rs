@@ -3,8 +3,8 @@ extern crate chorus_lib;
 use std::thread;
 
 use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
-use chorus_lib::{hlist, projector};
 use chorus_lib::transport::local::LocalTransport;
+use chorus_lib::{hlist, projector};
 
 // --- Define two locations (Alice and Bob) ---
 

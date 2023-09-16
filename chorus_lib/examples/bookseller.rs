@@ -5,9 +5,9 @@ use std::thread;
 
 use chrono::NaiveDate;
 
-use chorus_lib::{hlist, projector};
 use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
 use chorus_lib::transport::local::LocalTransport;
+use chorus_lib::{hlist, projector};
 
 fn get_book(title: &str) -> Option<(i32, NaiveDate)> {
     match title.trim() {
