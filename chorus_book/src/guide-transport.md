@@ -25,8 +25,8 @@ Because of the nature of the `Local` transport, you must use the same `LocalTran
 # extern crate chorus_lib;
 # use chorus_lib::transport::local::LocalTransport;
 # use std::thread;
-# use chorus_lib::core::{ChoreographyLocation, ChoreoOp, Choreography, ProjectorForAL};
-# use chorus_lib::hlist;
+# use chorus_lib::core::{ChoreographyLocation, ChoreoOp, Choreography, Projector};
+# use chorus_lib::{hlist, projector};
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # #[derive(ChoreographyLocation)]
@@ -47,7 +47,7 @@ let transport = LocalTransport::from(&[Alice::name(), Bob::name()]);
     // create a clone for Alice
     let transport = transport.clone();
     handles.push(thread::spawn(move || {
-        let p = ProjectorForAL::<AL>::new(Alice, transport);
+        let p = projector!(AL, Alice, transport);
         p.epp_and_run(HelloWorldChoreography);
     }));
 }
@@ -55,7 +55,7 @@ let transport = LocalTransport::from(&[Alice::name(), Bob::name()]);
     // create another for Bob
     let transport = transport.clone();
     handles.push(thread::spawn(move || {
-        let p = ProjectorForAL::<AL>::new(Bob, transport);
+        let p = projector!(AL, Bob, transport);
         p.epp_and_run(HelloWorldChoreography);
     }));
 }
