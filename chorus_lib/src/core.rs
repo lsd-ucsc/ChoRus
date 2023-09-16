@@ -122,10 +122,10 @@ where
 
 /// Macro to generate hlist
 #[macro_export]
-macro_rules! hlist {
+macro_rules! LocationSet {
     () => { $crate::core::HNil };
     ($head:ty $(,)*) => { $crate::core::HCons<$head, $crate::core::HNil> };
-    ($head:ty, $($tail:tt)*) => { $crate::core::HCons<$head, hlist!($($tail)*)> };
+    ($head:ty, $($tail:tt)*) => { $crate::core::HCons<$head, LocationSet!($($tail)*)> };
 }
 
 /// Marker
@@ -271,13 +271,13 @@ pub trait Transport {
 }
 
 /// Provides a method to perform end-point projection.
-pub struct Projector<AL: HList, L1: ChoreographyLocation, T: Transport, Index>
+pub struct Projector<LS: HList, L1: ChoreographyLocation, T: Transport, Index>
 where
-    L1: Member<AL, Index>,
+    L1: Member<LS, Index>,
 {
     target: PhantomData<L1>,
     transport: T,
-    available_locations: PhantomData<AL>,
+    location_set: PhantomData<LS>,
     index: PhantomData<Index>,
 }
 
@@ -285,13 +285,13 @@ where
 #[macro_export]
 macro_rules! projector {
     ($al_type:ty, $target:expr, $transport:expr) => {
-        Projector::<$al_type, _, _, _>::new($target, $transport)
+        $crate::core::Projector::<$al_type, _, _, _>::new($target, $transport)
     };
 }
 
-impl<AL: HList, L1: ChoreographyLocation, B: Transport, Index> Projector<AL, L1, B, Index>
+impl<LS: HList, L1: ChoreographyLocation, B: Transport, Index> Projector<LS, L1, B, Index>
 where
-    L1: Member<AL, Index>,
+    L1: Member<LS, Index>,
 {
     /// Constructs a `Projector` struct.
     ///
@@ -301,7 +301,7 @@ where
         Projector {
             target: PhantomData,
             transport,
-            available_locations: PhantomData,
+            location_set: PhantomData,
             index: PhantomData,
         }
     }
@@ -318,7 +318,7 @@ where
     /// Use this method to run a choreography that takes a located value as an input.
     pub fn remote<V, L2: ChoreographyLocation, Index2>(&self, _l2: L2) -> Located<V, L2>
     where
-        L2: Member<<L1 as Member<AL, Index>>::Remainder, Index2>,
+        L2: Member<<L1 as Member<LS, Index>>::Remainder, Index2>,
     {
         Located::remote()
     }
@@ -336,7 +336,7 @@ where
         choreo: C,
     ) -> V
     where
-        L: Subset<AL, IndexSet>,
+        L: Subset<LS, IndexSet>,
     {
         struct EppOp<'a, L: HList, L1: ChoreographyLocation, B: Transport> {
             target: PhantomData<L1>,

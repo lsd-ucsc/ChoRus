@@ -20,7 +20,7 @@ This protocol can be implemented as follows:
 struct DemoChoreography;
 
 impl Choreography for DemoChoreography {
-    type L = hlist!(Alice, Bob, Carol);
+    type L = LocationSet!(Alice, Bob, Carol);
     fn run(self, op: &impl ChoreoOp<Self::L>) {
         let x_at_alice = op.locally(Alice, |_| {
             get_random_number()
@@ -52,7 +52,7 @@ struct BobCarolChoreography {
     x_at_bob: Located<u32, Bob>,
 };
 impl Choreography for BobCarolChoreography {
-    type L = hlist!(Bob, Carol);
+    type L = LocationSet!(Bob, Carol);
     fn run(self, op: &impl ChoreoOp<Self::L>) {
         let is_even_at_bob: Located<bool, Bob> = op.locally(Bob, |un| {
             let x = un.unwrap(&self.x_at_bob);
@@ -81,7 +81,7 @@ Notice that `BobCarolChoreography` only describes the behavior of Bob and Carol 
 #     x_at_bob: Located<u32, Bob>,
 # };
 # impl Choreography for BobCarolChoreography {
-#     type L = hlist!(Bob, Carol);
+#     type L = LocationSet!(Bob, Carol);
 #     fn run(self, op: &impl ChoreoOp<Self::L>) {
 #         let is_even_at_bob: Located<bool, Bob> = op.locally(Bob, |un| {
 #             let x = un.unwrap(&self.x_at_bob);
@@ -99,7 +99,7 @@ Notice that `BobCarolChoreography` only describes the behavior of Bob and Carol 
 # }
 struct MainChoreography;
 impl Choreography for MainChoreography {
-    type L = hlist!(Alice, Bob, Carol);
+    type L = LocationSet!(Alice, Bob, Carol);
     fn run(self, op: &impl ChoreoOp<Self::L>) {
         let x_at_alice = op.locally(Alice, |_| {
             get_random_number()
@@ -135,7 +135,7 @@ struct BobCarolChoreography {
 };
 
 impl Choreography<BobCarolResult> for BobCarolChoreography {
-    type L = hlist!(Bob, Carol);
+    type L = LocationSet!(Bob, Carol);
     fn run(self, op: &impl ChoreoOp<Self::L>) -> BobCarolResult {
         let is_even_at_bob: Located<bool, Bob> = op.locally(Bob, |un| {
             let x = un.unwrap(&self.x_at_bob);
@@ -159,7 +159,7 @@ impl Choreography<BobCarolResult> for BobCarolChoreography {
 struct MainChoreography;
 
 impl Choreography for MainChoreography {
-    type L = hlist!(Alice, Bob, Carol);
+    type L = LocationSet!(Alice, Bob, Carol);
     fn run(self, op: &impl ChoreoOp<Self::L>) {
         let x_at_alice = op.locally(Alice, |_| {
             get_random_number()

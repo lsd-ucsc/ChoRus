@@ -1,7 +1,7 @@
 extern crate chorus_lib;
 use chorus_lib::{
     core::{ChoreoOp, Choreography, ChoreographyLocation, Located, Runner, Superposition},
-    hlist,
+    LocationSet,
 };
 
 #[derive(ChoreographyLocation)]
@@ -26,7 +26,7 @@ struct BobCarolChoreography {
 }
 
 impl Choreography<BobCarolResult> for BobCarolChoreography {
-    type L = hlist!(Bob, Carol);
+    type L = LocationSet!(Bob, Carol);
     fn run(self, op: &impl ChoreoOp<Self::L>) -> BobCarolResult {
         let is_even_at_bob: Located<bool, Bob> = op.locally(Bob, |un| {
             let x = un.unwrap(&self.x_at_bob);
@@ -50,7 +50,7 @@ impl Choreography<BobCarolResult> for BobCarolChoreography {
 struct MainChoreography;
 
 impl Choreography for MainChoreography {
-    type L = hlist!(Alice, Bob, Carol);
+    type L = LocationSet!(Alice, Bob, Carol);
     fn run(self, op: &impl ChoreoOp<Self::L>) {
         let x_at_alice = op.locally(Alice, |_| get_random_number());
         let x_at_bob = op.comm(Alice, Bob, &x_at_alice);

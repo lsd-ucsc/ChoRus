@@ -11,7 +11,7 @@ struct LocationPolymorphicChoreography<L1: ChoreographyLocation> {
 }
 
 impl<L1: ChoreographyLocation> Choreography for LocationPolymorphicChoreography<L1> {
-    type L = hlist!(L1);
+    type L = LocationSet!(L1);
     fn run(self, op: &impl ChoreoOp<Self::L>) {
         op.locally(self.location, |_| {
             println!("Hello, World!");

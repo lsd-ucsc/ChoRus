@@ -4,10 +4,10 @@ use std::thread;
 use std::{collections::HashMap, sync::Arc};
 
 use chorus_lib::{
-    core::{ChoreoOp, Choreography, ChoreographyLocation, Located, Projector},
+    core::{ChoreoOp, Choreography, ChoreographyLocation, Located},
     transport::local::LocalTransport,
 };
-use chorus_lib::{hlist, projector};
+use chorus_lib::{projector, LocationSet};
 use chrono::NaiveDate;
 
 #[derive(ChoreographyLocation)]
@@ -36,7 +36,7 @@ impl Decider for OneBuyerDecider {
 }
 
 impl Choreography<Located<bool, Buyer1>> for OneBuyerDecider {
-    type L = hlist!(Buyer1, Buyer2);
+    type L = LocationSet!(Buyer1, Buyer2);
     fn run(self, op: &impl ChoreoOp<Self::L>) -> Located<bool, Buyer1> {
         let price = op.broadcast(Buyer1, self.price);
         return op.locally(Buyer1, |_| {
@@ -57,7 +57,7 @@ impl Decider for TwoBuyerDecider {
 }
 
 impl Choreography<Located<bool, Buyer1>> for TwoBuyerDecider {
-    type L = hlist!(Buyer1, Buyer2);
+    type L = LocationSet!(Buyer1, Buyer2);
     fn run(self, op: &impl ChoreoOp<Self::L>) -> Located<bool, Buyer1> {
         let remaining = op.locally(Buyer1, |un| {
             const BUYER1_BUDGET: i32 = 100;
@@ -79,10 +79,10 @@ struct BooksellerChoreography<D: Choreography<Located<bool, Buyer1>>> {
     title: Located<String, Buyer1>,
 }
 
-impl<D: Choreography<Located<bool, Buyer1>, L = hlist!(Buyer1, Buyer2)> + Decider>
+impl<D: Choreography<Located<bool, Buyer1>, L = LocationSet!(Buyer1, Buyer2)> + Decider>
     Choreography<Located<Option<NaiveDate>, Buyer1>> for BooksellerChoreography<D>
 {
-    type L = hlist!(Buyer1, Buyer2, Seller);
+    type L = LocationSet!(Buyer1, Buyer2, Seller);
     fn run(self, op: &impl ChoreoOp<Self::L>) -> Located<Option<NaiveDate>, Buyer1> {
         let title_at_seller = op.comm(Buyer1, Seller, &self.title);
         let price_at_seller = op.locally(Seller, |un| {
@@ -102,7 +102,7 @@ impl<D: Choreography<Located<bool, Buyer1>, L = hlist!(Buyer1, Buyer2)> + Decide
             decision_at_buyer1: Located<bool, Buyer1>,
         }
         impl Choreography<Located<Option<NaiveDate>, Buyer1>> for GetDeliveryDateChoreography {
-            type L = hlist!(Buyer1, Seller);
+            type L = LocationSet!(Buyer1, Seller);
             fn run(self, op: &impl ChoreoOp<Self::L>) -> Located<Option<NaiveDate>, Buyer1> {
                 let decision = op.broadcast(Buyer1, self.decision_at_buyer1);
                 if decision {
@@ -142,11 +142,22 @@ fn main() {
         i
     };
 
-    type AL = hlist!(Seller, Buyer1, Buyer2);
     let transport = LocalTransport::from(&[Seller::name(), Buyer1::name(), Buyer2::name()]);
-    let seller_projector = Arc::new(projector!(AL, Seller, transport.clone()));
-    let buyer1_projector = Arc::new(projector!(AL, Buyer1, transport.clone()));
-    let buyer2_projector = Arc::new(projector!(AL, Buyer2, transport.clone()));
+    let seller_projector = Arc::new(projector!(
+        LocationSet!(Seller, Buyer1, Buyer2),
+        Seller,
+        transport.clone()
+    ));
+    let buyer1_projector = Arc::new(projector!(
+        LocationSet!(Seller, Buyer1, Buyer2),
+        Buyer1,
+        transport.clone()
+    ));
+    let buyer2_projector = Arc::new(projector!(
+        LocationSet!(Seller, Buyer1, Buyer2),
+        Buyer2,
+        transport.clone()
+    ));
 
     println!("Tries to buy HoTT with one buyer");
     type OneBuyerBooksellerChoreography = BooksellerChoreography<OneBuyerDecider>;
