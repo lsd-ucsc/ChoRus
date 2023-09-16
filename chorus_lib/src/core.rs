@@ -168,22 +168,6 @@ where
 {
 }
 
-/// Equal
-pub trait Equal<L: HList, Index> {}
-
-// Base case: HNil is equal to HNil
-impl Equal<HNil, Here> for HNil {}
-
-// Recursive case: Head::Tail is equal to L if
-// 1. Head is a member of L
-// 2. Tail is equal to the remainder of L
-impl<L: HList, Head, Tail, Index1, Index2> Equal<L, HCons<Index1, Index2>> for HCons<Head, Tail>
-where
-    Head: Member<L, Index1>,
-    Tail: Equal<Head::Remainder, Index2>,
-{
-}
-
 /// Provides a method to work with located values at the current location
 pub struct Unwrapper<L1: ChoreographyLocation> {
     phantom: PhantomData<L1>,
@@ -363,7 +347,7 @@ where
         choreo: C,
     ) -> V
     where
-        L: Equal<AL, IndexSet>,
+        L: Subset<AL, IndexSet>,
     {
         struct EppOp<'a, L: HList, L1: ChoreographyLocation, B: Transport> {
             target: PhantomData<L1>,
