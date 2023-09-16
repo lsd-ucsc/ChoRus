@@ -8,7 +8,7 @@ To use `Runner`, construct an instance using the `new` constructor, and then cal
 {{#include ./header.txt}}
 # struct DemoChoreography;
 # impl Choreography for DemoChoreography {
-#     type L = HNil;
+#     type L = hlist!();
 #     fn run(self, op: &impl ChoreoOp<Self::L>) {
 #     }
 # }

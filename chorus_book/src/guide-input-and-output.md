@@ -18,7 +18,7 @@ struct DemoChoreography {
 }
 
 impl Choreography for DemoChoreography {
-    type L = HNil;
+    type L = hlist!();
     fn run(self, op: &impl ChoreoOp<Self::L>) {
         println!("Input: {}", self.input);
     }
@@ -33,7 +33,7 @@ You can construct an instance of the choreography with the input and pass it to 
 #     input: String,
 # }
 # impl Choreography for DemoChoreography {
-#     type L = HNil;
+#     type L = hlist!();
 #     fn run(self, op: &impl ChoreoOp<Self::L>) {
 #         println!("Input: {}", self.input);
 #     }
@@ -140,7 +140,7 @@ To do so, we specify the output type to the `Choreography` trait and return the 
 struct DemoChoreography;
 
 impl Choreography<String> for DemoChoreography {
-    type L = HNil;
+    type L = hlist!();
     fn run(self, op: &impl ChoreoOp<Self::L>) -> String {
         "Hello, World!".to_string()
     }
