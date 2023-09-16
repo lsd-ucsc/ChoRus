@@ -70,7 +70,7 @@ impl Choreography for BobCarolChoreography {
 }
 ```
 
-Notice that the `BobCarolChoreography` only describes the behavior of Bob and Carol. Since Alice does not appear in this choreography, we can use the `colocally` operator in the main choreography to execute the sub-choreography only on Bob and Carol.
+Notice that `BobCarolChoreography` only describes the behavior of Bob and Carol (see its location set `L`). `colocally` is an operator to execute a choreography only at locations that is included in the location set. In this case, if we invoke `BobCarolChoreography` with `colocally` in the main choreography, it will only be executed at Bob and Carol and not at Alice.
 
 ```rust
 {{#include ./header.txt}}
