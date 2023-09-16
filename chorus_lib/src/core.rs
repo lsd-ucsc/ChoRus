@@ -272,7 +272,7 @@ pub trait Transport {
 
 /// Provides a method to perform end-point projection.
 pub struct Projector<L1: ChoreographyLocation, T: Transport> {
-    target: L1,
+    target: PhantomData<L1>,
     transport: T,
 }
 
@@ -282,7 +282,11 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
     /// - `target` is the projection target of the choreography.
     /// - `transport` is an implementation of `Transport`.
     pub fn new(target: L1, transport: B) -> Self {
-        Projector { target, transport }
+        let _ = target;
+        Projector {
+            target: PhantomData,
+            transport,
+        }
     }
 
     /// Constructs a `Located` struct located at the projection target using the actual value.
@@ -298,6 +302,7 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
     ///
     /// Note that the method panics at runtime if the projection target and the location of the value are the same.
     pub fn remote<V, L2: ChoreographyLocation>(&self, l2: L2) -> Located<V, L2> {
+        let _ = l2;
         // NOTE(shumbo): Ideally, this check should be done at the type level.
         if L1::name() == L2::name() {
             panic!("Cannot create a remote value at the same location");
