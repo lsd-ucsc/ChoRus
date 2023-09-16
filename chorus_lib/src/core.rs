@@ -168,6 +168,22 @@ where
 {
 }
 
+/// Equal
+ pub trait Equal<L: HList, Index> {}
+
+ // Base case: HNil is equal to HNil
+ impl Equal<HNil, Here> for HNil {}
+
+ // Recursive case: Head::Tail is equal to L if
+ // 1. Head is a member of L
+ // 2. Tail is equal to the remainder of L
+ impl<L: HList, Head, Tail, Index1, Index2> Equal<L, HCons<Index1, Index2>> for HCons<Head, Tail>
+ where
+     Head: Member<L, Index1>,
+     Tail: Equal<Head::Remainder, Index2>,
+ {
+ }
+
 /// Provides a method to work with located values at the current location
 pub struct Unwrapper<L1: ChoreographyLocation> {
     phantom: PhantomData<L1>,
@@ -271,28 +287,55 @@ pub trait Transport {
 }
 
 /// Provides a method to perform end-point projection.
-pub struct Projector<L1: ChoreographyLocation, T: Transport> {
+pub struct Projector<AL: HList, L1: ChoreographyLocation, T: Transport, Index> where 
+    L1: Member<AL, Index>{
     target: PhantomData<L1>,
     transport: T,
+    available_locations: PhantomData<AL>,
+    index: PhantomData<Index>,
 }
 
-impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
+/// Provides a wrapper struct for users so that they can only specify AL; since it can't be inferred.
+pub struct ProjectorForAL<AL: HList>(PhantomData<AL>);
+
+impl<AL: HList> ProjectorForAL<AL> {
     /// Constructs a `Projector` struct.
     ///
     /// - `target` is the projection target of the choreography.
     /// - `transport` is an implementation of `Transport`.
-    pub fn new(target: L1, transport: B) -> Self {
-        let _ = target;
+    pub fn new<L1: ChoreographyLocation, B: Transport, Index>(
+        target: L1,
+        transport: B,
+    ) -> Projector<AL, L1, B, Index>
+    where
+        L1: Member<AL, Index>,
+    {
+        Projector::new(target, transport)
+    }
+}
+
+impl<AL: HList, L1: ChoreographyLocation, B: Transport, Index> Projector<AL, L1, B, Index> 
+    where L1: Member<AL, Index> 
+{
+    /// Constructs a `Projector` struct.
+    ///
+    /// - `target` is the projection target of the choreography.
+    /// - `transport` is an implementation of `Transport`.
+    pub fn new(_target: L1, transport: B) -> Self
+    {
         Projector {
             target: PhantomData,
             transport,
+            available_locations: PhantomData,
+            index: PhantomData,
         }
     }
 
     /// Constructs a `Located` struct located at the projection target using the actual value.
     ///
     /// Use this method to run a choreography that takes a located value as an input.
-    pub fn local<V>(&self, value: V) -> Located<V, L1> {
+    pub fn local<V>(&self, value: V) -> Located<V, L1>
+    {
         Located::local(value)
     }
 
@@ -301,12 +344,10 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
     /// Use this method to run a choreography that takes a located value as an input.
     ///
     /// Note that the method panics at runtime if the projection target and the location of the value are the same.
-    pub fn remote<V, L2: ChoreographyLocation>(&self, l2: L2) -> Located<V, L2> {
-        let _ = l2;
-        // NOTE(shumbo): Ideally, this check should be done at the type level.
-        if L1::name() == L2::name() {
-            panic!("Cannot create a remote value at the same location");
-        }
+    pub fn remote<V, L2: ChoreographyLocation, Index2>(&self, _l2: L2) -> Located<V, L2>
+    where
+        L2: Member<<L1 as Member<AL, Index>>::Remainder, Index2>,
+    {
         Located::remote()
     }
 
@@ -318,7 +359,10 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
     }
 
     /// Performs end-point projection and runs a choreography.
-    pub fn epp_and_run<'a, V, L: HList, C: Choreography<V, L = L>>(&'a self, choreo: C) -> V {
+    pub fn epp_and_run<'a, V, L: HList, C: Choreography<V, L = L>, IndexSet>(&'a self, choreo: C) -> V
+    where
+        L: Equal<AL, IndexSet>,
+    {
         struct EppOp<'a, L: HList, L1: ChoreographyLocation, B: Transport> {
             target: PhantomData<L1>,
             transport: &'a B,

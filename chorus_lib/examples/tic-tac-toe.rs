@@ -3,7 +3,7 @@ extern crate chorus_lib;
 
 use chorus_lib::{
     core::{
-        ChoreoOp, Choreography, ChoreographyLocation, Deserialize, Located, Projector, Serialize,
+        ChoreoOp, Choreography, ChoreographyLocation, Deserialize, Located, ProjectorForAL, Serialize,
     },
     hlist,
     transport::http::HttpTransport,
@@ -290,6 +290,10 @@ fn main() {
     } else {
         Box::new(UserBrain::new(args.player))
     };
+
+    // Crate available locations for Projector
+    type AL = hlist!(PlayerX, PlayerO);
+
     match args.player {
         'X' => {
             let mut config = HashMap::new();
@@ -299,7 +303,7 @@ fn main() {
                 (args.opponent_hostname.as_str(), args.opponent_port),
             );
             let transport = HttpTransport::new(PlayerX::name(), &config);
-            let projector = Projector::new(PlayerX, transport);
+            let projector = ProjectorForAL::<AL>::new(PlayerX, transport);
             projector.epp_and_run(TicTacToeChoreography {
                 brain_for_x: projector.local(brain),
                 brain_for_o: projector.remote(PlayerO),
@@ -313,7 +317,7 @@ fn main() {
                 (args.opponent_hostname.as_str(), args.opponent_port),
             );
             let transport = HttpTransport::new(PlayerO::name(), &config);
-            let projector = Projector::new(PlayerO, transport);
+            let projector = ProjectorForAL::<AL>::new(PlayerO, transport);
             projector.epp_and_run(TicTacToeChoreography {
                 brain_for_x: projector.remote(PlayerX),
                 brain_for_o: projector.local(brain),

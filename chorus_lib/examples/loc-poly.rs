@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use std::thread;
 
 use chorus_lib::core::{
-    ChoreoOp, Choreography, ChoreographyLocation, Located, Portable, Projector,
+    ChoreoOp, Choreography, ChoreographyLocation, Located, Portable, ProjectorForAL,
 };
 use chorus_lib::hlist;
 use chorus_lib::transport::local::LocalTransport;
@@ -59,11 +59,14 @@ impl Choreography<Located<i32, Alice>> for MainChoreography {
 fn main() {
     let transport = LocalTransport::from(&[Alice::name(), Bob::name(), Carol::name()]);
 
+    // Crate available locations for Projector
+    type AL = hlist!(Alice, Bob);
+
     let mut handles = vec![];
     {
         let transport = transport.clone();
         handles.push(thread::spawn(|| {
-            let p = Projector::new(Alice, transport);
+            let p = ProjectorForAL::<AL>::new(Alice, transport);
             let v = p.epp_and_run(MainChoreography);
             assert_eq!(p.unwrap(v), 110);
         }));
@@ -71,7 +74,7 @@ fn main() {
     {
         let transport = transport.clone();
         handles.push(thread::spawn(|| {
-            let p = Projector::new(Bob, transport);
+            let p = ProjectorForAL::<AL>::new(Bob, transport);
             p.epp_and_run(MainChoreography);
         }));
     }

@@ -2,7 +2,7 @@ extern crate chorus_lib;
 
 use std::thread;
 
-use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
+use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, ProjectorForAL};
 use chorus_lib::hlist;
 use chorus_lib::transport::local::LocalTransport;
 
@@ -41,18 +41,21 @@ fn main() {
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     // Create a local transport
     let transport = LocalTransport::from(&[Alice::name(), Bob::name()]);
+    // Crate available locations for Projector
+    type AL = hlist!(Alice, Bob);
+
     // Run the choreography in two threads
     {
         let transport = transport.clone();
         handles.push(thread::spawn(move || {
-            let p = Projector::new(Alice, transport);
+            let p = ProjectorForAL::<AL>::new(Alice, transport);
             p.epp_and_run(HelloWorldChoreography);
         }));
     }
     {
         let transport = transport.clone();
         handles.push(thread::spawn(move || {
-            let p = Projector::new(Bob, transport);
+            let p = ProjectorForAL::<AL>::new(Bob, transport);
             p.epp_and_run(HelloWorldChoreography);
         }));
     }
