@@ -21,26 +21,7 @@ impl Choreography for HelloWorldChoreography {
 
 `Choreography` must implement the `run` method which defines the behavior of the system. The `run` method takes a reference to an object that implements the `ChoreoOp` trait. The `ChoreoOp` trait provides choreographic operators such as `locally` and `comm`.
 
-Also, each `Choreography` has an associated type `L`, which is the the list of `ChoreographyLocation`s it can operate on. You'll get a compile error if you try to work with a `ChoreographyLocation` that is not a member of `L`. To build a set of locations, you can use the macro `hlist!`.
-
-```rust, compile_fail
-# {{#include ./header.txt}}
-# // 1. Define a struct
-# struct HelloWorldChoreography;
-
-# // 2. Implement the `Choreography` trait
-// ...
-impl Choreography for HelloWorldChoreography {
-    type L = hlist!(Alice);
-    fn run(self, op: &impl ChoreoOp<Self::L>) {
-        // this will fail
-        op.locally(Bob, |_| {
-            println!("Hello, World!");
-        });
-    }
-}
-```
-
+Also, each `Choreography` has an associated type `L`, which is the set of `ChoreographyLocation`s it can operate on. To build a set of locations, you can use the macro `hlist!`.
 
 ## Choreographic Operators
 
@@ -179,3 +160,26 @@ if num == 42 {
     println!("The number is not 42!");
 }
 ```
+
+### Note on invalid values for Choreography::L
+
+You'll get a compile error if you try to work with a `ChoreographyLocation` that is not a member of `L`.
+
+```rust, compile_fail
+# {{#include ./header.txt}}
+# // 1. Define a struct
+# struct HelloWorldChoreography;
+
+# // 2. Implement the `Choreography` trait
+// ...
+impl Choreography for HelloWorldChoreography {
+    type L = hlist!(Alice);
+    fn run(self, op: &impl ChoreoOp<Self::L>) {
+        // this will fail
+        op.locally(Bob, |_| {
+            println!("Hello, World!");
+        });
+    }
+}
+```
+
