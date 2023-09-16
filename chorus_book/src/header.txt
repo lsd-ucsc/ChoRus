@@ -1,5 +1,5 @@
 # extern crate chorus_lib;
-# use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector, Located, Superposition, Runner};
+# use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, ProjectorForAL, Located, Superposition, Runner};
 # use chorus_lib::transport::local::LocalTransport;
 # use chorus_lib::hlist;
 # #[derive(ChoreographyLocation)]

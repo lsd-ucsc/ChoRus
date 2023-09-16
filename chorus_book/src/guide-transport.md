@@ -25,24 +25,29 @@ Because of the nature of the `Local` transport, you must use the same `LocalTran
 # extern crate chorus_lib;
 # use chorus_lib::transport::local::LocalTransport;
 # use std::thread;
-# use chorus_lib::core::{ChoreographyLocation, ChoreoOp, Choreography, Projector, HNil};
+# use chorus_lib::core::{ChoreographyLocation, ChoreoOp, Choreography, ProjectorForAL};
+# use chorus_lib::hlist;
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # #[derive(ChoreographyLocation)]
 # struct Bob;
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     type L = HNil;
+#     type L = hlist!(Alice, Bob);
 #     fn run(self, op: &impl ChoreoOp<Self::L>) {
 #     }
 # }
+
+// Crate available locations for Projector
+type AL = hlist!(Alice, Bob);
+
 let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
 let transport = LocalTransport::from(&[Alice::name(), Bob::name()]);
 {
     // create a clone for Alice
     let transport = transport.clone();
     handles.push(thread::spawn(move || {
-        let p = Projector::new(Alice, transport);
+        let p = ProjectorForAL::<AL>::new(Alice, transport);
         p.epp_and_run(HelloWorldChoreography);
     }));
 }
@@ -50,7 +55,7 @@ let transport = LocalTransport::from(&[Alice::name(), Bob::name()]);
     // create another for Bob
     let transport = transport.clone();
     handles.push(thread::spawn(move || {
-        let p = Projector::new(Bob, transport);
+        let p = ProjectorForAL::<AL>::new(Bob, transport);
         p.epp_and_run(HelloWorldChoreography);
     }));
 }

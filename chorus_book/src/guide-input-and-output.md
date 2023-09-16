@@ -33,7 +33,7 @@ You can construct an instance of the choreography with the input and pass it to 
 #     input: String,
 # }
 # impl Choreography for DemoChoreography {
-#     type L = hlist!();
+#     type L = hlist!(Alice);
 #     fn run(self, op: &impl ChoreoOp<Self::L>) {
 #         println!("Input: {}", self.input);
 #     }
@@ -42,7 +42,7 @@ You can construct an instance of the choreography with the input and pass it to 
 let choreo = DemoChoreography {
     input: "World".to_string(),
 };
-let projector = Projector::new(Alice, transport);
+let projector = ProjectorForAL::<hlist!(Alice)>::new(Alice, transport);
 projector.epp_and_run(choreo);
 ```
 
@@ -92,7 +92,7 @@ To run the sample choreography above at Alice, we use the `local` method to cons
 #         });
 #     }
 # }
-let projector_for_alice = Projector::new(Alice, transport);
+let projector_for_alice = ProjectorForAL::<hlist!(Alice)>::new(Alice, transport);
 // Because the target of the projector is Alice, the located value is available at Alice.
 let string_at_alice: Located<String, Alice> = projector_for_alice.local("Hello, World!".to_string());
 // Instantiate the choreography with the located value
@@ -111,7 +111,7 @@ For Bob, we use the `remote` method to construct the located value.
 # }
 #
 # impl Choreography for DemoChoreography {
-#     type L = hlist!(Alice);
+#     type L = hlist!(Alice, Bob);
 #     fn run(self, op: &impl ChoreoOp<Self::L>) {
 #         op.locally(Alice, |un| {
 #             let input = un.unwrap(&self.input);
@@ -119,7 +119,7 @@ For Bob, we use the `remote` method to construct the located value.
 #         });
 #     }
 # }
-let projector_for_bob = Projector::new(Bob, transport);
+let projector_for_bob = ProjectorForAL::<hlist!(Alice, Bob)>::new(Bob, transport);
 // Construct a remote located value at Alice. The actual value is not required.
 let string_at_alice = projector_for_bob.remote(Alice);
 // Instantiate the choreography with the located value
@@ -160,7 +160,7 @@ impl Choreography<String> for DemoChoreography {
 #     }
 # }
 let choreo = DemoChoreography;
-let projector = Projector::new(Alice, transport);
+let projector = ProjectorForAL::<hlist!(Alice)>::new(Alice, transport);
 let output = projector.epp_and_run(choreo);
 assert_eq!(output, "Hello, World!".to_string());
 ```
@@ -182,7 +182,7 @@ impl Choreography<Located<String, Alice>> for DemoChoreography {
     }
 }
 
-let projector = Projector::new(Alice, transport);
+let projector = ProjectorForAL::<hlist!(Alice)>::new(Alice, transport);
 let output = projector.epp_and_run(DemoChoreography);
 let string_at_alice = projector.unwrap(output);
 assert_eq!(string_at_alice, "Hello, World!".to_string());

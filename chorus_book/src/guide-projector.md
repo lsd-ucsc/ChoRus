@@ -9,14 +9,15 @@ To create a `Projector`, you need to provide the location and the transport.
 ```rust
 # extern crate chorus_lib;
 # use chorus_lib::transport::local::LocalTransport;
-# use chorus_lib::core::{ChoreographyLocation, Projector};
+# use chorus_lib::core::{ChoreographyLocation, ProjectorForAL};
+# use chorus_lib::hlist;
 # let transport = LocalTransport::from(&[Alice::name(), Bob::name()]);
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # #[derive(ChoreographyLocation)]
 # struct Bob;
 #
-let projector = Projector::new(Alice, transport);
+let projector = ProjectorForAL::<hlist!(Alice, Bob)>::new(Alice, transport);
 ```
 
 Notice that the `Projector` is parameterized by the location type. You will need one projector for each location to execute choreography.
@@ -28,7 +29,8 @@ To execute a choreography, you need to call the `epp_and_run` method on the `Pro
 ```rust
 # extern crate chorus_lib;
 # use chorus_lib::transport::local::LocalTransport;
-# use chorus_lib::core::{ChoreographyLocation, Projector, Choreography, ChoreoOp, HNil};
+# use chorus_lib::core::{ChoreographyLocation, ProjectorForAL, Choreography, ChoreoOp};
+# use chorus_lib::hlist;
 # let transport = LocalTransport::from(&[Alice::name(), Bob::name()]);
 # #[derive(ChoreographyLocation)]
 # struct Alice;
@@ -36,12 +38,12 @@ To execute a choreography, you need to call the `epp_and_run` method on the `Pro
 # struct Bob;
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     type L = HNil;
+#     type L = hlist!(Alice);
 #     fn run(self, op: &impl ChoreoOp<Self::L>) {
 #     }
 # }
 #
-# let projector = Projector::new(Alice, transport);
+# let projector = ProjectorForAL::<hlist!(Alice)>::new(Alice, transport);
 projector.epp_and_run(HelloWorldChoreography);
 ```
 
