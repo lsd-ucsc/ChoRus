@@ -138,23 +138,23 @@ mod tests {
         let v = 42;
         let mut config = HashMap::new();
         let (signal, wait) = mpsc::channel::<()>();
-        config.insert(Alice.name(), ("localhost", 9010));
-        config.insert(Bob.name(), ("localhost", 9011));
+        config.insert(Alice::name(), ("localhost", 9010));
+        config.insert(Bob::name(), ("localhost", 9011));
         let mut handles = Vec::new();
         {
             let config = config.clone();
             handles.push(thread::spawn(move || {
                 wait.recv().unwrap(); // wait for Bob to start
-                let transport = HttpTransport::new(Alice.name(), &config);
-                transport.send::<i32>(Alice.name(), Bob.name(), &v);
+                let transport = HttpTransport::new(Alice::name(), &config);
+                transport.send::<i32>(Alice::name(), Bob::name(), &v);
             }));
         }
         {
             let config = config.clone();
             handles.push(thread::spawn(move || {
-                let transport = HttpTransport::new(Bob.name(), &config);
+                let transport = HttpTransport::new(Bob::name(), &config);
                 signal.send(()).unwrap();
-                let v2 = transport.receive::<i32>(Alice.name(), Bob.name());
+                let v2 = transport.receive::<i32>(Alice::name(), Bob::name());
                 assert_eq!(v, v2);
             }));
         }
@@ -168,15 +168,15 @@ mod tests {
         let v = 42;
         let mut config = HashMap::new();
         let (signal, wait) = mpsc::channel::<()>();
-        config.insert(Alice.name(), ("localhost", 9020));
-        config.insert(Bob.name(), ("localhost", 9021));
+        config.insert(Alice::name(), ("localhost", 9020));
+        config.insert(Bob::name(), ("localhost", 9021));
         let mut handles = Vec::new();
         {
             let config = config.clone();
             handles.push(thread::spawn(move || {
                 signal.send(()).unwrap();
-                let transport = HttpTransport::new(Alice.name(), &config);
-                transport.send::<i32>(Alice.name(), Bob.name(), &v);
+                let transport = HttpTransport::new(Alice::name(), &config);
+                transport.send::<i32>(Alice::name(), Bob::name(), &v);
             }));
         }
         {
@@ -185,8 +185,8 @@ mod tests {
                 // wait for Alice to start, which forces Alice to retry
                 wait.recv().unwrap();
                 sleep(Duration::from_millis(100));
-                let transport = HttpTransport::new(Bob.name(), &config);
-                let v2 = transport.receive::<i32>(Alice.name(), Bob.name());
+                let transport = HttpTransport::new(Bob::name(), &config);
+                let v2 = transport.receive::<i32>(Alice::name(), Bob::name());
                 assert_eq!(v, v2);
             }));
         }

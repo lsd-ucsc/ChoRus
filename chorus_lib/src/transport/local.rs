@@ -79,18 +79,18 @@ mod tests {
     #[test]
     fn test_local_transport() {
         let v = 42;
-        let transport = LocalTransport::from(&[Alice.name(), Bob.name()]);
+        let transport = LocalTransport::from(&[Alice::name(), Bob::name()]);
         let mut handles = Vec::new();
         {
             let transport = transport.clone();
             handles.push(thread::spawn(move || {
-                transport.send::<i32>(Alice.name(), Bob.name(), &v);
+                transport.send::<i32>(Alice::name(), Bob::name(), &v);
             }));
         }
         {
             let transport = transport.clone();
             handles.push(thread::spawn(move || {
-                let v2 = transport.receive::<i32>(Alice.name(), Bob.name());
+                let v2 = transport.receive::<i32>(Alice::name(), Bob::name());
                 assert_eq!(v, v2);
             }));
         }
