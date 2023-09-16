@@ -343,8 +343,6 @@ where
     /// Constructs a `Located` struct *NOT* located at the projection target.
     ///
     /// Use this method to run a choreography that takes a located value as an input.
-    ///
-    /// Note that the method panics at runtime if the projection target and the location of the value are the same.
     pub fn remote<V, L2: ChoreographyLocation, Index2>(&self, _l2: L2) -> Located<V, L2>
     where
         L2: Member<<L1 as Member<AL, Index>>::Remainder, Index2>,
