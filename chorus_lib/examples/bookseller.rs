@@ -74,7 +74,7 @@ impl Choreography for BooksellerChoreography {
 
 fn main() {
     let transport = LocalTransport::from(&[Seller::name(), Buyer::name()]);
-    type AL = hlist!(Buyer, Seller); 
+    type AL = hlist!(Buyer, Seller);
     let seller_projector = ProjectorForAL::<AL>::new(Seller, transport.clone());
     let buyer_projector = ProjectorForAL::<AL>::new(Buyer, transport.clone());
 

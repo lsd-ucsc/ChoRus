@@ -169,20 +169,20 @@ where
 }
 
 /// Equal
- pub trait Equal<L: HList, Index> {}
+pub trait Equal<L: HList, Index> {}
 
- // Base case: HNil is equal to HNil
- impl Equal<HNil, Here> for HNil {}
+// Base case: HNil is equal to HNil
+impl Equal<HNil, Here> for HNil {}
 
- // Recursive case: Head::Tail is equal to L if
- // 1. Head is a member of L
- // 2. Tail is equal to the remainder of L
- impl<L: HList, Head, Tail, Index1, Index2> Equal<L, HCons<Index1, Index2>> for HCons<Head, Tail>
- where
-     Head: Member<L, Index1>,
-     Tail: Equal<Head::Remainder, Index2>,
- {
- }
+// Recursive case: Head::Tail is equal to L if
+// 1. Head is a member of L
+// 2. Tail is equal to the remainder of L
+impl<L: HList, Head, Tail, Index1, Index2> Equal<L, HCons<Index1, Index2>> for HCons<Head, Tail>
+where
+    Head: Member<L, Index1>,
+    Tail: Equal<Head::Remainder, Index2>,
+{
+}
 
 /// Provides a method to work with located values at the current location
 pub struct Unwrapper<L1: ChoreographyLocation> {
@@ -287,8 +287,10 @@ pub trait Transport {
 }
 
 /// Provides a method to perform end-point projection.
-pub struct Projector<AL: HList, L1: ChoreographyLocation, T: Transport, Index> where 
-    L1: Member<AL, Index>{
+pub struct Projector<AL: HList, L1: ChoreographyLocation, T: Transport, Index>
+where
+    L1: Member<AL, Index>,
+{
     target: PhantomData<L1>,
     transport: T,
     available_locations: PhantomData<AL>,
@@ -314,15 +316,15 @@ impl<AL: HList> ProjectorForAL<AL> {
     }
 }
 
-impl<AL: HList, L1: ChoreographyLocation, B: Transport, Index> Projector<AL, L1, B, Index> 
-    where L1: Member<AL, Index> 
+impl<AL: HList, L1: ChoreographyLocation, B: Transport, Index> Projector<AL, L1, B, Index>
+where
+    L1: Member<AL, Index>,
 {
     /// Constructs a `Projector` struct.
     ///
     /// - `target` is the projection target of the choreography.
     /// - `transport` is an implementation of `Transport`.
-    pub fn new(_target: L1, transport: B) -> Self
-    {
+    pub fn new(_target: L1, transport: B) -> Self {
         Projector {
             target: PhantomData,
             transport,
@@ -334,8 +336,7 @@ impl<AL: HList, L1: ChoreographyLocation, B: Transport, Index> Projector<AL, L1,
     /// Constructs a `Located` struct located at the projection target using the actual value.
     ///
     /// Use this method to run a choreography that takes a located value as an input.
-    pub fn local<V>(&self, value: V) -> Located<V, L1>
-    {
+    pub fn local<V>(&self, value: V) -> Located<V, L1> {
         Located::local(value)
     }
 
@@ -359,7 +360,10 @@ impl<AL: HList, L1: ChoreographyLocation, B: Transport, Index> Projector<AL, L1,
     }
 
     /// Performs end-point projection and runs a choreography.
-    pub fn epp_and_run<'a, V, L: HList, C: Choreography<V, L = L>, IndexSet>(&'a self, choreo: C) -> V
+    pub fn epp_and_run<'a, V, L: HList, C: Choreography<V, L = L>, IndexSet>(
+        &'a self,
+        choreo: C,
+    ) -> V
     where
         L: Equal<AL, IndexSet>,
     {

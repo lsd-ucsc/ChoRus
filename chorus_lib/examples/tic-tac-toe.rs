@@ -3,7 +3,8 @@ extern crate chorus_lib;
 
 use chorus_lib::{
     core::{
-        ChoreoOp, Choreography, ChoreographyLocation, Deserialize, Located, ProjectorForAL, Serialize,
+        ChoreoOp, Choreography, ChoreographyLocation, Deserialize, Located, ProjectorForAL,
+        Serialize,
     },
     hlist,
     transport::http::HttpTransport,
