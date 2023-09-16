@@ -3,10 +3,10 @@ extern crate chorus_lib;
 use std::io;
 use std::thread;
 
-use chorus_lib::hlist;
 use chrono::NaiveDate;
 
-use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, ProjectorForAL};
+use chorus_lib::{hlist, projector};
+use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
 use chorus_lib::transport::local::LocalTransport;
 
 fn get_book(title: &str) -> Option<(i32, NaiveDate)> {
@@ -75,8 +75,8 @@ impl Choreography for BooksellerChoreography {
 fn main() {
     let transport = LocalTransport::from(&[Seller::name(), Buyer::name()]);
     type AL = hlist!(Buyer, Seller);
-    let seller_projector = ProjectorForAL::<AL>::new(Seller, transport.clone());
-    let buyer_projector = ProjectorForAL::<AL>::new(Buyer, transport.clone());
+    let seller_projector = projector!(AL, Seller, transport.clone());
+    let buyer_projector = projector!(AL, Buyer, transport.clone());
 
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     handles.push(thread::spawn(move || {

@@ -281,23 +281,12 @@ where
     index: PhantomData<Index>,
 }
 
-/// Provides a wrapper struct for users so that they can only specify AL; since it can't be inferred.
-pub struct ProjectorForAL<AL: HList>(PhantomData<AL>);
-
-impl<AL: HList> ProjectorForAL<AL> {
-    /// Constructs a `Projector` struct.
-    ///
-    /// - `target` is the projection target of the choreography.
-    /// - `transport` is an implementation of `Transport`.
-    pub fn new<L1: ChoreographyLocation, B: Transport, Index>(
-        target: L1,
-        transport: B,
-    ) -> Projector<AL, L1, B, Index>
-    where
-        L1: Member<AL, Index>,
-    {
-        Projector::new(target, transport)
-    }
+/// Macro to make Projector
+#[macro_export]
+macro_rules! projector {
+    ($al_type:ty, $target:expr, $transport:expr) => {
+        Projector::<$al_type, _, _, _>::new($target, $transport)
+    };
 }
 
 impl<AL: HList, L1: ChoreographyLocation, B: Transport, Index> Projector<AL, L1, B, Index>

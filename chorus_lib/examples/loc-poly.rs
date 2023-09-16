@@ -3,9 +3,9 @@ use std::fmt::Debug;
 use std::thread;
 
 use chorus_lib::core::{
-    ChoreoOp, Choreography, ChoreographyLocation, Located, Portable, ProjectorForAL,
+    ChoreoOp, Choreography, ChoreographyLocation, Located, Portable, Projector,
 };
-use chorus_lib::hlist;
+use chorus_lib::{hlist, projector};
 use chorus_lib::transport::local::LocalTransport;
 
 #[derive(ChoreographyLocation)]
@@ -66,7 +66,7 @@ fn main() {
     {
         let transport = transport.clone();
         handles.push(thread::spawn(|| {
-            let p = ProjectorForAL::<AL>::new(Alice, transport);
+            let p = projector!(AL, Alice, transport);
             let v = p.epp_and_run(MainChoreography);
             assert_eq!(p.unwrap(v), 110);
         }));
@@ -74,7 +74,7 @@ fn main() {
     {
         let transport = transport.clone();
         handles.push(thread::spawn(|| {
-            let p = ProjectorForAL::<AL>::new(Bob, transport);
+            let p = projector!(AL, Bob, transport);
             p.epp_and_run(MainChoreography);
         }));
     }

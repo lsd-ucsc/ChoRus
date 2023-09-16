@@ -3,9 +3,9 @@ extern crate chorus_lib;
 use std::thread;
 use std::{collections::HashMap, sync::Arc};
 
-use chorus_lib::hlist;
+use chorus_lib::{hlist, projector};
 use chorus_lib::{
-    core::{ChoreoOp, Choreography, ChoreographyLocation, Located, ProjectorForAL},
+    core::{ChoreoOp, Choreography, ChoreographyLocation, Located, Projector},
     transport::local::LocalTransport,
 };
 use chrono::NaiveDate;
@@ -144,9 +144,9 @@ fn main() {
 
     type AL = hlist!(Seller, Buyer1, Buyer2);
     let transport = LocalTransport::from(&[Seller::name(), Buyer1::name(), Buyer2::name()]);
-    let seller_projector = Arc::new(ProjectorForAL::<AL>::new(Seller, transport.clone()));
-    let buyer1_projector = Arc::new(ProjectorForAL::<AL>::new(Buyer1, transport.clone()));
-    let buyer2_projector = Arc::new(ProjectorForAL::<AL>::new(Buyer2, transport.clone()));
+    let seller_projector = Arc::new(projector!(AL, Seller, transport.clone()));
+    let buyer1_projector = Arc::new(projector!(AL, Buyer1, transport.clone()));
+    let buyer2_projector = Arc::new(projector!(AL, Buyer2, transport.clone()));
 
     println!("Tries to buy HoTT with one buyer");
     type OneBuyerBooksellerChoreography = BooksellerChoreography<OneBuyerDecider>;

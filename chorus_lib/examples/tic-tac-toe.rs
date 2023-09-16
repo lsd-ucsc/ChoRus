@@ -3,10 +3,10 @@ extern crate chorus_lib;
 
 use chorus_lib::{
     core::{
-        ChoreoOp, Choreography, ChoreographyLocation, Deserialize, Located, ProjectorForAL,
+        ChoreoOp, Choreography, ChoreographyLocation, Deserialize, Located, Projector,
         Serialize,
     },
-    hlist,
+    hlist, projector,
     transport::http::HttpTransport,
 };
 use clap::Parser;
@@ -304,7 +304,7 @@ fn main() {
                 (args.opponent_hostname.as_str(), args.opponent_port),
             );
             let transport = HttpTransport::new(PlayerX::name(), &config);
-            let projector = ProjectorForAL::<AL>::new(PlayerX, transport);
+            let projector = projector!(AL, PlayerX, transport);
             projector.epp_and_run(TicTacToeChoreography {
                 brain_for_x: projector.local(brain),
                 brain_for_o: projector.remote(PlayerO),
@@ -318,7 +318,7 @@ fn main() {
                 (args.opponent_hostname.as_str(), args.opponent_port),
             );
             let transport = HttpTransport::new(PlayerO::name(), &config);
-            let projector = ProjectorForAL::<AL>::new(PlayerO, transport);
+            let projector = projector!(AL, PlayerO, transport);
             projector.epp_and_run(TicTacToeChoreography {
                 brain_for_x: projector.remote(PlayerX),
                 brain_for_o: projector.local(brain),
