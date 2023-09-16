@@ -167,21 +167,6 @@ where
     Tail: Subset<L, ITail>,
 {
 }
-/// Equal
-pub trait Equal<L: HList, Index> {}
-
-// Base case: HNil is equal to HNil
-impl Equal<HNil, Here> for HNil {}
-
-// Recursive case: Head::Tail is equal to L if
-// 1. Head is a member of L
-// 2. Tail is equal to the remainder of L
-impl<L: HList, Head, Tail, Index1, Index2> Equal<L, HCons<Index1, Index2>> for HCons<Head, Tail>
-where
-    Head: Member<L, Index1>,
-    Tail: Equal<Head::Remainder, Index2>,
-{
-}
 
 /// Provides a method to work with located values at the current location
 pub struct Unwrapper<L1: ChoreographyLocation> {
@@ -242,9 +227,9 @@ pub trait ChoreoOp<L: HList> {
         L1: Member<L, Index>;
 
     /// Calls a choreography.
-    fn call<R, M, C: Choreography<R, L = M>, Index>(&self, choreo: C) -> R
+    fn call<R, M, Index, C: Choreography<R, L = M>>(&self, choreo: C) -> R
     where
-        M: HList + Equal<L, Index>;
+        M: HList + Subset<L, Index>;
 
     /// Calls a choreography on a subset of locations.
     fn colocally<R: Superposition, S: HList, C: Choreography<R, L = S>, Index>(
@@ -393,9 +378,9 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
                 }
             }
 
-            fn call<R, M, C: Choreography<R, L = M>, Index>(&self, choreo: C) -> R
+            fn call<R, M, Index, C: Choreography<R, L = M>>(&self, choreo: C) -> R
             where
-                M: HList + Equal<L, Index>,
+                M: HList + Subset<L, Index>,
             {
                 let op: EppOp<'a, M, T, B> = EppOp {
                     target: PhantomData::<T>,
@@ -506,9 +491,9 @@ impl<L: HList> Runner<L> {
                 data.value.unwrap()
             }
 
-            fn call<R, M, C: Choreography<R, L = M>, Index>(&self, choreo: C) -> R
+            fn call<R, M, Index, C: Choreography<R, L = M>>(&self, choreo: C) -> R
             where
-                M: HList + Equal<L, Index>,
+                M: HList + Subset<L, Index>,
             {
                 let op: RunOp<M> = RunOp(PhantomData);
                 choreo.run(&op)

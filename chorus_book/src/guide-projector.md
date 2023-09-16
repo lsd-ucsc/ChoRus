@@ -10,7 +10,7 @@ To create a `Projector`, you need to provide the location and the transport.
 # extern crate chorus_lib;
 # use chorus_lib::transport::local::LocalTransport;
 # use chorus_lib::core::{ChoreographyLocation, Projector};
-# let transport = LocalTransport::from(&[Alice.name(), Bob.name()]);
+# let transport = LocalTransport::from(&[Alice::name(), Bob::name()]);
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # #[derive(ChoreographyLocation)]
@@ -28,15 +28,16 @@ To execute a choreography, you need to call the `epp_and_run` method on the `Pro
 ```rust
 # extern crate chorus_lib;
 # use chorus_lib::transport::local::LocalTransport;
-# use chorus_lib::core::{ChoreographyLocation, Projector, Choreography, ChoreoOp};
-# let transport = LocalTransport::from(&[Alice.name(), Bob.name()]);
+# use chorus_lib::core::{ChoreographyLocation, Projector, Choreography, ChoreoOp, HNil};
+# let transport = LocalTransport::from(&[Alice::name(), Bob::name()]);
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # #[derive(ChoreographyLocation)]
 # struct Bob;
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     fn run(self, op: &impl ChoreoOp) {
+#     type L = HNil;
+#     fn run(self, op: &impl ChoreoOp<Self::L>) {
 #     }
 # }
 #

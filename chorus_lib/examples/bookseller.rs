@@ -3,6 +3,7 @@ extern crate chorus_lib;
 use std::io;
 use std::thread;
 
+use chorus_lib::hlist;
 use chrono::NaiveDate;
 
 use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
@@ -26,7 +27,8 @@ struct Buyer;
 
 struct BooksellerChoreography;
 impl Choreography for BooksellerChoreography {
-    fn run(self, op: &impl ChoreoOp) {
+    type L = hlist!(Seller, Buyer);
+    fn run(self, op: &impl ChoreoOp<Self::L>) {
         let title_at_buyer = op.locally(Buyer, |_| {
             println!("Enter the title of the book to buy (TAPL or HoTT)");
             let mut title = String::new();
@@ -71,7 +73,7 @@ impl Choreography for BooksellerChoreography {
 }
 
 fn main() {
-    let transport = LocalTransport::from(&[Seller.name(), Buyer.name()]);
+    let transport = LocalTransport::from(&[Seller::name(), Buyer::name()]);
     let seller_projector = Projector::new(Seller, transport.clone());
     let buyer_projector = Projector::new(Buyer, transport.clone());
 
