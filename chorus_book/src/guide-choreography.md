@@ -9,7 +9,7 @@ struct HelloWorldChoreography;
 
 // 2. Implement the `Choreography` trait
 impl Choreography for HelloWorldChoreography {
-    type L = hlist!(Alice);
+    type L = LocationSet!(Alice);
     fn run(self, op: &impl ChoreoOp<Self::L>) {
         // 3. Use the `op` parameter to access operators
         op.locally(Alice, |_| {
@@ -21,7 +21,7 @@ impl Choreography for HelloWorldChoreography {
 
 `Choreography` must implement the `run` method which defines the behavior of the system. The `run` method takes a reference to an object that implements the `ChoreoOp` trait. The `ChoreoOp` trait provides choreographic operators such as `locally` and `comm`.
 
-Also, each `Choreography` has an associated type `L`, which is the set of `ChoreographyLocation`s it can operate on. To build a set of locations, you can use the macro `hlist!`.
+Also, each `Choreography` has an associated type `L`, called it's location set; this is the set of `ChoreographyLocation`s that the `Choreography` can operate on. To build a location set, you can use the macro `LocationSet!`.
 
 ## Choreographic Operators
 
@@ -36,7 +36,7 @@ The `locally` operator is used to perform a computation at a single location. It
 #
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     type L = hlist!(Alice);
+#     type L = LocationSet!(Alice);
 #     fn run(self, op: &impl ChoreoOp<Self::L>) {
 op.locally(Alice, |_| {
     println!("Hello, World!");
@@ -52,7 +52,7 @@ The closure can return a value to create a located value. Located values are val
 #
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     type L = hlist!(Alice);
+#     type L = LocationSet!(Alice);
 #     fn run(self, op: &impl ChoreoOp<Self::L>) {
 // This value is only available at Alice
 let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
@@ -69,7 +69,7 @@ The computation closure takes `Unwrapper`. Using the `Unwrapper`, you can get a 
 #
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     type L = hlist!(Alice);
+#     type L = LocationSet!(Alice);
 #     fn run(self, op: &impl ChoreoOp<Self::L>) {
 let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
     42
@@ -90,7 +90,7 @@ Note that you can unwrap a located value only at the location where the located 
 #
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     type L = hlist!(Alice, Bob);
+#     type L = LocationSet!(Alice, Bob);
 #     fn run(self, op: &impl ChoreoOp<Self::L>) {
 // This code will fail to compile
 let num_at_alice = op.locally(Alice, |_| { 42 });
@@ -113,7 +113,7 @@ The `comm` operator is used to perform a communication between two locations. It
 #
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     type L = hlist!(Alice, Bob);
+#     type L = LocationSet!(Alice, Bob);
 #     fn run(self, op: &impl ChoreoOp<Self::L>) {
 // This value is only available at Alice
 let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
@@ -139,7 +139,7 @@ The `broadcast` operator is used to perform a broadcast from a single location t
 #
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     type L = hlist!(Alice);
+#     type L = LocationSet!(Alice);
 #     fn run(self, op: &impl ChoreoOp<Self::L>) {
 // This value is only available at Alice
 let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
@@ -173,7 +173,7 @@ You'll get a compile error if you try to work with a `ChoreographyLocation` that
 # // 2. Implement the `Choreography` trait
 // ...
 impl Choreography for HelloWorldChoreography {
-    type L = hlist!(Alice);
+    type L = LocationSet!(Alice);
     fn run(self, op: &impl ChoreoOp<Self::L>) {
         // this will fail
         op.locally(Bob, |_| {

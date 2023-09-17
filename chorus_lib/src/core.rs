@@ -122,10 +122,10 @@ where
 
 /// Macro to generate hlist
 #[macro_export]
-macro_rules! hlist {
+macro_rules! LocationSet {
     () => { $crate::core::HNil };
     ($head:ty $(,)*) => { $crate::core::HCons<$head, $crate::core::HNil> };
-    ($head:ty, $($tail:tt)*) => { $crate::core::HCons<$head, hlist!($($tail)*)> };
+    ($head:ty, $($tail:tt)*) => { $crate::core::HCons<$head, LocationSet!($($tail)*)> };
 }
 
 /// Marker
@@ -271,21 +271,38 @@ pub trait Transport {
 }
 
 /// Provides a method to perform end-point projection.
-pub struct Projector<L1: ChoreographyLocation, T: Transport> {
+pub struct Projector<LS: HList, L1: ChoreographyLocation, T: Transport, Index>
+where
+    L1: Member<LS, Index>,
+{
     target: PhantomData<L1>,
     transport: T,
+    location_set: PhantomData<LS>,
+    index: PhantomData<Index>,
 }
 
-impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
+/// Macro to make Projector
+#[macro_export]
+macro_rules! projector {
+    ($al_type:ty, $target:expr, $transport:expr) => {
+        $crate::core::Projector::<$al_type, _, _, _>::new($target, $transport)
+    };
+}
+
+impl<LS: HList, L1: ChoreographyLocation, B: Transport, Index> Projector<LS, L1, B, Index>
+where
+    L1: Member<LS, Index>,
+{
     /// Constructs a `Projector` struct.
     ///
     /// - `target` is the projection target of the choreography.
     /// - `transport` is an implementation of `Transport`.
-    pub fn new(target: L1, transport: B) -> Self {
-        let _ = target;
+    pub fn new(_target: L1, transport: B) -> Self {
         Projector {
             target: PhantomData,
             transport,
+            location_set: PhantomData,
+            index: PhantomData,
         }
     }
 
@@ -299,14 +316,10 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
     /// Constructs a `Located` struct *NOT* located at the projection target.
     ///
     /// Use this method to run a choreography that takes a located value as an input.
-    ///
-    /// Note that the method panics at runtime if the projection target and the location of the value are the same.
-    pub fn remote<V, L2: ChoreographyLocation>(&self, l2: L2) -> Located<V, L2> {
-        let _ = l2;
-        // NOTE(shumbo): Ideally, this check should be done at the type level.
-        if L1::name() == L2::name() {
-            panic!("Cannot create a remote value at the same location");
-        }
+    pub fn remote<V, L2: ChoreographyLocation, Index2>(&self, _l2: L2) -> Located<V, L2>
+    where
+        L2: Member<<L1 as Member<LS, Index>>::Remainder, Index2>,
+    {
         Located::remote()
     }
 
@@ -318,7 +331,13 @@ impl<L1: ChoreographyLocation, B: Transport> Projector<L1, B> {
     }
 
     /// Performs end-point projection and runs a choreography.
-    pub fn epp_and_run<'a, V, L: HList, C: Choreography<V, L = L>>(&'a self, choreo: C) -> V {
+    pub fn epp_and_run<'a, V, L: HList, C: Choreography<V, L = L>, IndexSet>(
+        &'a self,
+        choreo: C,
+    ) -> V
+    where
+        L: Subset<LS, IndexSet>,
+    {
         struct EppOp<'a, L: HList, L1: ChoreographyLocation, B: Transport> {
             target: PhantomData<L1>,
             transport: &'a B,

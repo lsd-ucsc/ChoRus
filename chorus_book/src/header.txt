@@ -1,7 +1,7 @@
 # extern crate chorus_lib;
 # use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector, Located, Superposition, Runner};
 # use chorus_lib::transport::local::LocalTransport;
-# use chorus_lib::hlist;
+# use chorus_lib::{LocationSet, projector};
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # #[derive(ChoreographyLocation)]

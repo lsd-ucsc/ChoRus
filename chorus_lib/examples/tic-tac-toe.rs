@@ -2,11 +2,10 @@
 extern crate chorus_lib;
 
 use chorus_lib::{
-    core::{
-        ChoreoOp, Choreography, ChoreographyLocation, Deserialize, Located, Projector, Serialize,
-    },
-    hlist,
+    core::{ChoreoOp, Choreography, ChoreographyLocation, Deserialize, Located, Serialize},
+    projector,
     transport::http::HttpTransport,
+    LocationSet,
 };
 use clap::Parser;
 use std::{collections::HashMap, io::Write};
@@ -228,7 +227,7 @@ struct TicTacToeChoreography {
 }
 
 impl Choreography for TicTacToeChoreography {
-    type L = hlist!(PlayerX, PlayerO);
+    type L = LocationSet!(PlayerX, PlayerO);
     fn run(self, op: &impl ChoreoOp<Self::L>) -> () {
         let mut board = Board::new();
         loop {
@@ -290,6 +289,7 @@ fn main() {
     } else {
         Box::new(UserBrain::new(args.player))
     };
+
     match args.player {
         'X' => {
             let mut config = HashMap::new();
@@ -299,7 +299,7 @@ fn main() {
                 (args.opponent_hostname.as_str(), args.opponent_port),
             );
             let transport = HttpTransport::new(PlayerX::name(), &config);
-            let projector = Projector::new(PlayerX, transport);
+            let projector = projector!(LocationSet!(PlayerX, PlayerO), PlayerX, transport);
             projector.epp_and_run(TicTacToeChoreography {
                 brain_for_x: projector.local(brain),
                 brain_for_o: projector.remote(PlayerO),
@@ -313,7 +313,7 @@ fn main() {
                 (args.opponent_hostname.as_str(), args.opponent_port),
             );
             let transport = HttpTransport::new(PlayerO::name(), &config);
-            let projector = Projector::new(PlayerO, transport);
+            let projector = projector!(LocationSet!(PlayerX, PlayerO), PlayerO, transport);
             projector.epp_and_run(TicTacToeChoreography {
                 brain_for_x: projector.remote(PlayerX),
                 brain_for_o: projector.local(brain),

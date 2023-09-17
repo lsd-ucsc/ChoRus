@@ -1,7 +1,7 @@
 extern crate chorus_lib;
 use chorus_lib::{
     core::{ChoreoOp, Choreography, ChoreographyLocation, Located},
-    hlist,
+    LocationSet,
 };
 #[derive(ChoreographyLocation)]
 struct Alice;
@@ -15,7 +15,7 @@ struct DemoChoreography {
 }
 
 impl Choreography for DemoChoreography {
-    type L = hlist!(Alice);
+    type L = LocationSet!(Alice);
     fn run(self, op: &impl ChoreoOp<Self::L>) {
         op.locally(Alice, |un| {
             let s = un.unwrap(&self.input);
