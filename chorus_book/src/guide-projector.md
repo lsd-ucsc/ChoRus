@@ -4,7 +4,7 @@ Projector is responsible for performing the end-point projection and executing t
 
 ## Creating a Projector
 
-To create a `Projector`, you need to provide the set of locations it can work with, the target location, and the transport.
+To create a `Projector`, you need to provide the set of locations it can work with, the target location, and the transport. You should use the `projector!` macro instead of directly instantiating a Projector.
 
 ```rust
 # extern crate chorus_lib;
@@ -21,7 +21,7 @@ To create a `Projector`, you need to provide the set of locations it can work wi
 let projector = projector!(LocationSet!(Alice, Bob), Alice, transport);
 ```
 
-Notice that the `Projector` is parameterized by the location type. You will need one projector for each location to execute choreography.
+Notice that the `Projector` is parameterized by its target location type. You will need one projector for each location to execute choreography.
 
 ## Executing a Choreography
 
