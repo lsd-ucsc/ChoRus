@@ -97,8 +97,11 @@ pub trait HList {
     fn to_string_list() -> Vec<&'static str>;
 }
 /// end of HList
+#[derive(Clone)]
 pub struct HNil;
 /// An element of HList
+
+#[derive(Clone)]
 pub struct HCons<Head, Tail>(Head, Tail);
 
 impl HList for HNil {
@@ -125,7 +128,7 @@ where
 macro_rules! LocationSet {
     () => { $crate::core::HNil };
     ($head:ty $(,)*) => { $crate::core::HCons<$head, $crate::core::HNil> };
-    ($head:ty, $($tail:tt)*) => { $crate::core::HCons<$head, LocationSet!($($tail)*)> };
+    ($head:ty, $($tail:tt)*) => { $crate::core::HCons<$head, $crate::LocationSet!($($tail)*)> };
 }
 
 /// Marker
@@ -261,7 +264,7 @@ pub trait Choreography<R = ()> {
 /// Provides methods to send and receive messages.
 ///
 /// The trait provides methods to send and receive messages between locations. Implement this trait to define a custom transport.
-pub trait Transport {
+pub trait Transport<L> {
     /// Returns a list of locations.
     fn locations(&self) -> Vec<String>;
     /// Sends a message from `from` to `to`.
@@ -271,7 +274,7 @@ pub trait Transport {
 }
 
 /// Provides a method to perform end-point projection.
-pub struct Projector<LS: HList, L1: ChoreographyLocation, T: Transport, Index>
+pub struct Projector<LS: HList, L1: ChoreographyLocation, T: Transport<LS>, Index>
 where
     L1: Member<LS, Index>,
 {
@@ -281,15 +284,7 @@ where
     index: PhantomData<Index>,
 }
 
-/// Macro to make Projector
-#[macro_export]
-macro_rules! projector {
-    ($al_type:ty, $target:expr, $transport:expr) => {
-        $crate::core::Projector::<$al_type, _, _, _>::new($target, $transport)
-    };
-}
-
-impl<LS: HList, L1: ChoreographyLocation, B: Transport, Index> Projector<LS, L1, B, Index>
+impl<LS: HList, L1: ChoreographyLocation, B: Transport<LS>, Index> Projector<LS, L1, B, Index>
 where
     L1: Member<LS, Index>,
 {
@@ -338,13 +333,16 @@ where
     where
         L: Subset<LS, IndexSet>,
     {
-        struct EppOp<'a, L: HList, L1: ChoreographyLocation, B: Transport> {
+        struct EppOp<'a, L: HList, L1: ChoreographyLocation, LS: HList, B: Transport<LS>> {
             target: PhantomData<L1>,
             transport: &'a B,
             locations: Vec<String>,
             marker: PhantomData<L>,
+            location_set: PhantomData<LS>,
         }
-        impl<'a, L: HList, T: ChoreographyLocation, B: Transport> ChoreoOp<L> for EppOp<'a, L, T, B> {
+        impl<'a, L: HList, T: ChoreographyLocation, LS: HList, B: Transport<LS>> ChoreoOp<L>
+            for EppOp<'a, L, T, LS, B>
+        {
             fn locally<V, L1: ChoreographyLocation, Index>(
                 &self,
                 _location: L1,
@@ -406,11 +404,12 @@ where
             where
                 M: HList + Subset<L, Index>,
             {
-                let op: EppOp<'a, M, T, B> = EppOp {
+                let op: EppOp<'a, M, T, LS, B> = EppOp {
                     target: PhantomData::<T>,
                     transport: &self.transport,
                     locations: self.transport.locations(),
                     marker: PhantomData::<M>,
+                    location_set: PhantomData::<LS>,
                 };
                 choreo.run(&op)
             }
@@ -429,6 +428,7 @@ where
                             transport: self.transport,
                             locations: locs_vec.clone(),
                             marker: PhantomData::<S>,
+                            location_set: PhantomData::<LS>,
                         };
                         return choreo.run(&op);
                     }
@@ -436,11 +436,12 @@ where
                 R::remote()
             }
         }
-        let op: EppOp<'a, L, L1, B> = EppOp {
+        let op: EppOp<'a, L, L1, LS, B> = EppOp {
             target: PhantomData::<L1>,
             transport: &self.transport,
             locations: self.transport.locations(),
             marker: PhantomData::<L>,
+            location_set: PhantomData::<LS>,
         };
         choreo.run(&op)
     }

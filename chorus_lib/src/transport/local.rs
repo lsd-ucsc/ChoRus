@@ -5,7 +5,9 @@ use std::sync::Arc;
 
 use serde_json;
 
-use crate::core::{Portable, Transport};
+use core::marker::PhantomData;
+
+use crate::core::{HList, Portable, Transport};
 use crate::utils::queue::BlockingQueue;
 
 type QueueMap = HashMap<String, HashMap<String, BlockingQueue<String>>>;
@@ -16,34 +18,38 @@ type QueueMap = HashMap<String, HashMap<String, BlockingQueue<String>>>;
 ///
 /// Unlike network-based transports, all locations must share the same `LocalTransport` instance. The struct implements `Clone` so that it can be shared across threads.
 #[derive(Clone)]
-pub struct LocalTransport {
+pub struct LocalTransport<L: HList> {
     internal_locations: Vec<String>,
     queue_map: Arc<QueueMap>,
+    location_set: PhantomData<L>,
 }
 
-impl LocalTransport {
+impl<L: HList> LocalTransport<L> {
     /// Creates a new `LocalTransport` instance from a list of locations.
-    pub fn from(locations: &[&str]) -> Self {
+    pub fn new() -> Self {
         let mut queue_map: QueueMap = HashMap::new();
-        for sender in locations.clone() {
+        let locations_list = L::to_string_list();
+
+        for sender in locations_list.clone() {
             let mut n = HashMap::new();
-            for receiver in locations.clone() {
+            for receiver in locations_list.clone() {
                 n.insert(receiver.to_string(), BlockingQueue::new());
             }
             queue_map.insert(sender.to_string(), n);
         }
         let mut locations_vec = Vec::new();
-        for loc in locations.clone() {
+        for loc in locations_list.clone() {
             locations_vec.push(loc.to_string());
         }
         LocalTransport {
             queue_map: Arc::new(queue_map),
             internal_locations: locations_vec,
+            location_set: PhantomData,
         }
     }
 }
 
-impl Transport for LocalTransport {
+impl<L: HList> Transport<L> for LocalTransport<L> {
     fn locations(&self) -> Vec<String> {
         return self.internal_locations.clone();
     }
@@ -79,7 +85,7 @@ mod tests {
     #[test]
     fn test_local_transport() {
         let v = 42;
-        let transport = LocalTransport::from(&[Alice::name(), Bob::name()]);
+        let transport = LocalTransport::<crate::LocationSet!(Alice, Bob)>::new();
         let mut handles = Vec::new();
         {
             let transport = transport.clone();
