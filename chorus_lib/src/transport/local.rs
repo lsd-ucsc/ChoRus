@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use serde_json;
 
-use core::marker::PhantomData;
+use std::marker::PhantomData;
 
 use crate::core::{HList, Portable, Transport};
 use crate::utils::queue::BlockingQueue;

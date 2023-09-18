@@ -3,7 +3,7 @@
 use std::thread;
 use std::{collections::HashMap, sync::Arc};
 
-use core::marker::PhantomData;
+use std::marker::PhantomData;
 
 use retry::{
     delay::{jitter, Fixed},
@@ -15,7 +15,6 @@ use ureq::{Agent, AgentBuilder};
 use crate::{
     core::{ChoreographyLocation, HList, Member, Portable, Transport},
     utils::queue::BlockingQueue,
-    LocationSet,
 };
 
 /// The header name for the source location.
