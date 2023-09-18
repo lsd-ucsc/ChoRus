@@ -63,14 +63,15 @@ let transport = LocalTransport::<LocationSet!(Alice, Bob)>::new();
 
 The `http` transport is used to execute choreographies on different machines. This is useful for executing choreographies in a distributed system.
 
-To use the `http` transport, import the `HttpTransport` struct from the `chorus_lib` crate.
+To use the `http` transport, import the `HttpTransport` struct and the `http_config` macro from the `chorus_lib` crate.
 
 ```rust
 # extern crate chorus_lib;
 use chorus_lib::transport::http::HttpTransport;
+use chorus_lib::http_config;
 ```
 
-The `new` constructor takes the name of the projection target and "configuration" of type `std::collections::HashMap<&'static str, (&'static str, u32)>`. The configuration is a map from location names to the hostname and port of the location.
+The `new` constructor takes the name of the projection target and "configuration" of type `HttpConfig`. To build the `HttpConfig`, you should use the macro `http_config` and give it a comma separatedlist of key: values where each key is a `ChoreographyLocation` and each value is a tuple of (host_name, port). You can think of configuration as a map from locations to the hostname and port of the location.
 
 ```rust
 {{#include ./header.txt}}
@@ -87,3 +88,30 @@ In the above example, the transport will start the HTTP server on port 8080 on l
 ## Creating a Custom Transport
 
 You can also create your own transport by implementing the `Transport` trait. See the API documentation for more details.
+
+
+### Note on the location set of the Choreography
+
+Note that when calling `epp_and_run` on a `Projector`, you will get a compile error if the location set of the `Choreography` is not a subset of the location set of the `Transport`. In other words, the `Transport` should have information about every `ChoreographyLocation`  that `Choreography` can talk about. So this will fail:
+
+```rust, compile_fail
+# extern crate chorus_lib;
+# use chorus_lib::transport::local::LocalTransport;
+# use chorus_lib::core::{ChoreographyLocation, Projector, Choreography, ChoreoOp};
+# use chorus_lib::{LocationSet};
+
+# #[derive(ChoreographyLocation)]
+# struct Alice;
+# #[derive(ChoreographyLocation)]
+# struct Bob;
+struct HelloWorldChoreography;
+impl Choreography for HelloWorldChoreography {
+     type L = LocationSet!(Alice, Bob);
+     fn run(self, op: &impl ChoreoOp<Self::L>) {
+     }
+}
+
+let transport = LocalTransport::<LocationSet!(Alice)>::new();
+let projector = Projector::new(Alice, transport);
+projector.epp_and_run(HelloWorldChoreography);
+```
