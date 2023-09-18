@@ -26,7 +26,7 @@ Because of the nature of the `Local` transport, you must use the same `LocalTran
 # use chorus_lib::transport::local::LocalTransport;
 # use std::thread;
 # use chorus_lib::core::{ChoreographyLocation, ChoreoOp, Choreography, Projector};
-# use chorus_lib::{LocationSet, projector};
+# use chorus_lib::{LocationSet};
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # #[derive(ChoreographyLocation)]
@@ -40,12 +40,12 @@ Because of the nature of the `Local` transport, you must use the same `LocalTran
 
 
 let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
-let transport = LocalTransport::from(&[Alice::name(), Bob::name()]);
+let transport = LocalTransport::<LocationSet!(Alice, Bob)>::new();
 {
     // create a clone for Alice
     let transport = transport.clone();
     handles.push(thread::spawn(move || {
-        let p = projector!(LocationSet!(Alice, Bob), Alice, transport);
+        let p = Projector::new(Alice, transport);
         p.epp_and_run(HelloWorldChoreography);
     }));
 }
@@ -53,7 +53,7 @@ let transport = LocalTransport::from(&[Alice::name(), Bob::name()]);
     // create another for Bob
     let transport = transport.clone();
     handles.push(thread::spawn(move || {
-        let p = projector!(LocationSet!(Alice, Bob), Bob, transport);
+        let p = Projector::new(Bob, transport);
         p.epp_and_run(HelloWorldChoreography);
     }));
 }
@@ -74,12 +74,12 @@ The `new` constructor takes the name of the projection target and "configuration
 
 ```rust
 {{#include ./header.txt}}
-# use chorus_lib::transport::http::HttpTransport;
+# use chorus_lib::transport::http::{HttpTransport};
+# use chorus_lib::http_config;
 # use std::collections::HashMap;
-let mut config = HashMap::new();
-config.insert(Alice::name(), ("localhost", 8080));
-config.insert(Bob::name(), ("localhost", 8081));
-let transport = HttpTransport::new(Alice::name(), &config);
+
+let config = http_config!(Alice: ("localhost", 8080), Bob: ("localhost", 8081));
+let transport = HttpTransport::new(Alice, &config);
 ```
 
 In the above example, the transport will start the HTTP server on port 8080 on localhost. If Alice needs to send a message to Bob, it will use `http://localhost:8081` as the destination.

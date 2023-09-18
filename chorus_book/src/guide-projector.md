@@ -10,15 +10,15 @@ To create a `Projector`, you need to provide the set of locations it can work wi
 # extern crate chorus_lib;
 # use chorus_lib::transport::local::LocalTransport;
 # use chorus_lib::core::{ChoreographyLocation, Projector};
-# use chorus_lib::{LocationSet, projector};
-# let transport = LocalTransport::from(&[Alice::name(), Bob::name()]);
+# use chorus_lib::{LocationSet};
+# let transport = LocalTransport::<LocationSet!(Alice, Bob)>::new();
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # #[derive(ChoreographyLocation)]
 # struct Bob;
 #
 
-let projector = projector!(LocationSet!(Alice, Bob), Alice, transport);
+let projector = Projector::new(Alice, transport);
 ```
 
 Notice that the `Projector` is parameterized by its target location type. You will need one projector for each location to execute choreography.
@@ -31,8 +31,8 @@ To execute a choreography, you need to call the `epp_and_run` method on the `Pro
 # extern crate chorus_lib;
 # use chorus_lib::transport::local::LocalTransport;
 # use chorus_lib::core::{ChoreographyLocation, Projector, Choreography, ChoreoOp};
-# use chorus_lib::{LocationSet, projector};
-# let transport = LocalTransport::from(&[Alice::name(), Bob::name()]);
+# use chorus_lib::{LocationSet};
+# let transport = LocalTransport::<LocationSet!(Alice, Bob)>::new();
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # #[derive(ChoreographyLocation)]
@@ -45,7 +45,7 @@ To execute a choreography, you need to call the `epp_and_run` method on the `Pro
 # }
 #
 
-# let projector = projector!(LocationSet!(Alice), Alice, transport);
+# let projector = Projector::new(Alice, transport);
 projector.epp_and_run(HelloWorldChoreography);
 ```
 
