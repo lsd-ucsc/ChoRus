@@ -15,6 +15,7 @@ use ureq::{Agent, AgentBuilder};
 use crate::{
     core::{ChoreographyLocation, HList, Member, Portable, Transport},
     utils::queue::BlockingQueue,
+    LocationSet,
 };
 
 /// The header name for the source location.
@@ -23,27 +24,10 @@ const HEADER_SRC: &str = "X-CHORUS-SOURCE";
 /// A wrapper for HashMap<String, (String, u16)>
 #[derive(Clone)]
 pub struct HttpConfig<L: HList> {
-    info: HashMap<String, (String, u16)>,
-    location_set: PhantomData<L>,
-}
-
-impl<L: HList> HttpConfig<L> {
-    /// Creates a new `HttpConfig`.
-    pub fn new() -> Self {
-        Self {
-            info: HashMap::new(),
-            location_set: PhantomData,
-        }
-    }
-
-    /// Inserts new information about a location into the config.
-    pub fn insert<C: ChoreographyLocation, Index>(&mut self, _loc: C, (host, port): (&str, u16))
-    where
-        C: Member<L, Index>,
-    {
-        self.info
-            .insert(C::name().to_string(), (host.to_string(), port));
-    }
+    /// The information about locations
+    pub info: HashMap<String, (String, u16)>,
+    /// The struct is parametrized by the location set (`L`).
+    pub location_set: PhantomData<L>,
 }
 
 /// This macro makes a `HttpConfig`.
@@ -51,11 +35,15 @@ impl<L: HList> HttpConfig<L> {
 macro_rules! http_config {
     ( $( $loc:ident : ( $host:expr, $port:expr ) ),* $(,)? ) => {
         {
-            let mut config = $crate::transport::http::HttpConfig::<$crate::LocationSet!($( $loc ),*)>::new();
+            let mut config = std::collections::HashMap::new();
             $(
-                config.insert($loc, ($host, $port));
+                config.insert($loc::name().to_string(), ($host.to_string(), $port));
             )*
-            config
+
+            $crate::transport::http::HttpConfig::<$crate::LocationSet!($( $loc ),*)> {
+                info: config,
+                location_set: core::marker::PhantomData
+            }
         }
     };
 }
