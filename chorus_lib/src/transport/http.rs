@@ -12,7 +12,8 @@ use retry::{
 use tiny_http::Server;
 use ureq::{Agent, AgentBuilder};
 
-use crate::transport::{TransportConfig, TransportChannel};
+use crate::transport::{TransportChannel, TransportConfig};
+#[cfg(test)]
 use crate::{transport_config, LocationSet};
 
 use crate::{
@@ -22,18 +23,8 @@ use crate::{
 
 type QueueMap = HashMap<String, BlockingQueue<String>>;
 
-
 /// The header name for the source location.
 const HEADER_SRC: &str = "X-CHORUS-SOURCE";
-
-/// A wrapper for HashMap<String, (String, u16)>
-#[derive(Clone)]
-pub struct HttpConfig<L: HList> {
-    /// The information about locations
-    pub info: HashMap<String, (String, u16)>,
-    /// The struct is parametrized by the location set (`L`).
-    pub location_set: PhantomData<L>,
-}
 
 /// The HTTP transport.
 pub struct HttpTransport<L: HList> {
@@ -42,29 +33,30 @@ pub struct HttpTransport<L: HList> {
     server: Arc<Server>,
     join_handle: Option<thread::JoinHandle<()>>,
     location_set: PhantomData<L>,
-    transport_channel: TransportChannel<L, Arc<QueueMap>>,
+    transport_channel: TransportChannel<L, QueueMap>,
 }
 
 impl<L: HList> HttpTransport<L> {
-    pub fn transport_channel() -> TransportChannel<L, Arc<QueueMap>> {
+    /// Creates a `TransportChannel`.
+    pub fn transport_channel() -> TransportChannel<L, QueueMap> {
         let queue_map = {
             let mut m = HashMap::new();
             for loc in L::to_string_list() {
                 m.insert(loc.to_string(), BlockingQueue::new());
             }
-            Arc::new(m)
+            m
         };
 
         TransportChannel {
             location_set: PhantomData,
-            queue_map: queue_map.into(),
+            queue_map: Arc::new(queue_map.into()),
         }
     }
 
     /// Creates a new `HttpTransport` instance from the projection target and a configuration.
     pub fn new<C: ChoreographyLocation, Index>(
         http_config: &TransportConfig<L, (String, u16), C, (String, u16)>,
-        transport_channel: TransportChannel<L, Arc<QueueMap>>
+        transport_channel: TransportChannel<L, QueueMap>,
     ) -> Self
     where
         C: Member<L, Index>,
@@ -173,12 +165,12 @@ mod tests {
         {
             let config = transport_config!(
                 Alice,
-                Alice: ("localhost".to_string(), 9010),
+                Alice: ("0.0.0.0".to_string(), 9010),
                 Bob: ("localhost".to_string(), 9011)
             );
 
             let transport_channel = transport_channel.clone();
-            
+
             handles.push(thread::spawn(move || {
                 wait.recv().unwrap(); // wait for Bob to start
                 let transport = HttpTransport::new(&config, transport_channel);
@@ -189,11 +181,9 @@ mod tests {
             let config = transport_config!(
                 Bob,
                 Alice: ("localhost".to_string(), 9010),
-                Bob: ("localhost".to_string(), 9011)
+                Bob: ("0.0.0.0".to_string(), 9011)
             );
 
-            
-            
             let transport_channel = transport_channel.clone();
             handles.push(thread::spawn(move || {
                 let transport = HttpTransport::new(&config, transport_channel);
@@ -218,7 +208,7 @@ mod tests {
         {
             let config = transport_config!(
                 Alice,
-                Alice: ("localhost".to_string(), 9020),
+                Alice: ("0.0.0.0".to_string(), 9020),
                 Bob: ("localhost".to_string(), 9021)
             );
 
@@ -234,7 +224,7 @@ mod tests {
             let config = transport_config!(
                 Bob,
                 Alice: ("localhost".to_string(), 9020),
-                Bob: ("localhost".to_string(), 9021)
+                Bob: ("0.0.0.0".to_string(), 9021)
             );
 
             let transport_channel = transport_channel.clone();

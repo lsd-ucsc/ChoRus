@@ -3,12 +3,12 @@ extern crate chorus_lib;
 use std::thread;
 use std::{collections::HashMap, sync::Arc};
 
+use chorus_lib::transport_config;
 use chorus_lib::LocationSet;
 use chorus_lib::{
     core::{ChoreoOp, Choreography, ChoreographyLocation, Located, Projector},
     transport::local::LocalTransport,
 };
-use chorus_lib::transport_config;
 use chrono::NaiveDate;
 
 #[derive(ChoreographyLocation)]

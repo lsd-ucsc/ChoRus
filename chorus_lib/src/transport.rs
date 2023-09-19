@@ -3,24 +3,27 @@
 pub mod http;
 pub mod local;
 
-use std::sync::Arc;
 use crate::core::ChoreographyLocation;
+use std::sync::Arc;
 
 /// A generic struct for configuration of `Transport`.
 #[derive(Clone)]
-pub struct TransportConfig<L: crate::core::HList, InfoType, TargetLocation: ChoreographyLocation, TargetInfoType> {
+pub struct TransportConfig<
+    L: crate::core::HList,
+    InfoType,
+    TargetLocation: ChoreographyLocation,
+    TargetInfoType,
+> {
     /// The information about locations
     pub info: std::collections::HashMap<String, InfoType>,
     /// The information about the target choreography
     pub target_info: (TargetLocation, TargetInfoType),
     /// The struct is parametrized by the location set (`L`).
     pub location_set: std::marker::PhantomData<L>,
-    // pub transport_channel: TransportChannel<L>,
-
 }
 
 /// A Transport channel used between multiple `Transport`s.
-pub struct TransportChannel<L: crate::core::HList, T: Send + Sync>{
+pub struct TransportChannel<L: crate::core::HList, T: Send + Sync> {
     /// The location set where the channel is defined on.
     pub location_set: std::marker::PhantomData<L>,
     queue_map: Arc<T>,
@@ -34,31 +37,12 @@ where
     fn clone(&self) -> Self {
         Self {
             location_set: self.location_set.clone(),
-            queue_map: self.queue_map.clone(),  // This clones the Arc, not the underlying data
+            queue_map: self.queue_map.clone(), // This clones the Arc, not the underlying data
         }
     }
 }
 
 /// This macro makes a `TransportConfig`.
-// #[macro_export]
-// macro_rules! transport_config {
-//     ( $( $loc:ident : $val:expr ),* $(,)? ) => {
-//         {
-//             let mut config = std::collections::HashMap::new();
-//             $(
-//                 config.insert($loc::name().to_string(), $val);
-//             )*
-
-//             $crate::transport::TransportConfig::<$crate::LocationSet!($( $loc ),*), _> {
-//                 info: config,
-//                 location_set: core::marker::PhantomData
-//             }
-//         }
-//     };
-// }
-
-
-/// This macro makes a `TransportConfig`; V2.
 #[macro_export]
 macro_rules! transport_config {
     ( $choreography_loc:ident, $( $loc:ident : $val:expr ),* $(,)? ) => {

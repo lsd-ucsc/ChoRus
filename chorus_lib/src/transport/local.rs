@@ -7,10 +7,11 @@ use serde_json;
 
 use std::marker::PhantomData;
 
-use crate::transport::{TransportConfig, TransportChannel};
+use crate::transport::{TransportChannel, TransportConfig};
+#[cfg(test)]
 use crate::{transport_config, LocationSet};
 
-use crate::core::{HList, Portable, Transport, ChoreographyLocation};
+use crate::core::{ChoreographyLocation, HList, Portable, Transport};
 use crate::utils::queue::BlockingQueue;
 
 type QueueMap = HashMap<String, HashMap<String, BlockingQueue<String>>>;
@@ -25,12 +26,12 @@ pub struct LocalTransport<L: HList> {
     internal_locations: Vec<String>,
     // queue_map: Arc<QueueMap>,
     location_set: PhantomData<L>,
-    transport_channel: TransportChannel<L, Arc<QueueMap>>,
+    transport_channel: TransportChannel<L, QueueMap>,
 }
 
-
 impl<L: HList> LocalTransport<L> {
-    pub fn transport_channel() -> TransportChannel<L, Arc<QueueMap>> {
+    /// Creates a `TransportChannel`.
+    pub fn transport_channel() -> TransportChannel<L, QueueMap> {
         let mut queue_map: QueueMap = HashMap::new();
         for sender in L::to_string_list() {
             let mut n = HashMap::new();
@@ -46,15 +47,18 @@ impl<L: HList> LocalTransport<L> {
         }
     }
 
-    /// Creates a new `LocalTransport` instance from a list of locations.
-    pub fn new<C: ChoreographyLocation>(_local_config: &TransportConfig<L, (), C, ()>, transport_channel: TransportChannel<L, Arc<QueueMap>>) -> Self {
+    /// Creates a new `LocalTransport` instance from a `TransportConfig` and a `TransportChannel`.
+    pub fn new<C: ChoreographyLocation>(
+        _local_config: &TransportConfig<L, (), C, ()>,
+        transport_channel: TransportChannel<L, QueueMap>,
+    ) -> Self {
         let locations_list = L::to_string_list();
 
         let mut locations_vec = Vec::new();
         for loc in locations_list.clone() {
             locations_vec.push(loc.to_string());
         }
-        
+
         LocalTransport {
             internal_locations: locations_vec,
             location_set: PhantomData,
@@ -70,7 +74,8 @@ impl<L: HList> Transport<L> for LocalTransport<L> {
 
     fn send<T: Portable>(&self, from: &str, to: &str, data: &T) -> () {
         let data = serde_json::to_string(data).unwrap();
-        self.transport_channel.queue_map
+        self.transport_channel
+            .queue_map
             .get(from)
             .unwrap()
             .get(to)
@@ -79,7 +84,14 @@ impl<L: HList> Transport<L> for LocalTransport<L> {
     }
 
     fn receive<T: Portable>(&self, from: &str, at: &str) -> T {
-        let data = self.transport_channel.queue_map.get(from).unwrap().get(at).unwrap().pop();
+        let data = self
+            .transport_channel
+            .queue_map
+            .get(from)
+            .unwrap()
+            .get(at)
+            .unwrap()
+            .pop();
         serde_json::from_str(&data).unwrap()
     }
 }
@@ -99,7 +111,7 @@ mod tests {
     #[test]
     fn test_local_transport() {
         let v = 42;
-        
+
         let transport_channel = LocalTransport::<LocationSet!(Alice, Bob)>::transport_channel();
 
         let mut handles = Vec::new();
