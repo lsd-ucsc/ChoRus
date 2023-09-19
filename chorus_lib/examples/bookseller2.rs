@@ -8,6 +8,7 @@ use chorus_lib::{
     core::{ChoreoOp, Choreography, ChoreographyLocation, Located, Projector},
     transport::local::LocalTransport,
 };
+use chorus_lib::transport_config;
 use chrono::NaiveDate;
 
 #[derive(ChoreographyLocation)]
@@ -142,7 +143,8 @@ fn main() {
         i
     };
 
-    let transport = LocalTransport::<LocationSet!(Seller, Buyer1, Buyer2)>::new();
+    let config = transport_config!(Seller: (), Buyer1: (), Buyer2: ());
+    let transport = LocalTransport::new(&config);
     let seller_projector = Arc::new(Projector::new(Seller, transport.clone()));
     let buyer1_projector = Arc::new(Projector::new(Buyer1, transport.clone()));
     let buyer2_projector = Arc::new(Projector::new(Buyer2, transport.clone()));

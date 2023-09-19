@@ -7,6 +7,9 @@ use serde_json;
 
 use std::marker::PhantomData;
 
+use crate::transport::TransportConfig;
+use crate::transport_config;
+
 use crate::core::{HList, Portable, Transport};
 use crate::utils::queue::BlockingQueue;
 
@@ -26,7 +29,7 @@ pub struct LocalTransport<L: HList> {
 
 impl<L: HList> LocalTransport<L> {
     /// Creates a new `LocalTransport` instance from a list of locations.
-    pub fn new() -> Self {
+    pub fn new(local_config: &TransportConfig<L, ()>) -> Self {
         let mut queue_map: QueueMap = HashMap::new();
         let locations_list = L::to_string_list();
 
@@ -85,7 +88,14 @@ mod tests {
     #[test]
     fn test_local_transport() {
         let v = 42;
-        let transport = LocalTransport::<crate::LocationSet!(Alice, Bob)>::new();
+
+        let config = transport_config!(
+            Alice: (),
+            Bob: ()
+        );
+
+        let transport = LocalTransport::new(&config);
+
         let mut handles = Vec::new();
         {
             let transport = transport.clone();

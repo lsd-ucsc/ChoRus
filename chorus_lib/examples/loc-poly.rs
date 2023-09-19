@@ -6,6 +6,7 @@ use chorus_lib::core::{
     ChoreoOp, Choreography, ChoreographyLocation, Located, Portable, Projector,
 };
 use chorus_lib::transport::local::LocalTransport;
+use chorus_lib::transport_config;
 use chorus_lib::LocationSet;
 
 #[derive(ChoreographyLocation)]
@@ -57,7 +58,8 @@ impl Choreography<Located<i32, Alice>> for MainChoreography {
 }
 
 fn main() {
-    let transport = LocalTransport::<LocationSet!(Alice, Bob, Carol)>::new();
+    let config = transport_config!(Alice: (), Bob: (), Carol: ());
+    let transport = LocalTransport::new(&config);
     let mut handles = vec![];
     {
         let transport = transport.clone();

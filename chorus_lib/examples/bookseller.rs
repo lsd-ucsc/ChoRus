@@ -7,6 +7,7 @@ use chrono::NaiveDate;
 
 use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
 use chorus_lib::transport::local::LocalTransport;
+use chorus_lib::transport_config;
 use chorus_lib::LocationSet;
 
 fn get_book(title: &str) -> Option<(i32, NaiveDate)> {
@@ -73,7 +74,9 @@ impl Choreography for BooksellerChoreography {
 }
 
 fn main() {
-    let transport = LocalTransport::<LocationSet!(Seller, Buyer)>::new();
+    let config = transport_config!(Seller: (), Buyer: ());
+
+    let transport = LocalTransport::new(&config);
     let seller_projector = Projector::new(Seller, transport.clone());
     let buyer_projector = Projector::new(Buyer, transport.clone());
 

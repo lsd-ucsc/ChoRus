@@ -12,6 +12,9 @@ use retry::{
 use tiny_http::Server;
 use ureq::{Agent, AgentBuilder};
 
+use crate::transport::TransportConfig;
+use crate::transport_config;
+
 use crate::{
     core::{ChoreographyLocation, HList, Member, Portable, Transport},
     utils::queue::BlockingQueue,
@@ -29,23 +32,31 @@ pub struct HttpConfig<L: HList> {
     pub location_set: PhantomData<L>,
 }
 
-/// This macro makes a `HttpConfig`.
-#[macro_export]
-macro_rules! http_config {
-    ( $( $loc:ident : ( $host:expr, $port:expr ) ),* $(,)? ) => {
-        {
-            let mut config = std::collections::HashMap::new();
-            $(
-                config.insert($loc::name().to_string(), ($host.to_string(), $port));
-            )*
+// #[derive(Clone)]
+// pub struct TransportConfig<L: HList, IndividualInfo> {
+//     /// The information about locations
+//     pub info: HashMap<String, IndividualInfo>,
+//     /// The struct is parametrized by the location set (`L`).
+//     pub location_set: PhantomData<L>,
+// }
 
-            $crate::transport::http::HttpConfig::<$crate::LocationSet!($( $loc ),*)> {
-                info: config,
-                location_set: core::marker::PhantomData
-            }
-        }
-    };
-}
+// /// This macro makes a `HttpConfig`.
+// #[macro_export]
+// macro_rules! http_config {
+//     ( $( $loc:ident : ( $host:expr, $port:expr ) ),* $(,)? ) => {
+//         {
+//             let mut config = std::collections::HashMap::new();
+//             $(
+//                 config.insert($loc::name().to_string(), ($host.to_string(), $port));
+//             )*
+
+//             $crate::transport::http::HttpConfig::<$crate::LocationSet!($( $loc ),*)> {
+//                 info: config,
+//                 location_set: core::marker::PhantomData
+//             }
+//         }
+//     };
+// }
 
 /// The HTTP transport.
 pub struct HttpTransport<L: HList> {
@@ -59,7 +70,10 @@ pub struct HttpTransport<L: HList> {
 
 impl<L: HList> HttpTransport<L> {
     /// Creates a new `HttpTransport` instance from the projection target and a configuration.
-    pub fn new<C: ChoreographyLocation, Index>(_loc: C, http_config: &HttpConfig<L>) -> Self
+    pub fn new<C: ChoreographyLocation, Index>(
+        _loc: C,
+        http_config: &TransportConfig<L, (String, u16)>,
+    ) -> Self
     where
         C: Member<L, Index>,
     {
@@ -123,7 +137,7 @@ impl<L: HList> HttpTransport<L> {
 impl<L: HList> Drop for HttpTransport<L> {
     fn drop(&mut self) {
         self.server.unblock();
-        self.join_handle.take().map(thread::JoinHandle::join);
+        // self.join_handle.take().map(thread::JoinHandle::join);
     }
 }
 
@@ -169,9 +183,9 @@ mod tests {
         let v = 42;
 
         let (signal, wait) = mpsc::channel::<()>();
-        let config = http_config!(
-            Alice: ("localhost", 9010),
-            Bob: ("localhost", 9011)
+        let config = transport_config!(
+            Alice: ("localhost".to_string(), 9010),
+            Bob: ("localhost".to_string(), 9011)
         );
 
         let mut handles = Vec::new();
@@ -202,9 +216,9 @@ mod tests {
         let v = 42;
         let (signal, wait) = mpsc::channel::<()>();
 
-        let config = http_config!(
-            Alice: ("localhost", 9020),
-            Bob: ("localhost", 9021)
+        let config = transport_config!(
+            Alice: ("localhost".to_string(), 9020),
+            Bob: ("localhost".to_string(), 9021)
         );
 
         let mut handles = Vec::new();

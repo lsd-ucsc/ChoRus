@@ -4,6 +4,7 @@ use std::thread;
 
 use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
 use chorus_lib::transport::local::LocalTransport;
+use chorus_lib::transport_config;
 use chorus_lib::LocationSet;
 
 // --- Define two locations (Alice and Bob) ---
@@ -40,7 +41,9 @@ impl Choreography for HelloWorldChoreography {
 fn main() {
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     // Create a local transport
-    let transport = LocalTransport::<LocationSet!(Alice, Bob)>::new();
+    let config = transport_config!(Alice: (), Bob: ());
+
+    let transport = LocalTransport::new(&config);
 
     // Run the choreography in two threads
     {
