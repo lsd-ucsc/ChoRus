@@ -74,11 +74,27 @@ impl Choreography for BooksellerChoreography {
 }
 
 fn main() {
-    let config = transport_config!(Seller: (), Buyer: ());
+    // let config = transport_config!(Seller: (), Buyer: ());
 
-    let transport = LocalTransport::new(&config);
-    let seller_projector = Projector::new(Seller, transport.clone());
-    let buyer_projector = Projector::new(Buyer, transport.clone());
+    let transport_channel = LocalTransport::<LocationSet!(Seller, Buyer)>::transport_channel();
+
+    let config_seller = transport_config!(
+            Seller,
+            Buyer: (),
+            Seller: (),
+    );
+
+    let config_buyer = transport_config!(
+            Buyer,
+            Buyer: (),
+            Seller: (),
+    );
+
+    let transport_seller = LocalTransport::new(&config_seller, transport_channel.clone());
+    let transport_buyer = LocalTransport::new(&config_buyer, transport_channel.clone());
+
+    let seller_projector = Projector::new(Seller, transport_seller);
+    let buyer_projector = Projector::new(Buyer, transport_buyer);
 
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     handles.push(thread::spawn(move || {

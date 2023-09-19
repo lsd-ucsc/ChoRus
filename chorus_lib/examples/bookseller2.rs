@@ -1,7 +1,7 @@
 extern crate chorus_lib;
 
 use std::thread;
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap};
 
 use chorus_lib::transport_config;
 use chorus_lib::LocationSet;
@@ -143,17 +143,25 @@ fn main() {
         i
     };
 
-    let config = transport_config!(Seller: (), Buyer1: (), Buyer2: ());
-    let transport = LocalTransport::new(&config);
-    let seller_projector = Arc::new(Projector::new(Seller, transport.clone()));
-    let buyer1_projector = Arc::new(Projector::new(Buyer1, transport.clone()));
-    let buyer2_projector = Arc::new(Projector::new(Buyer2, transport.clone()));
+    let transport_channel =
+        LocalTransport::<LocationSet!(Seller, Buyer1, Buyer2)>::transport_channel();
 
     println!("Tries to buy HoTT with one buyer");
     type OneBuyerBooksellerChoreography = BooksellerChoreography<OneBuyerDecider>;
     let mut handles = Vec::new();
     {
-        let seller_projector = seller_projector.clone();
+        let config = transport_config!(
+            Seller,
+            Seller: (),
+            Buyer1: (),
+            Buyer2: (),
+        );
+
+        let transport_channel = transport_channel.clone();
+        let transport = LocalTransport::new(&config, transport_channel);
+
+        let seller_projector = Projector::new(Seller, transport);
+
         let inventory = inventory.clone();
         handles.push(thread::spawn(move || {
             seller_projector.epp_and_run(OneBuyerBooksellerChoreography {
@@ -164,7 +172,18 @@ fn main() {
         }));
     }
     {
-        let buyer1_projector = buyer1_projector.clone();
+        let config = transport_config!(
+            Buyer1,
+            Seller: (),
+            Buyer1: (),
+            Buyer2: (),
+        );
+
+        let transport_channel = transport_channel.clone();
+        let transport = LocalTransport::new(&config, transport_channel);
+
+        let buyer1_projector = Projector::new(Buyer1, transport);
+
         handles.push(thread::spawn(move || {
             let result = buyer1_projector.epp_and_run(OneBuyerBooksellerChoreography {
                 _marker: std::marker::PhantomData,
@@ -178,7 +197,18 @@ fn main() {
         }));
     }
     {
-        let buyer2_projector = buyer2_projector.clone();
+        let config = transport_config!(
+            Buyer2,
+            Seller: (),
+            Buyer1: (),
+            Buyer2: (),
+        );
+
+        let transport_channel = transport_channel.clone();
+        let transport = LocalTransport::new(&config, transport_channel);
+
+        let buyer2_projector = Projector::new(Buyer2, transport);
+
         handles.push(thread::spawn(move || {
             buyer2_projector.epp_and_run(OneBuyerBooksellerChoreography {
                 _marker: std::marker::PhantomData,
@@ -195,7 +225,18 @@ fn main() {
     type TwoBuyerBooksellerChoreography = BooksellerChoreography<TwoBuyerDecider>;
     let mut handles = Vec::new();
     {
-        let seller_projector = seller_projector.clone();
+        let config = transport_config!(
+            Seller,
+            Seller: (),
+            Buyer1: (),
+            Buyer2: (),
+        );
+
+        let transport_channel = transport_channel.clone();
+        let transport = LocalTransport::new(&config, transport_channel);
+
+        let seller_projector = Projector::new(Seller, transport);
+
         let inventory = inventory.clone();
         handles.push(thread::spawn(move || {
             seller_projector.epp_and_run(TwoBuyerBooksellerChoreography {
@@ -206,7 +247,18 @@ fn main() {
         }));
     }
     {
-        let buyer1_projector = buyer1_projector.clone();
+        let config = transport_config!(
+            Buyer1,
+            Seller: (),
+            Buyer1: (),
+            Buyer2: (),
+        );
+
+        let transport_channel = transport_channel.clone();
+        let transport = LocalTransport::new(&config, transport_channel);
+
+        let buyer1_projector = Projector::new(Buyer1, transport);
+
         handles.push(thread::spawn(move || {
             let result = buyer1_projector.epp_and_run(TwoBuyerBooksellerChoreography {
                 _marker: std::marker::PhantomData,
@@ -220,7 +272,18 @@ fn main() {
         }));
     }
     {
-        let buyer2_projector = buyer2_projector.clone();
+        let config = transport_config!(
+            Buyer2,
+            Seller: (),
+            Buyer1: (),
+            Buyer2: (),
+        );
+
+        let transport_channel = transport_channel.clone();
+        let transport = LocalTransport::new(&config, transport_channel);
+
+        let buyer2_projector = Projector::new(Buyer2, transport);
+
         handles.push(thread::spawn(move || {
             buyer2_projector.epp_and_run(TwoBuyerBooksellerChoreography {
                 _marker: std::marker::PhantomData,

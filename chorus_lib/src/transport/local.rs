@@ -11,7 +11,7 @@ use crate::transport::{TransportChannel, TransportConfig};
 #[cfg(test)]
 use crate::{transport_config, LocationSet};
 
-use crate::core::{ChoreographyLocation, HList, Portable, Transport, Equal};
+use crate::core::{ChoreographyLocation, Equal, HList, Portable, Transport};
 use crate::utils::queue::BlockingQueue;
 
 type QueueMap = HashMap<String, HashMap<String, BlockingQueue<String>>>;
@@ -51,7 +51,10 @@ impl<L: HList> LocalTransport<L> {
     pub fn new<C: ChoreographyLocation, L2: HList, IndexList>(
         _local_config: &TransportConfig<L2, (), C, ()>,
         transport_channel: TransportChannel<L, QueueMap>,
-    ) -> Self where L2: Equal<L, IndexList>{
+    ) -> Self
+    where
+        L2: Equal<L, IndexList>,
+    {
         let locations_list = L::to_string_list();
 
         let mut locations_vec = Vec::new();

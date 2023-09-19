@@ -40,21 +40,34 @@ impl Choreography for HelloWorldChoreography {
 
 fn main() {
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
-    // Create a local transport
-    let config = transport_config!(Alice: (), Bob: ());
-
-    let transport = LocalTransport::new(&config);
+    // Create a transport channel
+    let transport_channel = LocalTransport::<LocationSet!(Alice, Bob)>::transport_channel();
 
     // Run the choreography in two threads
     {
-        let transport = transport.clone();
+        let config = transport_config!(
+            Alice,
+            Alice: (),
+            Bob: ()
+        );
+
+        let transport_channel = transport_channel.clone();
+        let transport = LocalTransport::new(&config, transport_channel);
         handles.push(thread::spawn(move || {
             let p = Projector::new(Alice, transport);
             p.epp_and_run(HelloWorldChoreography);
         }));
     }
     {
-        let transport = transport.clone();
+        let config = transport_config!(
+            Alice,
+            Alice: (),
+            Bob: ()
+        );
+
+        let transport_channel = transport_channel.clone();
+        let transport = LocalTransport::new(&config, transport_channel);
+
         handles.push(thread::spawn(move || {
             let p = Projector::new(Bob, transport);
             p.epp_and_run(HelloWorldChoreography);
