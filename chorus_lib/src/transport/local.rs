@@ -7,11 +7,10 @@ use serde_json;
 
 use std::marker::PhantomData;
 
-use crate::transport::TransportConfig;
 #[cfg(test)]
-use crate::{transport_config, LocationSet};
+use crate::LocationSet;
 
-use crate::core::{ChoreographyLocation, Equal, HList, Portable, Transport};
+use crate::core::{ChoreographyLocation, HList, Portable, Transport};
 use crate::utils::queue::BlockingQueue;
 
 type QueueMap = HashMap<String, HashMap<String, BlockingQueue<String>>>;
@@ -24,21 +23,9 @@ pub struct LocalTransportChannel<L: crate::core::HList> {
     queue_map: Arc<QueueMap>,
 }
 
-/// The local transport.
-///
-/// This transport uses a blocking queue to allow for communication between threads. Each location must be executed in its thread.
-///
-/// Unlike network-based transports, all locations must share the same `LocalTransport` instance. The struct implements `Clone` so that it can be shared across threads.
-#[derive(Clone)]
-pub struct LocalTransport<L: HList> {
-    internal_locations: Vec<String>,
-    location_set: PhantomData<L>,
-    local_channel: LocalTransportChannel<L>,
-}
-
-impl<L: HList> LocalTransport<L> {
+impl<L: HList> LocalTransportChannel<L> {
     /// Creates a `LocalTransportChannel`.
-    pub fn transport_channel() -> LocalTransportChannel<L> {
+    pub fn new() -> LocalTransportChannel<L> {
         let mut queue_map: QueueMap = HashMap::new();
         for sender in L::to_string_list() {
             let mut n = HashMap::new();
@@ -53,15 +40,24 @@ impl<L: HList> LocalTransport<L> {
             queue_map: Arc::new(queue_map.into()),
         }
     }
+}
 
-    /// Creates a new `LocalTransport` instance from a `TransportConfig` and a `LocalTransportChannel`.
-    pub fn new<C: ChoreographyLocation, L2: HList, IndexList>(
-        _local_config: &TransportConfig<L2, (), C, ()>,
-        local_channel: LocalTransportChannel<L>,
-    ) -> Self
-    where
-        L2: Equal<L, IndexList>,
-    {
+/// The local transport.
+///
+/// This transport uses a blocking queue to allow for communication between threads. Each location must be executed in its thread.
+///
+/// Unlike network-based transports, all locations must share the same `LocalTransport` instance. The struct implements `Clone` so that it can be shared across threads.
+#[derive(Clone)]
+pub struct LocalTransport<L: HList, TargetLocation> {
+    internal_locations: Vec<String>,
+    location_set: PhantomData<L>,
+    local_channel: Arc<LocalTransportChannel<L>>,
+    target_location: PhantomData<TargetLocation>,
+}
+
+impl<L: HList, TargetLocation> LocalTransport<L, TargetLocation> {
+    /// Creates a new `LocalTransport` instance from a Target `ChoreographyLocation` and a `LocalTransportChannel`.
+    pub fn new(_target: TargetLocation, local_channel: Arc<LocalTransportChannel<L>>) -> Self {
         let locations_list = L::to_string_list();
 
         let mut locations_vec = Vec::new();
@@ -73,11 +69,14 @@ impl<L: HList> LocalTransport<L> {
             internal_locations: locations_vec,
             location_set: PhantomData,
             local_channel,
+            target_location: PhantomData,
         }
     }
 }
 
-impl<L: HList> Transport<L> for LocalTransport<L> {
+impl<L: HList, TargetLocation: ChoreographyLocation> Transport<L, TargetLocation>
+    for LocalTransport<L, TargetLocation>
+{
     fn locations(&self) -> Vec<String> {
         return self.internal_locations.clone();
     }
@@ -122,32 +121,17 @@ mod tests {
     fn test_local_transport() {
         let v = 42;
 
-        let transport_channel = LocalTransport::<LocationSet!(Alice, Bob)>::transport_channel();
+        let transport_channel = Arc::new(LocalTransportChannel::<LocationSet!(Bob, Alice)>::new());
 
         let mut handles = Vec::new();
         {
-            let config = transport_config!(
-                Alice,
-                Alice: (),
-                Bob: ()
-            );
-
-            let transport_channel = transport_channel.clone();
-
-            let transport = LocalTransport::new(&config, transport_channel);
+            let transport = LocalTransport::new(Alice, Arc::clone(&transport_channel));
             handles.push(thread::spawn(move || {
                 transport.send::<i32>(Alice::name(), Bob::name(), &v);
             }));
         }
         {
-            let config = transport_config!(
-                Bob,
-                Alice: (),
-                Bob: ()
-            );
-            // let transport = transport.clone();
-            let transport_channel = transport_channel.clone();
-            let transport = LocalTransport::new(&config, transport_channel);
+            let transport = LocalTransport::new(Bob, Arc::clone(&transport_channel));
             handles.push(thread::spawn(move || {
                 let v2 = transport.receive::<i32>(Alice::name(), Bob::name());
                 assert_eq!(v, v2);

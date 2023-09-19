@@ -1,13 +1,13 @@
 extern crate chorus_lib;
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::thread;
 
-use chorus_lib::transport_config;
 use chorus_lib::LocationSet;
 use chorus_lib::{
     core::{ChoreoOp, Choreography, ChoreographyLocation, Located, Projector},
-    transport::local::LocalTransport,
+    transport::local::{LocalTransport, LocalTransportChannel},
 };
 use chrono::NaiveDate;
 
@@ -144,22 +144,13 @@ fn main() {
     };
 
     let transport_channel =
-        LocalTransport::<LocationSet!(Seller, Buyer1, Buyer2)>::transport_channel();
+        Arc::new(LocalTransportChannel::<LocationSet!(Seller, Buyer1, Buyer2)>::new());
 
     println!("Tries to buy HoTT with one buyer");
     type OneBuyerBooksellerChoreography = BooksellerChoreography<OneBuyerDecider>;
     let mut handles = Vec::new();
     {
-        let config = transport_config!(
-            Seller,
-            Seller: (),
-            Buyer1: (),
-            Buyer2: (),
-        );
-
-        let transport_channel = transport_channel.clone();
-        let transport = LocalTransport::new(&config, transport_channel);
-
+        let transport = LocalTransport::new(Seller, Arc::clone(&transport_channel));
         let seller_projector = Projector::new(Seller, transport);
 
         let inventory = inventory.clone();
@@ -172,16 +163,7 @@ fn main() {
         }));
     }
     {
-        let config = transport_config!(
-            Buyer1,
-            Seller: (),
-            Buyer1: (),
-            Buyer2: (),
-        );
-
-        let transport_channel = transport_channel.clone();
-        let transport = LocalTransport::new(&config, transport_channel);
-
+        let transport = LocalTransport::new(Buyer1, Arc::clone(&transport_channel));
         let buyer1_projector = Projector::new(Buyer1, transport);
 
         handles.push(thread::spawn(move || {
@@ -197,16 +179,7 @@ fn main() {
         }));
     }
     {
-        let config = transport_config!(
-            Buyer2,
-            Seller: (),
-            Buyer1: (),
-            Buyer2: (),
-        );
-
-        let transport_channel = transport_channel.clone();
-        let transport = LocalTransport::new(&config, transport_channel);
-
+        let transport = LocalTransport::new(Buyer2, Arc::clone(&transport_channel));
         let buyer2_projector = Projector::new(Buyer2, transport);
 
         handles.push(thread::spawn(move || {
@@ -225,16 +198,7 @@ fn main() {
     type TwoBuyerBooksellerChoreography = BooksellerChoreography<TwoBuyerDecider>;
     let mut handles = Vec::new();
     {
-        let config = transport_config!(
-            Seller,
-            Seller: (),
-            Buyer1: (),
-            Buyer2: (),
-        );
-
-        let transport_channel = transport_channel.clone();
-        let transport = LocalTransport::new(&config, transport_channel);
-
+        let transport = LocalTransport::new(Seller, Arc::clone(&transport_channel));
         let seller_projector = Projector::new(Seller, transport);
 
         let inventory = inventory.clone();
@@ -247,16 +211,7 @@ fn main() {
         }));
     }
     {
-        let config = transport_config!(
-            Buyer1,
-            Seller: (),
-            Buyer1: (),
-            Buyer2: (),
-        );
-
-        let transport_channel = transport_channel.clone();
-        let transport = LocalTransport::new(&config, transport_channel);
-
+        let transport = LocalTransport::new(Buyer1, Arc::clone(&transport_channel));
         let buyer1_projector = Projector::new(Buyer1, transport);
 
         handles.push(thread::spawn(move || {
@@ -272,15 +227,7 @@ fn main() {
         }));
     }
     {
-        let config = transport_config!(
-            Buyer2,
-            Seller: (),
-            Buyer1: (),
-            Buyer2: (),
-        );
-
-        let transport_channel = transport_channel.clone();
-        let transport = LocalTransport::new(&config, transport_channel);
+        let transport = LocalTransport::new(Buyer2, Arc::clone(&transport_channel));
 
         let buyer2_projector = Projector::new(Buyer2, transport);
 

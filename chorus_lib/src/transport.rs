@@ -24,23 +24,17 @@ pub struct TransportConfig<
 /// This macro makes a `TransportConfig`.
 #[macro_export]
 macro_rules! transport_config {
-    ( $choreography_loc:ident, $( $loc:ident : $val:expr ),* $(,)? ) => {
+    ( $choreography_loc:ident => $choreography_val:expr, $( $loc:ident : $val:expr ),* $(,)? ) => {
         {
-            let choreography_name = $choreography_loc::name().to_string();
             let mut config = std::collections::HashMap::new();
-            let mut target_info = None;
             $(
-                if $loc::name().to_string() != choreography_name{
-                    config.insert($loc::name().to_string(), $val);
-                } else {
-                    target_info = Some($val);
-                }
+                config.insert($loc::name().to_string(), $val);
             )*
 
-            $crate::transport::TransportConfig::<$crate::LocationSet!($( $loc ),*), _, _, _> {
+            $crate::transport::TransportConfig::<$crate::LocationSet!($choreography_loc, $( $loc ),*), _, _, _> {
                 info: config,
                 location_set: core::marker::PhantomData,
-                target_info: ($choreography_loc, target_info.unwrap()),
+                target_info: ($choreography_loc, $choreography_val),
             }
         }
     };

@@ -1,13 +1,13 @@
 extern crate chorus_lib;
 
 use std::io;
+use std::sync::Arc;
 use std::thread;
 
 use chrono::NaiveDate;
 
 use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
-use chorus_lib::transport::local::LocalTransport;
-use chorus_lib::transport_config;
+use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
 use chorus_lib::LocationSet;
 
 fn get_book(title: &str) -> Option<(i32, NaiveDate)> {
@@ -74,24 +74,10 @@ impl Choreography for BooksellerChoreography {
 }
 
 fn main() {
-    // let config = transport_config!(Seller: (), Buyer: ());
+    let transport_channel = Arc::new(LocalTransportChannel::<LocationSet!(Seller, Buyer)>::new());
 
-    let transport_channel = LocalTransport::<LocationSet!(Seller, Buyer)>::transport_channel();
-
-    let config_seller = transport_config!(
-            Seller,
-            Buyer: (),
-            Seller: (),
-    );
-
-    let config_buyer = transport_config!(
-            Buyer,
-            Buyer: (),
-            Seller: (),
-    );
-
-    let transport_seller = LocalTransport::new(&config_seller, transport_channel.clone());
-    let transport_buyer = LocalTransport::new(&config_buyer, transport_channel.clone());
+    let transport_seller = LocalTransport::new(Seller, Arc::clone(&transport_channel));
+    let transport_buyer = LocalTransport::new(Buyer, Arc::clone(&transport_channel));
 
     let seller_projector = Projector::new(Seller, transport_seller);
     let buyer_projector = Projector::new(Buyer, transport_buyer);

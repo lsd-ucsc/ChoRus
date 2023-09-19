@@ -297,8 +297,7 @@ fn main() {
     match args.player {
         'X' => {
             let config = transport_config!(
-                PlayerX,
-                PlayerX: (args.hostname.as_str().to_string(), args.port),
+                PlayerX => (args.hostname.as_str().to_string(), args.port),
                 PlayerO: (args.opponent_hostname.as_str().to_string(), args.opponent_port)
             );
 
@@ -312,8 +311,7 @@ fn main() {
         }
         'O' => {
             let config = transport_config!(
-            PlayerO,
-            PlayerO: (args.hostname.as_str().to_string(), args.port),
+            PlayerO => (args.hostname.as_str().to_string(), args.port),
             PlayerX: (args.opponent_hostname.as_str().to_string(), args.opponent_port)
             );
 

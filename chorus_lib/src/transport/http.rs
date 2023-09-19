@@ -35,42 +35,24 @@ pub struct HttpConfig<L: HList> {
     pub location_set: PhantomData<L>,
 }
 
-/// This macro makes a `HttpConfig`.
-#[macro_export]
-macro_rules! http_config {
-    ( $( $loc:ident : ( $host:expr, $port:expr ) ),* $(,)? ) => {
-        {
-            let mut config = std::collections::HashMap::new();
-            $(
-                config.insert($loc::name().to_string(), ($host.to_string(), $port));
-            )*
-
-            $crate::transport::http::HttpConfig::<$crate::LocationSet!($( $loc ),*)> {
-                info: config,
-                location_set: core::marker::PhantomData
-            }
-        }
-    };
-}
-
 /// The HTTP transport.
-pub struct HttpTransport<L: HList> {
+pub struct HttpTransport<L: HList, TLocation> {
     config: HashMap<String, (String, u16)>,
     agent: Agent,
     server: Arc<Server>,
     join_handle: Option<thread::JoinHandle<()>>,
     location_set: PhantomData<L>,
-    // transport_channel: TransportChannel<L, QueueMap>,
     queue_map: Arc<QueueMap>,
+    target_location: PhantomData<TLocation>,
 }
 
-impl<L: HList> HttpTransport<L> {
-    /// Creates a new `HttpTransport` instance from the projection target and a configuration.
-    pub fn new<C: ChoreographyLocation, Index>(
-        http_config: &TransportConfig<L, (String, u16), C, (String, u16)>,
+impl<L: HList, TLocation: ChoreographyLocation> HttpTransport<L, TLocation> {
+    /// Creates a new `HttpTransport` instance from the configuration.
+    pub fn new<Index>(
+        http_config: &TransportConfig<L, (String, u16), TLocation, (String, u16)>,
     ) -> Self
     where
-        C: Member<L, Index>,
+        TLocation: Member<L, Index>,
     {
         let queue_map: Arc<QueueMap> = {
             let mut m = HashMap::new();
@@ -124,18 +106,19 @@ impl<L: HList> HttpTransport<L> {
             server,
             location_set: PhantomData,
             queue_map,
+            target_location: PhantomData,
         }
     }
 }
 
-impl<L: HList> Drop for HttpTransport<L> {
+impl<L: HList, TLocation> Drop for HttpTransport<L, TLocation> {
     fn drop(&mut self) {
         self.server.unblock();
         self.join_handle.take().map(thread::JoinHandle::join);
     }
 }
 
-impl<L: HList> Transport<L> for HttpTransport<L> {
+impl<L: HList, TLocation> Transport<L, TLocation> for HttpTransport<L, TLocation> {
     fn locations(&self) -> Vec<String> {
         Vec::from_iter(self.config.keys().map(|s| s.clone()))
     }
@@ -181,8 +164,7 @@ mod tests {
         let mut handles = Vec::new();
         {
             let config = transport_config!(
-                Alice,
-                Alice: ("0.0.0.0".to_string(), 9010),
+                Alice => ("0.0.0.0".to_string(), 9010),
                 Bob: ("localhost".to_string(), 9011)
             );
 
@@ -194,9 +176,8 @@ mod tests {
         }
         {
             let config = transport_config!(
-                Bob,
+                Bob => ("0.0.0.0".to_string(), 9011),
                 Alice: ("localhost".to_string(), 9010),
-                Bob: ("0.0.0.0".to_string(), 9011)
             );
 
             handles.push(thread::spawn(move || {
@@ -219,8 +200,7 @@ mod tests {
         let mut handles = Vec::new();
         {
             let config = transport_config!(
-                Alice,
-                Alice: ("0.0.0.0".to_string(), 9020),
+                Alice => ("0.0.0.0".to_string(), 9020),
                 Bob: ("localhost".to_string(), 9021)
             );
 
@@ -232,9 +212,8 @@ mod tests {
         }
         {
             let config = transport_config!(
-                Bob,
-                Alice: ("localhost".to_string(), 9020),
-                Bob: ("0.0.0.0".to_string(), 9021)
+                Bob=> ("0.0.0.0".to_string(), 9021),
+                Alice: ("localhost".to_string(), 9020)
             );
 
             handles.push(thread::spawn(move || {
