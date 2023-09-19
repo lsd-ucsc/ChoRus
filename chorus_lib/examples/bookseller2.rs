@@ -1,7 +1,7 @@
 extern crate chorus_lib;
 
+use std::collections::HashMap;
 use std::thread;
-use std::{collections::HashMap};
 
 use chorus_lib::transport_config;
 use chorus_lib::LocationSet;

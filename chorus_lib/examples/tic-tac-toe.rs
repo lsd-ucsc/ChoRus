@@ -294,9 +294,6 @@ fn main() {
         Box::new(UserBrain::new(args.player))
     };
 
-    // Create a transport channel
-    let transport_channel = HttpTransport::<LocationSet!(PlayerX, PlayerO)>::transport_channel();
-
     match args.player {
         'X' => {
             let config = transport_config!(
@@ -305,8 +302,7 @@ fn main() {
                 PlayerO: (args.opponent_hostname.as_str().to_string(), args.opponent_port)
             );
 
-            let transport_channel = transport_channel.clone();
-            let transport = HttpTransport::new(&config, transport_channel);
+            let transport = HttpTransport::new(&config);
 
             let projector = Projector::new(PlayerX, transport);
             projector.epp_and_run(TicTacToeChoreography {
@@ -321,8 +317,7 @@ fn main() {
             PlayerX: (args.opponent_hostname.as_str().to_string(), args.opponent_port)
             );
 
-            let transport_channel = transport_channel.clone();
-            let transport = HttpTransport::new(&config, transport_channel);
+            let transport = HttpTransport::new(&config);
             let projector = Projector::new(PlayerO, transport);
             projector.epp_and_run(TicTacToeChoreography {
                 brain_for_x: projector.remote(PlayerX),
