@@ -3,7 +3,7 @@
 pub mod http;
 pub mod local;
 
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 /// A generic struct for configuration of `Transport`.
 #[derive(Clone)]
@@ -16,6 +16,26 @@ pub struct TransportConfig<L: crate::core::HList, InfoType, TargetInfoType> {
     pub location_set: std::marker::PhantomData<L>,
     // pub transport_channel: TransportChannel<L>,
 
+}
+
+/// A Transport channel used between multiple `Transport`s.
+pub struct TransportChannel<L: crate::core::HList, T: Send + Sync>{
+    /// The location set where the channel is defined on.
+    pub location_set: std::marker::PhantomData<L>,
+    queue_map: Arc<T>,
+}
+
+impl<L, T> Clone for TransportChannel<L, T>
+where
+    L: crate::core::HList,
+    T: Send + Sync,
+{
+    fn clone(&self) -> Self {
+        Self {
+            location_set: self.location_set.clone(),
+            queue_map: self.queue_map.clone(),  // This clones the Arc, not the underlying data
+        }
+    }
 }
 
 /// This macro makes a `TransportConfig`.
@@ -49,7 +69,6 @@ macro_rules! transport_config {
                 if $loc::name().to_string() != choreography_name{
                     config.insert($loc::name().to_string(), $val);
                 } else {
-                    println!("heyyyy");
                     target_info = Some($val);
                 }
             )*

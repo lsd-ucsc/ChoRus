@@ -7,7 +7,7 @@ use serde_json;
 
 use std::marker::PhantomData;
 
-use crate::transport::{TransportConfig};
+use crate::transport::{TransportConfig, TransportChannel};
 use crate::{transport_config, LocationSet};
 
 use crate::core::{HList, Portable, Transport};
@@ -25,27 +25,36 @@ pub struct LocalTransport<L: HList> {
     internal_locations: Vec<String>,
     // queue_map: Arc<QueueMap>,
     location_set: PhantomData<L>,
-    transport_channel: TransportChannel<L>,
+    transport_channel: TransportChannel<L, Arc<QueueMap>>,
 }
 
-/// A Transport channel used between multiple `Transport`s.
-#[derive(Clone)]
-pub struct TransportChannel<L: crate::core::HList>{
-    /// The location set where the channel is defined on.
-    pub location_set: std::marker::PhantomData<L>,
-    queue_map: Arc<QueueMap>,
-}
 
 impl<L: HList> LocalTransport<L> {
+    pub fn transport_channel() -> TransportChannel<L, Arc<QueueMap>> {
+        let mut queue_map: QueueMap = HashMap::new();
+        for sender in L::to_string_list() {
+            let mut n = HashMap::new();
+            for receiver in L::to_string_list() {
+                n.insert(receiver.to_string(), BlockingQueue::new());
+            }
+            queue_map.insert(sender.to_string(), n);
+        }
+
+        TransportChannel {
+            location_set: PhantomData,
+            queue_map: Arc::new(queue_map.into()),
+        }
+    }
+
     /// Creates a new `LocalTransport` instance from a list of locations.
-    pub fn new(_local_config: &TransportConfig<L, (), ()>, transport_channel: TransportChannel<L>) -> Self {
-        // let mut queue_map: QueueMap = HashMap::new();
+    pub fn new(_local_config: &TransportConfig<L, (), ()>, transport_channel: TransportChannel<L, Arc<QueueMap>>) -> Self {
         let locations_list = L::to_string_list();
 
         let mut locations_vec = Vec::new();
         for loc in locations_list.clone() {
             locations_vec.push(loc.to_string());
         }
+        
         LocalTransport {
             internal_locations: locations_vec,
             location_set: PhantomData,
@@ -91,20 +100,7 @@ mod tests {
     fn test_local_transport() {
         let v = 42;
         
-        let mut queue_map: QueueMap = HashMap::new();
-        for sender in &vec![Alice::name(), Bob::name()] {
-            let mut n = HashMap::new();
-            for receiver in &vec![Alice::name(), Bob::name()] {
-                n.insert(receiver.to_string(), BlockingQueue::new());
-            }
-            queue_map.insert(sender.to_string(), n);
-        }
-
-
-        let transport_channel = TransportChannel::<LocationSet!(Alice, Bob)> {
-            location_set: PhantomData,
-            queue_map: Arc::new(queue_map),
-        };
+        let transport_channel = LocalTransport::<LocationSet!(Alice, Bob)>::transport_channel();
 
         let mut handles = Vec::new();
         {

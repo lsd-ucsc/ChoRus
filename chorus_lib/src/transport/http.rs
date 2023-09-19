@@ -12,13 +12,16 @@ use retry::{
 use tiny_http::Server;
 use ureq::{Agent, AgentBuilder};
 
-use crate::transport::{TransportConfig};
+use crate::transport::{TransportConfig, TransportChannel};
 use crate::{transport_config, LocationSet};
 
 use crate::{
     core::{ChoreographyLocation, HList, Member, Portable, Transport},
     utils::queue::BlockingQueue,
 };
+
+type QueueMap = HashMap<String, BlockingQueue<String>>;
+
 
 /// The header name for the source location.
 const HEADER_SRC: &str = "X-CHORUS-SOURCE";
@@ -32,33 +35,37 @@ pub struct HttpConfig<L: HList> {
     pub location_set: PhantomData<L>,
 }
 
-
-/// A Transport channel used between multiple `Transport`s.
-#[derive(Clone)]
-pub struct TransportChannel<L: crate::core::HList>{
-    /// The location set where the channel is defined on.
-    pub location_set: std::marker::PhantomData<L>,
-    queue_map: Arc<HashMap<String, BlockingQueue<String>>>,
-}
-
-
 /// The HTTP transport.
 pub struct HttpTransport<L: HList> {
     config: HashMap<String, (String, u16)>,
     agent: Agent,
-    // queue_map: Arc<HashMap<String, BlockingQueue<String>>>,
     server: Arc<Server>,
     join_handle: Option<thread::JoinHandle<()>>,
     location_set: PhantomData<L>,
-    transport_channel: TransportChannel<L>,
+    transport_channel: TransportChannel<L, Arc<QueueMap>>,
 }
 
 impl<L: HList> HttpTransport<L> {
+    pub fn transport_channel() -> TransportChannel<L, Arc<QueueMap>> {
+        let queue_map = {
+            let mut m = HashMap::new();
+            for loc in L::to_string_list() {
+                m.insert(loc.to_string(), BlockingQueue::new());
+            }
+            Arc::new(m)
+        };
+
+        TransportChannel {
+            location_set: PhantomData,
+            queue_map: queue_map.into(),
+        }
+    }
+
     /// Creates a new `HttpTransport` instance from the projection target and a configuration.
     pub fn new<C: ChoreographyLocation, Index>(
         _loc: C,
         http_config: &TransportConfig<L, (String, u16), (String, u16)>,
-        transport_channel: TransportChannel<L>
+        transport_channel: TransportChannel<L, Arc<QueueMap>>
     ) -> Self
     where
         C: Member<L, Index>,
@@ -161,22 +168,10 @@ mod tests {
 
         let (signal, wait) = mpsc::channel::<()>();
 
-        let queue_map = {
-            let mut m = HashMap::new();
-            for loc in &vec![Alice::name(), Bob::name()] {
-                m.insert(loc.to_string(), BlockingQueue::new());
-            }
-            Arc::new(m)
-        };
-
-        let transport_channel = TransportChannel::<LocationSet!(Alice, Bob)> {
-            location_set: PhantomData,
-            queue_map: queue_map,
-        };
+        let transport_channel = HttpTransport::<LocationSet!(Alice, Bob)>::transport_channel();
 
         let mut handles = Vec::new();
         {
-            // let config = config.clone();
             let config = transport_config!(
                 Alice,
                 Alice: ("localhost".to_string(), 9010),
@@ -192,7 +187,6 @@ mod tests {
             }));
         }
         {
-            // let config = config.clone();
             let config = transport_config!(
                 Bob,
                 Alice: ("localhost".to_string(), 9010),
@@ -219,18 +213,7 @@ mod tests {
         let v = 42;
         let (signal, wait) = mpsc::channel::<()>();
 
-        let queue_map = {
-            let mut m = HashMap::new();
-            for loc in &vec![Alice::name(), Bob::name()] {
-                m.insert(loc.to_string(), BlockingQueue::new());
-            }
-            Arc::new(m)
-        };
-
-        let transport_channel = TransportChannel::<LocationSet!(Alice, Bob)> {
-            location_set: PhantomData,
-            queue_map,
-        };
+        let transport_channel = HttpTransport::<LocationSet!(Alice, Bob)>::transport_channel();
 
         let mut handles = Vec::new();
         {
