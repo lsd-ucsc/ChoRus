@@ -10,7 +10,7 @@ use std::marker::PhantomData;
 use crate::transport::{TransportConfig, TransportChannel};
 use crate::{transport_config, LocationSet};
 
-use crate::core::{HList, Portable, Transport};
+use crate::core::{HList, Portable, Transport, ChoreographyLocation};
 use crate::utils::queue::BlockingQueue;
 
 type QueueMap = HashMap<String, HashMap<String, BlockingQueue<String>>>;
@@ -47,7 +47,7 @@ impl<L: HList> LocalTransport<L> {
     }
 
     /// Creates a new `LocalTransport` instance from a list of locations.
-    pub fn new(_local_config: &TransportConfig<L, (), ()>, transport_channel: TransportChannel<L, Arc<QueueMap>>) -> Self {
+    pub fn new<C: ChoreographyLocation>(_local_config: &TransportConfig<L, (), C, ()>, transport_channel: TransportChannel<L, Arc<QueueMap>>) -> Self {
         let locations_list = L::to_string_list();
 
         let mut locations_vec = Vec::new();

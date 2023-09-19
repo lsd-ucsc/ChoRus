@@ -4,14 +4,15 @@ pub mod http;
 pub mod local;
 
 use std::sync::Arc;
+use crate::core::ChoreographyLocation;
 
 /// A generic struct for configuration of `Transport`.
 #[derive(Clone)]
-pub struct TransportConfig<L: crate::core::HList, InfoType, TargetInfoType> {
+pub struct TransportConfig<L: crate::core::HList, InfoType, TargetLocation: ChoreographyLocation, TargetInfoType> {
     /// The information about locations
     pub info: std::collections::HashMap<String, InfoType>,
     /// The information about the target choreography
-    pub target_info: (String, TargetInfoType),
+    pub target_info: (TargetLocation, TargetInfoType),
     /// The struct is parametrized by the location set (`L`).
     pub location_set: std::marker::PhantomData<L>,
     // pub transport_channel: TransportChannel<L>,
@@ -75,10 +76,10 @@ macro_rules! transport_config {
 
             // println!("{}, {}", target_info.unwrap().0, target.info.unwrap().1);
 
-            $crate::transport::TransportConfig::<$crate::LocationSet!($( $loc ),*), _, _> {
+            $crate::transport::TransportConfig::<$crate::LocationSet!($( $loc ),*), _, _, _> {
                 info: config,
                 location_set: core::marker::PhantomData,
-                target_info: (choreography_name, target_info.unwrap()),
+                target_info: ($choreography_loc, target_info.unwrap()),
             }
         }
     };

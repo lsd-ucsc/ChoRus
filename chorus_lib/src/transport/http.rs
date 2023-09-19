@@ -63,8 +63,7 @@ impl<L: HList> HttpTransport<L> {
 
     /// Creates a new `HttpTransport` instance from the projection target and a configuration.
     pub fn new<C: ChoreographyLocation, Index>(
-        _loc: C,
-        http_config: &TransportConfig<L, (String, u16), (String, u16)>,
+        http_config: &TransportConfig<L, (String, u16), C, (String, u16)>,
         transport_channel: TransportChannel<L, Arc<QueueMap>>
     ) -> Self
     where
@@ -182,7 +181,7 @@ mod tests {
             
             handles.push(thread::spawn(move || {
                 wait.recv().unwrap(); // wait for Bob to start
-                let transport = HttpTransport::new(Alice, &config, transport_channel);
+                let transport = HttpTransport::new(&config, transport_channel);
                 transport.send::<i32>(Alice::name(), Bob::name(), &v);
             }));
         }
@@ -197,7 +196,7 @@ mod tests {
             
             let transport_channel = transport_channel.clone();
             handles.push(thread::spawn(move || {
-                let transport = HttpTransport::new(Bob, &config, transport_channel);
+                let transport = HttpTransport::new(&config, transport_channel);
                 signal.send(()).unwrap();
                 let v2 = transport.receive::<i32>(Alice::name(), Bob::name());
                 assert_eq!(v, v2);
@@ -227,7 +226,7 @@ mod tests {
 
             handles.push(thread::spawn(move || {
                 signal.send(()).unwrap();
-                let transport = HttpTransport::new(Alice, &config, transport_channel);
+                let transport = HttpTransport::new(&config, transport_channel);
                 transport.send::<i32>(Alice::name(), Bob::name(), &v);
             }));
         }
@@ -244,7 +243,7 @@ mod tests {
                 // wait for Alice to start, which forces Alice to retry
                 wait.recv().unwrap();
                 sleep(Duration::from_millis(100));
-                let transport = HttpTransport::new(Bob, &config, transport_channel);
+                let transport = HttpTransport::new(&config, transport_channel);
                 let v2 = transport.receive::<i32>(Alice::name(), Bob::name());
                 assert_eq!(v, v2);
             }));
