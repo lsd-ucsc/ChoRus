@@ -3,14 +3,18 @@
 pub mod http;
 pub mod local;
 
+use std::{collections::HashMap, sync::Arc};
+
 /// A generic struct for configuration of `Transport`.
 #[derive(Clone)]
 pub struct TransportConfig<L: crate::core::HList, InfoType, TargetInfoType> {
     /// The information about locations
     pub info: std::collections::HashMap<String, InfoType>,
+    /// The information about the target choreography
     pub target_info: (String, TargetInfoType),
     /// The struct is parametrized by the location set (`L`).
     pub location_set: std::marker::PhantomData<L>,
+    // pub transport_channel: TransportChannel<L>,
 
 }
 

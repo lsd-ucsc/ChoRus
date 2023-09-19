@@ -12,8 +12,8 @@ use retry::{
 use tiny_http::Server;
 use ureq::{Agent, AgentBuilder};
 
-use crate::transport::TransportConfig;
-use crate::transport_config;
+use crate::transport::{TransportConfig};
+use crate::{transport_config, LocationSet};
 
 use crate::{
     core::{ChoreographyLocation, HList, Member, Portable, Transport},
@@ -32,40 +32,25 @@ pub struct HttpConfig<L: HList> {
     pub location_set: PhantomData<L>,
 }
 
-// #[derive(Clone)]
-// pub struct TransportConfig<L: HList, IndividualInfo> {
-//     /// The information about locations
-//     pub info: HashMap<String, IndividualInfo>,
-//     /// The struct is parametrized by the location set (`L`).
-//     pub location_set: PhantomData<L>,
-// }
 
-// /// This macro makes a `HttpConfig`.
-// #[macro_export]
-// macro_rules! http_config {
-//     ( $( $loc:ident : ( $host:expr, $port:expr ) ),* $(,)? ) => {
-//         {
-//             let mut config = std::collections::HashMap::new();
-//             $(
-//                 config.insert($loc::name().to_string(), ($host.to_string(), $port));
-//             )*
+/// A Transport channel used between multiple `Transport`s.
+#[derive(Clone)]
+pub struct TransportChannel<L: crate::core::HList>{
+    /// The location set where the channel is defined on.
+    pub location_set: std::marker::PhantomData<L>,
+    queue_map: Arc<HashMap<String, BlockingQueue<String>>>,
+}
 
-//             $crate::transport::http::HttpConfig::<$crate::LocationSet!($( $loc ),*)> {
-//                 info: config,
-//                 location_set: core::marker::PhantomData
-//             }
-//         }
-//     };
-// }
 
 /// The HTTP transport.
 pub struct HttpTransport<L: HList> {
     config: HashMap<String, (String, u16)>,
     agent: Agent,
-    queue_map: Arc<HashMap<String, BlockingQueue<String>>>,
+    // queue_map: Arc<HashMap<String, BlockingQueue<String>>>,
     server: Arc<Server>,
     join_handle: Option<thread::JoinHandle<()>>,
     location_set: PhantomData<L>,
+    transport_channel: TransportChannel<L>,
 }
 
 impl<L: HList> HttpTransport<L> {
@@ -73,27 +58,19 @@ impl<L: HList> HttpTransport<L> {
     pub fn new<C: ChoreographyLocation, Index>(
         _loc: C,
         http_config: &TransportConfig<L, (String, u16), (String, u16)>,
+        transport_channel: TransportChannel<L>
     ) -> Self
     where
         C: Member<L, Index>,
     {
         let info = &http_config.info;
-        let at = C::name();
-        let locs = Vec::from_iter(info.keys().map(|s| s.clone()));
-
-        let queue_map = {
-            let mut m = HashMap::new();
-            for loc in &locs {
-                m.insert(loc.to_string(), BlockingQueue::new());
-            }
-            Arc::new(m)
-        };
 
         let (_, (hostname, port)) = &http_config.target_info;
         let server = Arc::new(Server::http(format!("{}:{}", hostname, port)).unwrap());
         let join_handle = Some({
             let server = server.clone();
-            let queue_map = queue_map.clone();
+            let queue_map = transport_channel.queue_map.clone();
+
             thread::spawn(move || {
                 for mut request in server.incoming_requests() {
                     let mut body = String::new();
@@ -126,10 +103,10 @@ impl<L: HList> HttpTransport<L> {
         Self {
             config: info.clone(),
             agent,
-            queue_map,
             join_handle,
             server,
             location_set: PhantomData,
+            transport_channel,
         }
     }
 }
@@ -137,7 +114,7 @@ impl<L: HList> HttpTransport<L> {
 impl<L: HList> Drop for HttpTransport<L> {
     fn drop(&mut self) {
         self.server.unblock();
-        // self.join_handle.take().map(thread::JoinHandle::join);
+        self.join_handle.take().map(thread::JoinHandle::join);
     }
 }
 
@@ -158,7 +135,7 @@ impl<L: HList> Transport<L> for HttpTransport<L> {
     }
 
     fn receive<V: Portable>(&self, from: &str, _at: &str) -> V {
-        let str = self.queue_map.get(from).unwrap().pop();
+        let str = self.transport_channel.queue_map.get(from).unwrap().pop();
         serde_json::from_str(&str).unwrap()
     }
 }
@@ -184,18 +161,33 @@ mod tests {
 
         let (signal, wait) = mpsc::channel::<()>();
 
+        let queue_map = {
+            let mut m = HashMap::new();
+            for loc in &vec![Alice::name(), Bob::name()] {
+                m.insert(loc.to_string(), BlockingQueue::new());
+            }
+            Arc::new(m)
+        };
+
+        let transport_channel = TransportChannel::<LocationSet!(Alice, Bob)> {
+            location_set: PhantomData,
+            queue_map: queue_map,
+        };
+
         let mut handles = Vec::new();
         {
             // let config = config.clone();
             let config = transport_config!(
                 Alice,
                 Alice: ("localhost".to_string(), 9010),
-                Bob: ("127.0.0.1".to_string(), 9011)
+                Bob: ("localhost".to_string(), 9011)
             );
 
+            let transport_channel = transport_channel.clone();
+            
             handles.push(thread::spawn(move || {
                 wait.recv().unwrap(); // wait for Bob to start
-                let transport = HttpTransport::new(Alice, &config);
+                let transport = HttpTransport::new(Alice, &config, transport_channel);
                 transport.send::<i32>(Alice::name(), Bob::name(), &v);
             }));
         }
@@ -203,12 +195,15 @@ mod tests {
             // let config = config.clone();
             let config = transport_config!(
                 Bob,
-                Alice: ("127.0.0.1".to_string(), 9010),
+                Alice: ("localhost".to_string(), 9010),
                 Bob: ("localhost".to_string(), 9011)
             );
 
+            
+            
+            let transport_channel = transport_channel.clone();
             handles.push(thread::spawn(move || {
-                let transport = HttpTransport::new(Bob, &config);
+                let transport = HttpTransport::new(Bob, &config, transport_channel);
                 signal.send(()).unwrap();
                 let v2 = transport.receive::<i32>(Alice::name(), Bob::name());
                 assert_eq!(v, v2);
@@ -224,38 +219,49 @@ mod tests {
         let v = 42;
         let (signal, wait) = mpsc::channel::<()>();
 
-        // let config = transport_config!(
-        //     Alice,
-        //     Alice: ("localhost".to_string(), 9020),
-        //     Bob: ("localhost".to_string(), 9021)
-        // );
+        let queue_map = {
+            let mut m = HashMap::new();
+            for loc in &vec![Alice::name(), Bob::name()] {
+                m.insert(loc.to_string(), BlockingQueue::new());
+            }
+            Arc::new(m)
+        };
+
+        let transport_channel = TransportChannel::<LocationSet!(Alice, Bob)> {
+            location_set: PhantomData,
+            queue_map,
+        };
 
         let mut handles = Vec::new();
         {
             let config = transport_config!(
                 Alice,
                 Alice: ("localhost".to_string(), 9020),
-                Bob: ("127.0.0.1".to_string(), 9021)
+                Bob: ("localhost".to_string(), 9021)
             );
-            // let config = config.clone();
+
+            let transport_channel = transport_channel.clone();
+
             handles.push(thread::spawn(move || {
                 signal.send(()).unwrap();
-                let transport = HttpTransport::new(Alice, &config);
+                let transport = HttpTransport::new(Alice, &config, transport_channel);
                 transport.send::<i32>(Alice::name(), Bob::name(), &v);
             }));
         }
         {
-            // let config = config.clone();
             let config = transport_config!(
-                Alice,
-                Alice: ("127.0.0.1".to_string(), 9020),
+                Bob,
+                Alice: ("localhost".to_string(), 9020),
                 Bob: ("localhost".to_string(), 9021)
             );
+
+            let transport_channel = transport_channel.clone();
+
             handles.push(thread::spawn(move || {
                 // wait for Alice to start, which forces Alice to retry
                 wait.recv().unwrap();
                 sleep(Duration::from_millis(100));
-                let transport = HttpTransport::new(Bob, &config);
+                let transport = HttpTransport::new(Bob, &config, transport_channel);
                 let v2 = transport.receive::<i32>(Alice::name(), Bob::name());
                 assert_eq!(v, v2);
             }));
