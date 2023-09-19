@@ -72,7 +72,7 @@ impl<L: HList> HttpTransport<L> {
     /// Creates a new `HttpTransport` instance from the projection target and a configuration.
     pub fn new<C: ChoreographyLocation, Index>(
         _loc: C,
-        http_config: &TransportConfig<L, (String, u16)>,
+        http_config: &TransportConfig<L, (String, u16), (String, u16)>,
     ) -> Self
     where
         C: Member<L, Index>,
@@ -89,7 +89,7 @@ impl<L: HList> HttpTransport<L> {
             Arc::new(m)
         };
 
-        let (hostname, port) = info.get(at).unwrap();
+        let (_, (hostname, port)) = &http_config.target_info;
         let server = Arc::new(Server::http(format!("{}:{}", hostname, port)).unwrap());
         let join_handle = Some({
             let server = server.clone();
@@ -183,14 +183,16 @@ mod tests {
         let v = 42;
 
         let (signal, wait) = mpsc::channel::<()>();
-        let config = transport_config!(
-            Alice: ("localhost".to_string(), 9010),
-            Bob: ("localhost".to_string(), 9011)
-        );
 
         let mut handles = Vec::new();
         {
-            let config = config.clone();
+            // let config = config.clone();
+            let config = transport_config!(
+                Alice,
+                Alice: ("localhost".to_string(), 9010),
+                Bob: ("127.0.0.1".to_string(), 9011)
+            );
+
             handles.push(thread::spawn(move || {
                 wait.recv().unwrap(); // wait for Bob to start
                 let transport = HttpTransport::new(Alice, &config);
@@ -198,7 +200,13 @@ mod tests {
             }));
         }
         {
-            let config = config.clone();
+            // let config = config.clone();
+            let config = transport_config!(
+                Bob,
+                Alice: ("127.0.0.1".to_string(), 9010),
+                Bob: ("localhost".to_string(), 9011)
+            );
+
             handles.push(thread::spawn(move || {
                 let transport = HttpTransport::new(Bob, &config);
                 signal.send(()).unwrap();
@@ -216,14 +224,20 @@ mod tests {
         let v = 42;
         let (signal, wait) = mpsc::channel::<()>();
 
-        let config = transport_config!(
-            Alice: ("localhost".to_string(), 9020),
-            Bob: ("localhost".to_string(), 9021)
-        );
+        // let config = transport_config!(
+        //     Alice,
+        //     Alice: ("localhost".to_string(), 9020),
+        //     Bob: ("localhost".to_string(), 9021)
+        // );
 
         let mut handles = Vec::new();
         {
-            let config = config.clone();
+            let config = transport_config!(
+                Alice,
+                Alice: ("localhost".to_string(), 9020),
+                Bob: ("127.0.0.1".to_string(), 9021)
+            );
+            // let config = config.clone();
             handles.push(thread::spawn(move || {
                 signal.send(()).unwrap();
                 let transport = HttpTransport::new(Alice, &config);
@@ -231,7 +245,12 @@ mod tests {
             }));
         }
         {
-            let config = config.clone();
+            // let config = config.clone();
+            let config = transport_config!(
+                Alice,
+                Alice: ("127.0.0.1".to_string(), 9020),
+                Bob: ("localhost".to_string(), 9021)
+            );
             handles.push(thread::spawn(move || {
                 // wait for Alice to start, which forces Alice to retry
                 wait.recv().unwrap();

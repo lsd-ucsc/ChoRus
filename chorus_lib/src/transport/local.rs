@@ -29,7 +29,7 @@ pub struct LocalTransport<L: HList> {
 
 impl<L: HList> LocalTransport<L> {
     /// Creates a new `LocalTransport` instance from a list of locations.
-    pub fn new(local_config: &TransportConfig<L, ()>) -> Self {
+    pub fn new(local_config: &TransportConfig<L, (), ()>) -> Self {
         let mut queue_map: QueueMap = HashMap::new();
         let locations_list = L::to_string_list();
 
@@ -90,6 +90,7 @@ mod tests {
         let v = 42;
 
         let config = transport_config!(
+            Alice,
             Alice: (),
             Bob: ()
         );
@@ -98,13 +99,25 @@ mod tests {
 
         let mut handles = Vec::new();
         {
-            let transport = transport.clone();
+            let config = transport_config!(
+                Alice,
+                Alice: (),
+                Bob: ()
+            );
+            // let transport = transport.clone();
+            let transport = LocalTransport::new(&config);
             handles.push(thread::spawn(move || {
                 transport.send::<i32>(Alice::name(), Bob::name(), &v);
             }));
         }
         {
-            let transport = transport.clone();
+            let config = transport_config!(
+                Bob,
+                Alice: (),
+                Bob: ()
+            );
+            // let transport = transport.clone();
+            let transport = LocalTransport::new(&config);
             handles.push(thread::spawn(move || {
                 let v2 = transport.receive::<i32>(Alice::name(), Bob::name());
                 assert_eq!(v, v2);
