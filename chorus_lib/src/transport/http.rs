@@ -17,7 +17,7 @@ use crate::transport::{TransportChannel, TransportConfig};
 use crate::{transport_config, LocationSet};
 
 use crate::{
-    core::{ChoreographyLocation, HList, Member, Portable, Transport},
+    core::{ChoreographyLocation, Equal, HList, Member, Portable, Transport},
     utils::queue::BlockingQueue,
 };
 
@@ -54,12 +54,13 @@ impl<L: HList> HttpTransport<L> {
     }
 
     /// Creates a new `HttpTransport` instance from the projection target and a configuration.
-    pub fn new<C: ChoreographyLocation, Index>(
-        http_config: &TransportConfig<L, (String, u16), C, (String, u16)>,
+    pub fn new<C: ChoreographyLocation, L2: HList, Index, IndexList>(
+        http_config: &TransportConfig<L2, (String, u16), C, (String, u16)>,
         transport_channel: TransportChannel<L, QueueMap>,
     ) -> Self
     where
         C: Member<L, Index>,
+        L2: Equal<L, IndexList>,
     {
         let info = &http_config.info;
 
