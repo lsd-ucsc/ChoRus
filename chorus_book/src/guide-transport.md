@@ -33,8 +33,9 @@ To use the `local` transport, first import the `LocalTransport` struct from the 
 # use chorus_lib::{LocationSet};
 # #[derive(ChoreographyLocation)]
 # struct Alice;
+# use chorus_lib::transport::local::LocalTransportChannel;
 # let transport_channel = Arc::new(LocalTransportChannel::<LocationSet!(Alice)>::new());
-use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
+use chorus_lib::transport::local::{LocalTransport};
 
 let alice_transport = LocalTransport::new(Alice, Arc::clone(&transport_channel));
 ```

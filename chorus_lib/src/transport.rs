@@ -3,22 +3,20 @@
 pub mod http;
 pub mod local;
 
-use crate::core::ChoreographyLocation;
+use crate::core::{ChoreographyLocation, HList};
+use std::collections::HashMap;
+use std::marker::PhantomData;
 
 /// A generic struct for configuration of `Transport`.
 #[derive(Clone)]
-pub struct TransportConfig<
-    L: crate::core::HList,
-    InfoType,
-    TargetLocation: ChoreographyLocation,
-    TargetInfoType,
-> {
+pub struct TransportConfig<L: HList, InfoType, TargetLocation: ChoreographyLocation, TargetInfoType>
+{
     /// The information about locations
-    pub info: std::collections::HashMap<String, InfoType>,
+    pub info: HashMap<String, InfoType>,
     /// The information about the target choreography
     pub target_info: (TargetLocation, TargetInfoType),
     /// The struct is parametrized by the location set (`L`).
-    pub location_set: std::marker::PhantomData<L>,
+    pub location_set: PhantomData<L>,
 }
 
 /// This macro makes a `TransportConfig`.
