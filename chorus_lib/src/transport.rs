@@ -33,7 +33,7 @@ macro_rules! transport_config {
 
             $crate::transport::TransportConfig::<$crate::LocationSet!($choreography_loc, $( $loc ),*), _, _, _> {
                 info: config,
-                location_set: core::marker::PhantomData,
+                location_set: std::marker::PhantomData,
                 target_info: ($choreography_loc, $choreography_val),
             }
         }
