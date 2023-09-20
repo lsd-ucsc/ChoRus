@@ -1,11 +1,12 @@
 extern crate chorus_lib;
 use std::fmt::Debug;
+use std::sync::Arc;
 use std::thread;
 
 use chorus_lib::core::{
     ChoreoOp, Choreography, ChoreographyLocation, Located, Portable, Projector,
 };
-use chorus_lib::transport::local::LocalTransport;
+use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
 use chorus_lib::LocationSet;
 
 #[derive(ChoreographyLocation)]
@@ -57,10 +58,11 @@ impl Choreography<Located<i32, Alice>> for MainChoreography {
 }
 
 fn main() {
-    let transport = LocalTransport::<LocationSet!(Alice, Bob, Carol)>::new();
+    let transport_channel =
+        Arc::new(LocalTransportChannel::<LocationSet!(Alice, Bob, Carol)>::new());
     let mut handles = vec![];
     {
-        let transport = transport.clone();
+        let transport = LocalTransport::new(Alice, Arc::clone(&transport_channel));
         handles.push(thread::spawn(|| {
             let p = Projector::new(Alice, transport);
             let v = p.epp_and_run(MainChoreography);
@@ -68,7 +70,7 @@ fn main() {
         }));
     }
     {
-        let transport = transport.clone();
+        let transport = LocalTransport::new(Bob, Arc::clone(&transport_channel));
         handles.push(thread::spawn(|| {
             let p = Projector::new(Bob, transport);
             p.epp_and_run(MainChoreography);

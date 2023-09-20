@@ -1,6 +1,7 @@
 # extern crate chorus_lib;
+# use std::sync::Arc;
 # use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector, Located, Superposition, Runner};
-# use chorus_lib::transport::local::LocalTransport;
+# use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
 # use chorus_lib::{LocationSet};
 # #[derive(ChoreographyLocation)]
 # struct Alice;
@@ -8,4 +9,7 @@
 # struct Bob;
 # #[derive(ChoreographyLocation)]
 # struct Carol;
-# let transport = LocalTransport::<LocationSet!(Alice, Bob, Carol)>::new();
+# let transport_channel = Arc::new(LocalTransportChannel::<LocationSet!(Alice, Bob, Carol)>::new());
+# let alice_transport = LocalTransport::new(Alice, Arc::clone(&transport_channel));
+# let bob_transport = LocalTransport::new(Bob, Arc::clone(&transport_channel));
+# let carol_transport = LocalTransport::new(Carol, Arc::clone(&transport_channel));

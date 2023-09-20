@@ -171,6 +171,22 @@ where
 {
 }
 
+/// Equal trait
+pub trait Equal<L: HList, Index> {}
+
+// Base case: HNil is equal to HNil
+impl Equal<HNil, Here> for HNil {}
+
+// Recursive case: Head::Tail is equal to L if
+// 1. Head is a member of L
+// 2. Tail is equal to the remainder of L
+impl<L: HList, Head, Tail, Index1, Index2> Equal<L, HCons<Index1, Index2>> for HCons<Head, Tail>
+where
+    Head: Member<L, Index1>,
+    Tail: Equal<Head::Remainder, Index2>,
+{
+}
+
 /// Provides a method to work with located values at the current location
 pub struct Unwrapper<L1: ChoreographyLocation> {
     phantom: PhantomData<L1>,
@@ -264,7 +280,7 @@ pub trait Choreography<R = ()> {
 /// Provides methods to send and receive messages.
 ///
 /// The trait provides methods to send and receive messages between locations. Implement this trait to define a custom transport.
-pub trait Transport<L> {
+pub trait Transport<L, TargetLocation> {
     /// Returns a list of locations.
     fn locations(&self) -> Vec<String>;
     /// Sends a message from `from` to `to`.
@@ -274,7 +290,7 @@ pub trait Transport<L> {
 }
 
 /// Provides a method to perform end-point projection.
-pub struct Projector<LS: HList, L1: ChoreographyLocation, T: Transport<LS>, Index>
+pub struct Projector<LS: HList, L1: ChoreographyLocation, T: Transport<LS, L1>, Index>
 where
     L1: Member<LS, Index>,
 {
@@ -284,7 +300,7 @@ where
     index: PhantomData<Index>,
 }
 
-impl<LS: HList, L1: ChoreographyLocation, B: Transport<LS>, Index> Projector<LS, L1, B, Index>
+impl<LS: HList, L1: ChoreographyLocation, B: Transport<LS, L1>, Index> Projector<LS, L1, B, Index>
 where
     L1: Member<LS, Index>,
 {
@@ -333,14 +349,14 @@ where
     where
         L: Subset<LS, IndexSet>,
     {
-        struct EppOp<'a, L: HList, L1: ChoreographyLocation, LS: HList, B: Transport<LS>> {
+        struct EppOp<'a, L: HList, L1: ChoreographyLocation, LS: HList, B: Transport<LS, L1>> {
             target: PhantomData<L1>,
             transport: &'a B,
             locations: Vec<String>,
             marker: PhantomData<L>,
-            location_set: PhantomData<LS>,
+            projector_location_set: PhantomData<LS>,
         }
-        impl<'a, L: HList, T: ChoreographyLocation, LS: HList, B: Transport<LS>> ChoreoOp<L>
+        impl<'a, L: HList, T: ChoreographyLocation, LS: HList, B: Transport<LS, T>> ChoreoOp<L>
             for EppOp<'a, L, T, LS, B>
         {
             fn locally<V, L1: ChoreographyLocation, Index>(
@@ -409,7 +425,7 @@ where
                     transport: &self.transport,
                     locations: self.transport.locations(),
                     marker: PhantomData::<M>,
-                    location_set: PhantomData::<LS>,
+                    projector_location_set: PhantomData::<LS>,
                 };
                 choreo.run(&op)
             }
@@ -428,7 +444,7 @@ where
                             transport: self.transport,
                             locations: locs_vec.clone(),
                             marker: PhantomData::<S>,
-                            location_set: PhantomData::<LS>,
+                            projector_location_set: PhantomData::<LS>,
                         };
                         return choreo.run(&op);
                     }
@@ -441,7 +457,7 @@ where
             transport: &self.transport,
             locations: self.transport.locations(),
             marker: PhantomData::<L>,
-            location_set: PhantomData::<LS>,
+            projector_location_set: PhantomData::<LS>,
         };
         choreo.run(&op)
     }

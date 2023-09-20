@@ -8,17 +8,19 @@ To create a `Projector`, you need to provide the target location and the transpo
 
 ```rust
 # extern crate chorus_lib;
-# use chorus_lib::transport::local::LocalTransport;
+# use std::sync::Arc;
+# use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
 # use chorus_lib::core::{ChoreographyLocation, Projector};
 # use chorus_lib::{LocationSet};
-# let transport = LocalTransport::<LocationSet!(Alice, Bob)>::new();
+# let transport_channel = Arc::new(LocalTransportChannel::<LocationSet!(Alice, Bob)>::new());
+# let alice_transport = LocalTransport::new(Alice, Arc::clone(&transport_channel));
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # #[derive(ChoreographyLocation)]
 # struct Bob;
 #
 
-let projector = Projector::new(Alice, transport);
+let projector = Projector::new(Alice, alice_transport);
 ```
 
 Notice that the `Projector` is parameterized by its target location type. You will need one projector for each location to execute choreography.
@@ -29,10 +31,12 @@ To execute a choreography, you need to call the `epp_and_run` method on the `Pro
 
 ```rust
 # extern crate chorus_lib;
-# use chorus_lib::transport::local::LocalTransport;
+# use std::sync::Arc;
+# use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
 # use chorus_lib::core::{ChoreographyLocation, Projector, Choreography, ChoreoOp};
 # use chorus_lib::{LocationSet};
-# let transport = LocalTransport::<LocationSet!(Alice, Bob)>::new();
+# let transport_channel = Arc::new(LocalTransportChannel::<LocationSet!(Alice, Bob)>::new());
+# let alice_transport = LocalTransport::new(Alice, Arc::clone(&transport_channel));
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # #[derive(ChoreographyLocation)]
@@ -45,7 +49,7 @@ To execute a choreography, you need to call the `epp_and_run` method on the `Pro
 # }
 #
 
-# let projector = Projector::new(Alice, transport);
+# let projector = Projector::new(Alice, alice_transport);
 projector.epp_and_run(HelloWorldChoreography);
 ```
 
