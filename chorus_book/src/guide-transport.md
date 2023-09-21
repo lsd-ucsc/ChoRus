@@ -12,7 +12,6 @@ The `local` transport is used to execute choreographies on the same machine on d
 
 ```rust
 # extern crate chorus_lib;
-# use std::sync::Arc;
 # use chorus_lib::core::{ChoreographyLocation};
 # use chorus_lib::{LocationSet};
 # #[derive(ChoreographyLocation)]
@@ -21,34 +20,32 @@ The `local` transport is used to execute choreographies on the same machine on d
 # struct Bob;
 use chorus_lib::transport::local::LocalTransportChannel;
 
-let transport_channel = Arc::new(LocalTransportChannel::<LocationSet!(Alice, Bob)>::new());
+let transport_channel = LocalTransportChannel::<LocationSet!(Alice, Bob)>::new();
 ```
 
 To use the `local` transport, first import the `LocalTransport` struct from the `chorus_lib` crate.
 
 ```rust
 # extern crate chorus_lib;
-# use std::sync::Arc;
 # use chorus_lib::core::{ChoreographyLocation};
 # use chorus_lib::{LocationSet};
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # use chorus_lib::transport::local::LocalTransportChannel;
-# let transport_channel = Arc::new(LocalTransportChannel::<LocationSet!(Alice)>::new());
+# let transport_channel = LocalTransportChannel::<LocationSet!(Alice)>::new();
 use chorus_lib::transport::local::{LocalTransport};
 
-let alice_transport = LocalTransport::new(Alice, Arc::clone(&transport_channel));
+let alice_transport = LocalTransport::new(Alice, transport_channel.clone());
 ```
 
  Then build the transport by using the `LocalTransport::new` associated function, which takes a target location (explained in the [Projector section](./guide-projector.md)) and the `LocalTransportChannel`.
 
-You can construct a `LocalTransport` instance by passing a target location(lained in the [Projector section](./guide-projector.md)) and a `std::sync::Arc` of `LocalTransportChannel` to the `new` method.
+You can construct a `LocalTransport` instance by passing a target location(lained in the [Projector section](./guide-projector.md)) and a `LocalTransportChannel`.
 
-Because of the nature of the `Local` transport, you must make a `std::sync::Arc` from the `LocalTransportChannel`, by using the `std::sync::Arc::clone(&local_transport)`.
+Because of the nature of the `Local` transport, you must use the same `LocalTransportChannel` instance for all locations. You can `clone` the `LocalTransprotChannel` instance and pass it to each `Projector::new` constructor.
 
 ```rust
 # extern crate chorus_lib;
-# use std::sync::Arc;
 # use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
 # use std::thread;
 # use chorus_lib::core::{ChoreographyLocation, ChoreoOp, Choreography, Projector};
@@ -63,11 +60,11 @@ Because of the nature of the `Local` transport, you must make a `std::sync::Arc`
 #     fn run(self, op: &impl ChoreoOp<Self::L>) {
 #     }
 # }
-let transport_channel = Arc::new(LocalTransportChannel::<LocationSet!(Alice, Bob)>::new());
+let transport_channel = LocalTransportChannel::<LocationSet!(Alice, Bob)>::new();
 let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
 {
     // create a transport for Alice
-    let transport = LocalTransport::new(Alice, Arc::clone(&transport_channel));
+    let transport = LocalTransport::new(Alice, transport_channel.clone());
     handles.push(thread::spawn(move || {
         let p = Projector::new(Alice, transport);
         p.epp_and_run(HelloWorldChoreography);
@@ -75,7 +72,7 @@ let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
 }
 {
     // create another for Bob
-    let transport = LocalTransport::new(Bob, Arc::clone(&transport_channel));
+    let transport = LocalTransport::new(Bob, transport_channel.clone());
     handles.push(thread::spawn(move || {
         let p = Projector::new(Bob, transport);
         p.epp_and_run(HelloWorldChoreography);
@@ -119,7 +116,6 @@ Note that when calling `epp_and_run` on a `Projector`, you will get a compile er
 
 ```rust, compile_fail
 # extern crate chorus_lib;
-# use std::sync::Arc;
 # use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
 # use chorus_lib::core::{ChoreographyLocation, Projector, Choreography, ChoreoOp};
 # use chorus_lib::{LocationSet};
@@ -135,8 +131,8 @@ impl Choreography for HelloWorldChoreography {
      }
 }
 
-let transport_channel = Arc::new(LocalTransportChannel::<LocationSet!(Alice)>::new());
-let transport = LocalTransport::new(Alice, Arc::clone(&transport_channel));
+let transport_channel = LocalTransportChannel::<LocationSet!(Alice)>::new();
+let transport = LocalTransport::new(Alice, transport_channel.clone());
 let projector = Projector::new(Alice, transport);
 projector.epp_and_run(HelloWorldChoreography);
 ```

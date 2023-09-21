@@ -8,12 +8,11 @@ To create a `Projector`, you need to provide the target location and the transpo
 
 ```rust
 # extern crate chorus_lib;
-# use std::sync::Arc;
 # use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
 # use chorus_lib::core::{ChoreographyLocation, Projector};
 # use chorus_lib::{LocationSet};
-# let transport_channel = Arc::new(LocalTransportChannel::<LocationSet!(Alice, Bob)>::new());
-# let alice_transport = LocalTransport::new(Alice, Arc::clone(&transport_channel));
+# let transport_channel = LocalTransportChannel::<LocationSet!(Alice, Bob)>::new();
+# let alice_transport = LocalTransport::new(Alice, transport_channel.clone());
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # #[derive(ChoreographyLocation)]
@@ -31,12 +30,11 @@ To execute a choreography, you need to call the `epp_and_run` method on the `Pro
 
 ```rust
 # extern crate chorus_lib;
-# use std::sync::Arc;
 # use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
 # use chorus_lib::core::{ChoreographyLocation, Projector, Choreography, ChoreoOp};
 # use chorus_lib::{LocationSet};
-# let transport_channel = Arc::new(LocalTransportChannel::<LocationSet!(Alice, Bob)>::new());
-# let alice_transport = LocalTransport::new(Alice, Arc::clone(&transport_channel));
+# let transport_channel = LocalTransportChannel::<LocationSet!(Alice, Bob)>::new();
+# let alice_transport = LocalTransport::new(Alice, transport_channel.clone());
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # #[derive(ChoreographyLocation)]

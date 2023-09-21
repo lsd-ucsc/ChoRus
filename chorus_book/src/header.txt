@@ -1,5 +1,4 @@
 # extern crate chorus_lib;
-# use std::sync::Arc;
 # use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector, Located, Superposition, Runner};
 # use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
 # use chorus_lib::{LocationSet};
