@@ -1,7 +1,6 @@
 extern crate chorus_lib;
 
 use std::io;
-use std::sync::Arc;
 use std::thread;
 
 use chrono::NaiveDate;
@@ -74,10 +73,9 @@ impl Choreography for BooksellerChoreography {
 }
 
 fn main() {
-    let transport_channel = Arc::new(LocalTransportChannel::<LocationSet!(Seller, Buyer)>::new());
-
-    let transport_seller = LocalTransport::new(Seller, Arc::clone(&transport_channel));
-    let transport_buyer = LocalTransport::new(Buyer, Arc::clone(&transport_channel));
+    let transport_channel = LocalTransportChannel::<LocationSet!(Seller, Buyer)>::new();
+    let transport_seller = LocalTransport::new(Seller, transport_channel.clone());
+    let transport_buyer = LocalTransport::new(Buyer, transport_channel.clone());
 
     let seller_projector = Projector::new(Seller, transport_seller);
     let buyer_projector = Projector::new(Buyer, transport_buyer);

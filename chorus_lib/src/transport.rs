@@ -3,7 +3,7 @@
 pub mod http;
 pub mod local;
 
-use crate::core::{Append, ChoreographyLocation, HList};
+use crate::core::{ChoreographyLocation, HCons, HList};
 use crate::LocationSet;
 use std::collections::HashMap;
 use std::marker::PhantomData;
@@ -20,43 +20,29 @@ pub struct TransportConfig<L: HList, InfoType, TargetLocation: ChoreographyLocat
     pub location_set: PhantomData<L>,
 }
 
-/// Initiate a transport for a given target.
-/// Note that information about other locations have to provided using `.with`
-pub fn transport_for_target<InfoType, TargetLocation, TargetInfoType>(
-    location: TargetLocation,
-    info: TargetInfoType,
-) -> TransportConfig<LocationSet!(TargetLocation), InfoType, TargetLocation, TargetInfoType>
-where
-    TargetLocation: ChoreographyLocation,
+impl<InfoType, TargetLocation: ChoreographyLocation, TargetInfoType>
+    TransportConfig<LocationSet!(TargetLocation), InfoType, TargetLocation, TargetInfoType>
 {
-    TransportConfig::for_target(location, info)
-}
-
-impl<L: HList, InfoType, TargetLocation: ChoreographyLocation, TargetInfoType>
-    TransportConfig<L, InfoType, TargetLocation, TargetInfoType>
-{
-	/// A transport for a given target
-    fn for_target(location: TargetLocation, info: TargetInfoType) -> Self {
+    /// A transport for a given target.
+    pub fn for_target(location: TargetLocation, info: TargetInfoType) -> Self {
         Self {
             info: HashMap::new(),
             target_info: (location, info),
             location_set: PhantomData,
         }
     }
+}
 
-    /// Assuming you have a way to append to HLists, and that `L2` is the type-level list
-    /// that results from appending `NewLocation` to `L`.
-    pub fn with<NewLocation, L2>(
+impl<L: HList, InfoType, TargetLocation: ChoreographyLocation, TargetInfoType>
+    TransportConfig<L, InfoType, TargetLocation, TargetInfoType>
+{
+    /// Adds information about a new `ChoreographyLocation`.
+    pub fn with<NewLocation: ChoreographyLocation>(
         self,
         _location: NewLocation,
         info: InfoType,
-    ) -> TransportConfig<L2, InfoType, TargetLocation, TargetInfoType>
-    where
-        // L2: RemoveHead<NewLocation, Result = L>,
-        L: Append<NewLocation, Result = L2>,
-        NewLocation: ChoreographyLocation,
-        L2: HList,
-    {
+    ) -> TransportConfig<HCons<NewLocation, L>, InfoType, TargetLocation, TargetInfoType>
+where {
         let mut new_info = HashMap::new();
         for (k, v) in self.info.into_iter() {
             new_info.insert(k, v);
@@ -79,23 +65,4 @@ impl<L: HList, InfoType, TargetLocation: ChoreographyLocation, TargetInfoType>
             target_info: self.target_info,
         }
     }
-}
-
-/// This macro makes a `TransportConfig`.
-#[macro_export]
-macro_rules! transport_config {
-    ( $choreography_loc:ident => $choreography_val:expr, $( $loc:ident : $val:expr ),* $(,)? ) => {
-        {
-            let mut config = std::collections::HashMap::new();
-            $(
-                config.insert($loc::name().to_string(), $val);
-            )*
-
-            $crate::transport::TransportConfig::<$crate::LocationSet!($choreography_loc, $( $loc ),*), _, _, _> {
-                info: config,
-                location_set: std::marker::PhantomData,
-                target_info: ($choreography_loc, $choreography_val),
-            }
-        }
-    };
 }

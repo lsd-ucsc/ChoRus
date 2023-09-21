@@ -16,16 +16,15 @@ use crate::utils::queue::BlockingQueue;
 type QueueMap = HashMap<String, HashMap<String, BlockingQueue<String>>>;
 
 /// A Transport channel used between multiple `Transport`s.
-#[derive(Clone)]
 pub struct LocalTransportChannel<L: crate::core::HList> {
     /// The location set where the channel is defined on.
     pub location_set: std::marker::PhantomData<L>,
-    queue_map: Arc<QueueMap>,
+    queue_map: QueueMap,
 }
 
 impl<L: HList> LocalTransportChannel<L> {
     /// Creates a `LocalTransportChannel`.
-    pub fn new() -> LocalTransportChannel<L> {
+    pub fn new() -> Arc<LocalTransportChannel<L>> {
         let mut queue_map: QueueMap = HashMap::new();
         for sender in L::to_string_list() {
             let mut n = HashMap::new();
@@ -35,10 +34,10 @@ impl<L: HList> LocalTransportChannel<L> {
             queue_map.insert(sender.to_string(), n);
         }
 
-        LocalTransportChannel {
+        Arc::new(LocalTransportChannel {
             location_set: PhantomData,
-            queue_map: Arc::new(queue_map.into()),
-        }
+            queue_map,
+        })
     }
 }
 
@@ -121,17 +120,17 @@ mod tests {
     fn test_local_transport() {
         let v = 42;
 
-        let transport_channel = Arc::new(LocalTransportChannel::<LocationSet!(Bob, Alice)>::new());
+        let transport_channel = LocalTransportChannel::<LocationSet!(Bob, Alice)>::new();
 
         let mut handles = Vec::new();
         {
-            let transport = LocalTransport::new(Alice, Arc::clone(&transport_channel));
+            let transport = LocalTransport::new(Alice, transport_channel.clone());
             handles.push(thread::spawn(move || {
                 transport.send::<i32>(Alice::name(), Bob::name(), &v);
             }));
         }
         {
-            let transport = LocalTransport::new(Bob, Arc::clone(&transport_channel));
+            let transport = LocalTransport::new(Bob, transport_channel.clone());
             handles.push(thread::spawn(move || {
                 let v2 = transport.receive::<i32>(Alice::name(), Bob::name());
                 assert_eq!(v, v2);

@@ -87,24 +87,21 @@ let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
 
 The `http` transport is used to execute choreographies on different machines. This is useful for executing choreographies in a distributed system.
 
-To use the `http` transport, import the `HttpTransport` struct and the `transport_config` macro from the `chorus_lib` crate.
+To use the `http` transport, import the `HttpTransport` struct and the `HttpTransportConfig` type alias from the `chorus_lib` crate.
 
 ```rust
 # extern crate chorus_lib;
-use chorus_lib::transport::http::HttpTransport;
-use chorus_lib::transport_config;
+use chorus_lib::transport::http::{HttpTransport, HttpTransportConfig};
 ```
 
-The new constructor takes a "configuration" of type TransportConfig. To build the TransportConfig, you should use the macro transport_config and give it a key => value, followed by a comma (if you have more than one key/value), and a comma-separated list of key: values where the key => value is the target ChoreographyLocation and the value is the required information for the target, and each following key: value is a ChoreographyLocation and the required information for it (`(host_name, port)` in this case). For HttpTransport You can think of TransportConfig as a map from locations to the hostname and port of the location. But for a generic Transport, it can contain any kind of information.
+The new constructor takes a "configuration" of type `HttpTransportConfig`. To build the config, you should use the pattern `HttpTransportConfig::for_target(target_location, target_information).with(other_location, other_location_information)...build()`  where the target_location is the target ChoreographyLocation and target_information is the required information for the target, and each following `.with(other_location, other_location_information)` is a ChoreographyLocation and the required information for it (`(host_name, port)` in this case). For HttpTransport You can think of TransportConfig as a map from locations to the hostname and port of the location. But for a generic Transport, it can contain any kind of information.
 
 ```rust
 {{#include ./header.txt}}
-# use chorus_lib::transport::http::{HttpTransport};
-# use chorus_lib::transport_config;
-let config = transport_config!(
-                Alice => ("0.0.0.0".to_string(), 9010),
-                Bob: ("localhost".to_string(), 9011)
-            );
+# use chorus_lib::transport::http::{HttpTransport, HttpTransportConfig};
+let config = HttpTransportConfig::for_target(Alice, ("0.0.0.0".to_string(), 9010))
+                .with(Bob, ("localhost".to_string(), 9011))
+                .build();
 
 let transport = HttpTransport::new(&config);
 ```

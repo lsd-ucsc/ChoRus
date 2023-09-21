@@ -121,28 +121,6 @@ where
     }
 }
 
-/// A trait to handle appending a type to our HList
-pub trait Append<T>: HList {
-    /// Return the result after appending
-    type Result: HList;
-}
-
-impl<Head> Append<Head> for HNil
-where
-    Head: ChoreographyLocation,
-{
-    type Result = HCons<Head, HNil>;
-}
-
-impl<Head, NewHead, Tail: HList> Append<NewHead> for HCons<Head, Tail>
-where
-    Head: ChoreographyLocation,
-    NewHead: ChoreographyLocation,
-    Tail: HList,
-{
-    type Result = HCons<NewHead, HCons<Head, Tail>>;
-}
-
 // TODO(shumbo): Export the macro under the `core` module
 
 /// Macro to generate hlist

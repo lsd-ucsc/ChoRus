@@ -12,9 +12,9 @@ use retry::{
 use tiny_http::Server;
 use ureq::{Agent, AgentBuilder};
 
-use crate::transport::{TransportConfig};
-#[cfg(test)]
-use crate::transport::transport_for_target;
+use crate::transport::TransportConfig;
+// #[cfg(test)]
+// use crate::transport::transport_for_target;
 
 use crate::{
     core::{ChoreographyLocation, HList, Member, Portable, Transport},
@@ -22,6 +22,8 @@ use crate::{
 };
 
 type QueueMap = HashMap<String, BlockingQueue<String>>;
+/// A type alias for `TransportConfig`s used for building `HttpTransport`
+pub type HttpTransportConfig<L, Target> = TransportConfig<L, (String, u16), Target, (String, u16)>;
 
 /// The header name for the source location.
 const HEADER_SRC: &str = "X-CHORUS-SOURCE";
@@ -48,9 +50,7 @@ pub struct HttpTransport<L: HList, TLocation> {
 
 impl<L: HList, TLocation: ChoreographyLocation> HttpTransport<L, TLocation> {
     /// Creates a new `HttpTransport` instance from the configuration.
-    pub fn new<Index>(
-        http_config: &TransportConfig<L, (String, u16), TLocation, (String, u16)>,
-    ) -> Self
+    pub fn new<Index>(http_config: &HttpTransportConfig<L, TLocation>) -> Self
     where
         TLocation: Member<L, Index>,
     {
@@ -166,7 +166,7 @@ mod tests {
 
         let mut handles = Vec::new();
         {
-            let config = transport_for_target(Alice, ("0.0.0.0".to_string(), 9010))
+            let config = HttpTransportConfig::for_target(Alice, ("0.0.0.0".to_string(), 9010))
                 .with(Bob, ("localhost".to_string(), 9011))
                 .build();
 
@@ -177,8 +177,7 @@ mod tests {
             }));
         }
         {
-
-            let config = transport_for_target(Bob, ("0.0.0.0".to_string(), 9011))
+            let config = HttpTransportConfig::for_target(Bob, ("0.0.0.0".to_string(), 9011))
                 .with(Alice, ("localhost".to_string(), 9010))
                 .build();
 
@@ -201,7 +200,7 @@ mod tests {
 
         let mut handles = Vec::new();
         {
-            let config = transport_for_target(Alice, ("0.0.0.0".to_string(), 9020))
+            let config = HttpTransportConfig::for_target(Alice, ("0.0.0.0".to_string(), 9020))
                 .with(Bob, ("localhost".to_string(), 9021))
                 .build();
 
@@ -212,7 +211,7 @@ mod tests {
             }));
         }
         {
-            let config = transport_for_target(Bob, ("0.0.0.0".to_string(), 9021))
+            let config = HttpTransportConfig::for_target(Bob, ("0.0.0.0".to_string(), 9021))
                 .with(Alice, ("localhost".to_string(), 9020))
                 .build();
 

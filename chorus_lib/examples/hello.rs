@@ -1,6 +1,5 @@
 extern crate chorus_lib;
 
-use std::sync::Arc;
 use std::thread;
 
 use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
@@ -41,18 +40,19 @@ impl Choreography for HelloWorldChoreography {
 fn main() {
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     // Create a transport channel
-    let transport_channel = Arc::new(LocalTransportChannel::<LocationSet!(Bob, Alice)>::new());
-
+    let transport_channel = LocalTransportChannel::<LocationSet!(Bob, Alice)>::new();
     // Run the choreography in two threads
     {
-        let transport = LocalTransport::new(Alice, Arc::clone(&transport_channel));
+        let transport_channel = transport_channel.clone();
+        let transport = LocalTransport::new(Alice, transport_channel);
         handles.push(thread::spawn(move || {
             let p = Projector::new(Alice, transport);
             p.epp_and_run(HelloWorldChoreography);
         }));
     }
     {
-        let transport = LocalTransport::new(Bob, Arc::clone(&transport_channel));
+        let transport_channel = transport_channel.clone();
+        let transport = LocalTransport::new(Bob, transport_channel);
         handles.push(thread::spawn(move || {
             let p = Projector::new(Bob, transport);
             p.epp_and_run(HelloWorldChoreography);

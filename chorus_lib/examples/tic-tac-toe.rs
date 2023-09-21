@@ -1,12 +1,11 @@
 /// Choreographic tik-tak-toe game
 extern crate chorus_lib;
 
-use chorus_lib::transport_config;
+use chorus_lib::transport::http::HttpTransportConfig;
 use chorus_lib::{
     core::{
         ChoreoOp, Choreography, ChoreographyLocation, Deserialize, Located, Projector, Serialize,
     },
-    // http_config,
     transport::http::HttpTransport,
     LocationSet,
 };
@@ -296,13 +295,19 @@ fn main() {
 
     match args.player {
         'X' => {
-            let config = transport_config!(
-                PlayerX => (args.hostname.as_str().to_string(), args.port),
-                PlayerO: (args.opponent_hostname.as_str().to_string(), args.opponent_port)
-            );
-
+            let config = HttpTransportConfig::for_target(
+                PlayerX,
+                (args.hostname.as_str().to_string(), args.port),
+            )
+            .with(
+                PlayerO,
+                (
+                    args.opponent_hostname.as_str().to_string(),
+                    args.opponent_port,
+                ),
+            )
+            .build();
             let transport = HttpTransport::new(&config);
-
             let projector = Projector::new(PlayerX, transport);
             projector.epp_and_run(TicTacToeChoreography {
                 brain_for_x: projector.local(brain),
@@ -310,11 +315,18 @@ fn main() {
             });
         }
         'O' => {
-            let config = transport_config!(
-            PlayerO => (args.hostname.as_str().to_string(), args.port),
-            PlayerX: (args.opponent_hostname.as_str().to_string(), args.opponent_port)
-            );
-
+            let config = HttpTransportConfig::for_target(
+                PlayerO,
+                (args.hostname.as_str().to_string(), args.port),
+            )
+            .with(
+                PlayerX,
+                (
+                    args.opponent_hostname.as_str().to_string(),
+                    args.opponent_port,
+                ),
+            )
+            .build();
             let transport = HttpTransport::new(&config);
             let projector = Projector::new(PlayerO, transport);
             projector.epp_and_run(TicTacToeChoreography {
