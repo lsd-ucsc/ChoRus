@@ -12,9 +12,9 @@ use retry::{
 use tiny_http::Server;
 use ureq::{Agent, AgentBuilder};
 
-use crate::transport::TransportConfig;
+use crate::transport::{TransportConfig};
 #[cfg(test)]
-use crate::transport_config;
+use crate::transport::transport_for_target;
 
 use crate::{
     core::{ChoreographyLocation, HList, Member, Portable, Transport},
@@ -155,6 +155,9 @@ mod tests {
     #[derive(ChoreographyLocation)]
     struct Bob;
 
+    #[derive(ChoreographyLocation)]
+    struct Carol;
+
     #[test]
     fn test_http_transport() {
         let v = 42;
@@ -163,10 +166,9 @@ mod tests {
 
         let mut handles = Vec::new();
         {
-            let config = transport_config!(
-                Alice => ("0.0.0.0".to_string(), 9010),
-                Bob: ("localhost".to_string(), 9011)
-            );
+            let config = transport_for_target(Alice, ("0.0.0.0".to_string(), 9010))
+                .with(Bob, ("localhost".to_string(), 9011))
+                .build();
 
             handles.push(thread::spawn(move || {
                 wait.recv().unwrap(); // wait for Bob to start
@@ -175,10 +177,10 @@ mod tests {
             }));
         }
         {
-            let config = transport_config!(
-                Bob => ("0.0.0.0".to_string(), 9011),
-                Alice: ("localhost".to_string(), 9010),
-            );
+
+            let config = transport_for_target(Bob, ("0.0.0.0".to_string(), 9011))
+                .with(Alice, ("localhost".to_string(), 9010))
+                .build();
 
             handles.push(thread::spawn(move || {
                 let transport = HttpTransport::new(&config);
@@ -199,10 +201,9 @@ mod tests {
 
         let mut handles = Vec::new();
         {
-            let config = transport_config!(
-                Alice => ("0.0.0.0".to_string(), 9020),
-                Bob: ("localhost".to_string(), 9021)
-            );
+            let config = transport_for_target(Alice, ("0.0.0.0".to_string(), 9020))
+                .with(Bob, ("localhost".to_string(), 9021))
+                .build();
 
             handles.push(thread::spawn(move || {
                 signal.send(()).unwrap();
@@ -211,10 +212,9 @@ mod tests {
             }));
         }
         {
-            let config = transport_config!(
-                Bob=> ("0.0.0.0".to_string(), 9021),
-                Alice: ("localhost".to_string(), 9020)
-            );
+            let config = transport_for_target(Bob, ("0.0.0.0".to_string(), 9021))
+                .with(Alice, ("localhost".to_string(), 9020))
+                .build();
 
             handles.push(thread::spawn(move || {
                 // wait for Alice to start, which forces Alice to retry
