@@ -47,7 +47,6 @@ where {
         for (k, v) in self.info.into_iter() {
             new_info.insert(k, v);
         }
-        // Assuming NewLocation has a `name` associated function
         new_info.insert(NewLocation::name().to_string(), info);
 
         TransportConfig {

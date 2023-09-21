@@ -13,8 +13,6 @@ use tiny_http::Server;
 use ureq::{Agent, AgentBuilder};
 
 use crate::transport::TransportConfig;
-// #[cfg(test)]
-// use crate::transport::transport_for_target;
 
 use crate::{
     core::{ChoreographyLocation, HList, Member, Portable, Transport},
