@@ -24,6 +24,8 @@ let transport_channel = LocalTransportChannel::<LocationSet!(Alice, Bob)>::new()
 ```
 
 To use the `local` transport, first import the `LocalTransport` struct from the `chorus_lib` crate.
+ 
+Then build the transport by using the `LocalTransport::new` associated function, which takes a target location (explained in the [Projector section](./guide-projector.md)) and the `LocalTransportChannel`.
 
 ```rust
 # extern crate chorus_lib;
@@ -37,10 +39,6 @@ use chorus_lib::transport::local::{LocalTransport};
 
 let alice_transport = LocalTransport::new(Alice, transport_channel.clone());
 ```
-
- Then build the transport by using the `LocalTransport::new` associated function, which takes a target location (explained in the [Projector section](./guide-projector.md)) and the `LocalTransportChannel`.
-
-You can construct a `LocalTransport` instance by passing a target location(lained in the [Projector section](./guide-projector.md)) and a `LocalTransportChannel`.
 
 Because of the nature of the `Local` transport, you must use the same `LocalTransportChannel` instance for all locations. You can `clone` the `LocalTransprotChannel` instance and pass it to each `Projector::new` constructor.
 
@@ -91,13 +89,13 @@ To use the `http` transport, import the `HttpTransport` struct and the `HttpTran
 use chorus_lib::transport::http::{HttpTransport, HttpTransportConfig};
 ```
 
-The new constructor takes a "configuration" of type `HttpTransportConfig`. To build the config, you should use the pattern `HttpTransportConfig::for_target(target_location, target_information).with(other_location, other_location_information)...build()`  where the target_location is the target ChoreographyLocation and target_information is the required information for the target, and each following `.with(other_location, other_location_information)` is a ChoreographyLocation and the required information for it (`(host_name, port)` in this case). For HttpTransport You can think of TransportConfig as a map from locations to the hostname and port of the location. But for a generic Transport, it can contain any kind of information.
+The primary constructor requires an argument of type `HttpTransportConfig`. To create an instance of this configuration, utilize the builder pattern. Start with `HttpTransportConfig::for_target(target_location, target_information)` and then chain additional locations using the `.with(other_location, other_location_information)` method. Conclude with `.build()`. In this context, `target_location` refers to the target `ChoreographyLocation`, and `target_information` is specifically a tuple of `(host_name: String, port: u16)`. Subsequent calls to `.with()` allow you to add more locations and their respective information. For the `HttpTransport`, think of `HttpTransportConfig` as a mapping from locations to their hostnames and ports. However, for other generic transports, the corresponding information might vary, potentially diverging from the `(host_name, port)` format presented here.  In some cases, the `target_information` could even have a different type than the following `other_location_information` types. But all the `other_location_information`s should have the same type.
 
 ```rust
 {{#include ./header.txt}}
 # use chorus_lib::transport::http::{HttpTransport, HttpTransportConfig};
-let config = HttpTransportConfig::for_target(Alice, ("0.0.0.0".to_string(), 9010))
-                .with(Bob, ("localhost".to_string(), 9011))
+let config = HttpTransportConfig::for_target(Alice, ("localhost".to_string(), 8080))
+                .with(Bob, ("localhost".to_string(), 8081))
                 .build();
 
 let transport = HttpTransport::new(&config);
