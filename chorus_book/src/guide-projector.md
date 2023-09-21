@@ -17,8 +17,6 @@ To create a `Projector`, you need to provide the target location and the transpo
 # struct Alice;
 # #[derive(ChoreographyLocation)]
 # struct Bob;
-#
-
 let projector = Projector::new(Alice, alice_transport);
 ```
 
@@ -45,8 +43,6 @@ To execute a choreography, you need to call the `epp_and_run` method on the `Pro
 #     fn run(self, op: &impl ChoreoOp<Self::L>) {
 #     }
 # }
-#
-
 # let projector = Projector::new(Alice, alice_transport);
 projector.epp_and_run(HelloWorldChoreography);
 ```
