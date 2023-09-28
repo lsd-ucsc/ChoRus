@@ -8,7 +8,7 @@
 # struct Bob;
 # #[derive(ChoreographyLocation)]
 # struct Carol;
-# let transport_channel = LocalTransportChannel::<LocationSet!(Alice, Bob, Carol)>::new();
+# let transport_channel = LocalTransportChannel::new().with(Alice).with(Bob).with(Carol);
 # let alice_transport = LocalTransport::new(Alice, transport_channel.clone());
 # let bob_transport = LocalTransport::new(Bob, transport_channel.clone());
 # let carol_transport = LocalTransport::new(Carol, transport_channel.clone());

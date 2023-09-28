@@ -143,7 +143,11 @@ fn main() {
         i
     };
 
-    let transport_channel = LocalTransportChannel::<LocationSet!(Seller, Buyer1, Buyer2)>::new();
+    let transport_channel = LocalTransportChannel::new()
+        .with(Seller)
+        .with(Buyer1)
+        .with(Buyer2);
+
     let seller_projector = Arc::new(Projector::new(
         Seller,
         LocalTransport::new(Seller, transport_channel.clone()),

@@ -57,7 +57,11 @@ impl Choreography<Located<i32, Alice>> for MainChoreography {
 }
 
 fn main() {
-    let transport_channel = LocalTransportChannel::<LocationSet!(Alice, Bob, Carol)>::new();
+    let transport_channel = LocalTransportChannel::new()
+        .with(Alice)
+        .with(Bob)
+        .with(Carol);
+
     let mut handles = vec![];
     {
         let transport = LocalTransport::new(Alice, transport_channel.clone());

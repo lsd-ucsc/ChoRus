@@ -13,11 +13,11 @@ use std::marker::PhantomData;
 pub struct TransportConfig<L: HList, InfoType, TargetLocation: ChoreographyLocation, TargetInfoType>
 {
     /// The information about locations
-    pub info: HashMap<String, InfoType>,
+    info: HashMap<String, InfoType>,
     /// The information about the target choreography
-    pub target_info: (TargetLocation, TargetInfoType),
+    target_info: (TargetLocation, TargetInfoType),
     /// The struct is parametrized by the location set (`L`).
-    pub location_set: PhantomData<L>,
+    location_set: PhantomData<L>,
 }
 
 impl<InfoType, TargetLocation: ChoreographyLocation, TargetInfoType>
@@ -38,30 +38,17 @@ impl<L: HList, InfoType, TargetLocation: ChoreographyLocation, TargetInfoType>
 {
     /// Adds information about a new `ChoreographyLocation`.
     pub fn with<NewLocation: ChoreographyLocation>(
-        self,
+        mut self,
         _location: NewLocation,
         info: InfoType,
     ) -> TransportConfig<HCons<NewLocation, L>, InfoType, TargetLocation, TargetInfoType>
 where {
-        let mut new_info = HashMap::new();
-        for (k, v) in self.info.into_iter() {
-            new_info.insert(k, v);
-        }
-        new_info.insert(NewLocation::name().to_string(), info);
+        self.info.insert(NewLocation::name().to_string(), info);
 
-        TransportConfig {
-            info: new_info,
-            target_info: self.target_info,
-            location_set: PhantomData,
-        }
-    }
-
-    /// Finalize the `TransportConfig`.
-    pub fn build(self) -> TransportConfig<L, InfoType, TargetLocation, TargetInfoType> {
         TransportConfig {
             info: self.info,
-            location_set: PhantomData,
             target_info: self.target_info,
+            location_set: PhantomData,
         }
     }
 }

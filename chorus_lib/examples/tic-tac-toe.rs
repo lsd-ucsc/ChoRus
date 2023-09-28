@@ -305,9 +305,9 @@ fn main() {
                     args.opponent_hostname.as_str().to_string(),
                     args.opponent_port,
                 ),
-            )
-            .build();
-            let transport = HttpTransport::new(&config);
+            );
+
+            let transport = HttpTransport::new(config);
             let projector = Projector::new(PlayerX, transport);
             projector.epp_and_run(TicTacToeChoreography {
                 brain_for_x: projector.local(brain),
@@ -325,9 +325,9 @@ fn main() {
                     args.opponent_hostname.as_str().to_string(),
                     args.opponent_port,
                 ),
-            )
-            .build();
-            let transport = HttpTransport::new(&config);
+            );
+
+            let transport = HttpTransport::new(config);
             let projector = Projector::new(PlayerO, transport);
             projector.epp_and_run(TicTacToeChoreography {
                 brain_for_x: projector.remote(PlayerX),

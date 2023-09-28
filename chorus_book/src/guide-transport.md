@@ -8,7 +8,7 @@ ChoRus provides two built-in transports: `local` and `http`.
 
 ### The Local Transport
 
-The `local` transport is used to execute choreographies on the same machine on different threads. This is useful for testing and prototyping. Each `local` transport is defined over `LocalTransportChannel`, which contains the set of `ChoreographyLocation` that the `local` transport operates on. You can build a `LocalTransportChannel` by importing the `LocalTransportChannel` stsruct from the `chorus_lib` crate.
+The `local` transport is used to execute choreographies on the same machine on different threads. This is useful for testing and prototyping. Each `local` transport is defined over `LocalTransportChannel`, which contains the set of `ChoreographyLocation` that the `local` transport operates on. You can build a `LocalTransportChannel` by importing the `LocalTransportChannel` struct from the `chorus_lib` crate.
 
 ```rust
 # extern crate chorus_lib;
@@ -20,7 +20,7 @@ The `local` transport is used to execute choreographies on the same machine on d
 # struct Bob;
 use chorus_lib::transport::local::LocalTransportChannel;
 
-let transport_channel = LocalTransportChannel::<LocationSet!(Alice, Bob)>::new();
+let transport_channel = LocalTransportChannel::new().with(Alice).with(Bob);
 ```
 
 To use the `local` transport, first import the `LocalTransport` struct from the `chorus_lib` crate.
@@ -34,7 +34,7 @@ Then build the transport by using the `LocalTransport::new` associated function,
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # use chorus_lib::transport::local::LocalTransportChannel;
-# let transport_channel = LocalTransportChannel::<LocationSet!(Alice)>::new();
+# let transport_channel = LocalTransportChannel::new().with(Alice);
 use chorus_lib::transport::local::{LocalTransport};
 
 let alice_transport = LocalTransport::new(Alice, transport_channel.clone());
@@ -58,7 +58,7 @@ Because of the nature of the `Local` transport, you must use the same `LocalTran
 #     fn run(self, op: &impl ChoreoOp<Self::L>) {
 #     }
 # }
-let transport_channel = LocalTransportChannel::<LocationSet!(Alice, Bob)>::new();
+let transport_channel = LocalTransportChannel::new().with(Alice).with(Bob);
 let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
 {
     // create a transport for Alice
@@ -89,23 +89,32 @@ To use the `http` transport, import the `HttpTransport` struct and the `HttpTran
 use chorus_lib::transport::http::{HttpTransport, HttpTransportConfig};
 ```
 
-The primary constructor requires an argument of type `HttpTransportConfig`. To create an instance of this configuration, utilize the builder pattern. Start with `HttpTransportConfig::for_target(target_location, target_information)` and then chain additional locations using the `.with(other_location, other_location_information)` method. Conclude with `.build()`. In this context, `target_location` refers to the target `ChoreographyLocation`, and `target_information` is specifically a tuple of `(host_name: String, port: u16)`. Subsequent calls to `.with()` allow you to add more locations and their respective information. For the `HttpTransport`, think of `HttpTransportConfig` as a mapping from locations to their hostnames and ports. However, for other generic transports, the corresponding information might vary, potentially diverging from the `(host_name, port)` format presented here.  In some cases, the `target_information` could even have a different type than the following `other_location_information` types. But all the `other_location_information`s should have the same type.
+The primary constructor requires an argument of type `HttpTransportConfig`. To create an instance of this configuration, start with `HttpTransportConfig::for_target(target_location, (hostname, port))`. It will create set a projection target and the hostname and port to listen on. Then, provide information to connect to other locations by method-chaining the `.with(other_location, (hostname, port))` method. You can think of `HttpTransportConfig` as a mapping from locations to their hostnames and ports.
 
 ```rust
 {{#include ./header.txt}}
 # use chorus_lib::transport::http::{HttpTransport, HttpTransportConfig};
 let config = HttpTransportConfig::for_target(Alice, ("localhost".to_string(), 8080))
-                .with(Bob, ("localhost".to_string(), 8081))
-                .build();
+                .with(Bob, ("localhost".to_string(), 8081));
 
-let transport = HttpTransport::new(&config);
+let transport = HttpTransport::new(config);
 ```
 
 In the above example, the transport will start the HTTP server on port 8080 on localhost. If Alice needs to send a message to Bob, it will use `http://localhost:8081` as the destination.
 
 ## Creating a Custom Transport
 
-You can also create your own transport by implementing the `Transport` trait. See the API documentation for more details.
+You can also create your own transport by implementing the `Transport` trait. It might be helpful first build a `TransportConfig` to have the the information that you need for each `ChoreographyLocation`, and then have a constructor that takes the `TransportConfig` and builds the `Transport` based on it. While the syntax is similar to `HttpTransportConfig`, the type of information for each `ChoreographyLocation` might diverge from the `(host_name, port)` format presented here. In some cases, the `target_information` could even have a different type than the following `other_location_information` types. But all the `other_location_information`s should have the same type.
+
+```rust
+{{#include ./header.txt}}
+# use chorus_lib::transport::TransportConfig;
+let config = TransportConfig::for_target(Alice, ())
+                .with(Bob, ("localhost".to_string(), 8081))
+                .with(Carol, ("localhost".to_string(), 8082));
+```
+
+See the API documentation for more details.
 
 
 ### Note on the location set of the Choreography

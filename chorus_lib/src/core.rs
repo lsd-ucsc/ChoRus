@@ -96,12 +96,11 @@ pub trait HList {
     /// returns
     fn to_string_list() -> Vec<&'static str>;
 }
-/// end of HList
-#[derive(Clone)]
-pub struct HNil;
-/// An element of HList
 
-#[derive(Clone)]
+/// end of HList
+pub struct HNil;
+
+/// An element of HList
 pub struct HCons<Head, Tail>(Head, Tail);
 
 impl HList for HNil {
@@ -168,22 +167,6 @@ impl<L: HList, Head, Tail: HList, IHead, ITail> Subset<L, HCons<IHead, ITail>> f
 where
     Head: Member<L, IHead>,
     Tail: Subset<L, ITail>,
-{
-}
-
-/// Equal trait
-pub trait Equal<L: HList, Index> {}
-
-// Base case: HNil is equal to HNil
-impl Equal<HNil, Here> for HNil {}
-
-// Recursive case: Head::Tail is equal to L if
-// 1. Head is a member of L
-// 2. Tail is equal to the remainder of L
-impl<L: HList, Head, Tail, Index1, Index2> Equal<L, HCons<Index1, Index2>> for HCons<Head, Tail>
-where
-    Head: Member<L, Index1>,
-    Tail: Equal<Head::Remainder, Index2>,
 {
 }
 
@@ -280,7 +263,11 @@ pub trait Choreography<R = ()> {
 /// Provides methods to send and receive messages.
 ///
 /// The trait provides methods to send and receive messages between locations. Implement this trait to define a custom transport.
-pub trait Transport<L, TargetLocation> {
+///
+/// The type parameter `L` is the location set that the transport is operating on.
+///
+/// The type paramter `TargetLocation` is the target `ChoreographyLocation`.
+pub trait Transport<L: HList, TargetLocation: ChoreographyLocation> {
     /// Returns a list of locations.
     fn locations(&self) -> Vec<String>;
     /// Sends a message from `from` to `to`.
