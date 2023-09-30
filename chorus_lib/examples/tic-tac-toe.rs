@@ -4,10 +4,10 @@ extern crate chorus_lib;
 use chorus_lib::transport::http::HttpTransportConfig;
 use chorus_lib::{
     core::{
-        ChoreoOp, Choreography, ChoreographyLocation, Deserialize, Located, Projector, Serialize,
+        ChoreoOp, Choreography, ChoreographyLocation, Deserialize, Located, LocationSet, Projector,
+        Serialize,
     },
     transport::http::HttpTransport,
-    LocationSet,
 };
 
 use clap::Parser;

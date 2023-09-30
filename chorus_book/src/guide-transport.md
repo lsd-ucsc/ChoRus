@@ -12,8 +12,7 @@ The `local` transport is used to execute choreographies on the same machine on d
 
 ```rust
 # extern crate chorus_lib;
-# use chorus_lib::core::{ChoreographyLocation};
-# use chorus_lib::{LocationSet};
+# use chorus_lib::core::{ChoreographyLocation, LocationSet};
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # #[derive(ChoreographyLocation)]
@@ -24,13 +23,12 @@ let transport_channel = LocalTransportChannel::new().with(Alice).with(Bob);
 ```
 
 To use the `local` transport, first import the `LocalTransport` struct from the `chorus_lib` crate.
- 
+
 Then build the transport by using the `LocalTransport::new` associated function, which takes a target location (explained in the [Projector section](./guide-projector.md)) and the `LocalTransportChannel`.
 
 ```rust
 # extern crate chorus_lib;
-# use chorus_lib::core::{ChoreographyLocation};
-# use chorus_lib::{LocationSet};
+# use chorus_lib::core::{ChoreographyLocation, LocationSet};
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # use chorus_lib::transport::local::LocalTransportChannel;
@@ -46,8 +44,7 @@ Because of the nature of the `Local` transport, you must use the same `LocalTran
 # extern crate chorus_lib;
 # use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
 # use std::thread;
-# use chorus_lib::core::{ChoreographyLocation, ChoreoOp, Choreography, Projector};
-# use chorus_lib::{LocationSet};
+# use chorus_lib::core::{ChoreographyLocation, ChoreoOp, Choreography, Projector, LocationSet};
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # #[derive(ChoreographyLocation)]
@@ -116,10 +113,9 @@ let config = TransportConfig::for_target(Alice, ())
 
 See the API documentation for more details.
 
-
 ### Note on the location set of the Choreography
 
-Note that when calling `epp_and_run` on a `Projector`, you will get a compile error if the location set of the `Choreography` is not a subset of the location set of the `Transport`. In other words, the `Transport` should have information about every `ChoreographyLocation`  that `Choreography` can talk about. So this will fail:
+Note that when calling `epp_and_run` on a `Projector`, you will get a compile error if the location set of the `Choreography` is not a subset of the location set of the `Transport`. In other words, the `Transport` should have information about every `ChoreographyLocation` that `Choreography` can talk about. So this will fail:
 
 ```rust, compile_fail
 # extern crate chorus_lib;

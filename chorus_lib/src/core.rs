@@ -120,15 +120,34 @@ where
     }
 }
 
-// TODO(shumbo): Export the macro under the `core` module
+// To export `LocationSet` under the `core` module, we define an internal macro and export it.
+// This is because Rust does not allow us to export a macro from a module without re-exporting it.
+// `__ChoRus_Internal_LocationSet` is the internal macro and it is configured not to be visible in the documentation.
 
-/// Macro to generate hlist
+/// Macro to define a set of locations that a choreography is defined on.
+///
+/// ```
+/// # use chorus_lib::core::{ChoreographyLocation, LocationSet};
+/// #
+/// # #[derive(ChoreographyLocation)]
+/// # struct Alice;
+/// # #[derive(ChoreographyLocation)]
+/// # struct Bob;
+/// # #[derive(ChoreographyLocation)]
+/// # struct Carol;
+/// #
+/// type L = LocationSet!(Alice, Bob, Carol);
+/// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! LocationSet {
+macro_rules! __ChoRus_Internal_LocationSet {
     () => { $crate::core::HNil };
     ($head:ty $(,)*) => { $crate::core::HCons<$head, $crate::core::HNil> };
-    ($head:ty, $($tail:tt)*) => { $crate::core::HCons<$head, $crate::LocationSet!($($tail)*)> };
+    ($head:ty, $($tail:tt)*) => { $crate::core::HCons<$head, $crate::core::LocationSet!($($tail)*)> };
 }
+
+#[doc(inline)]
+pub use __ChoRus_Internal_LocationSet as LocationSet;
 
 /// Marker
 pub struct Here;

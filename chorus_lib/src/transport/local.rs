@@ -7,9 +7,7 @@ use serde_json;
 
 use std::marker::PhantomData;
 
-use crate::LocationSet;
-
-use crate::core::{ChoreographyLocation, HCons, HList, Portable, Transport};
+use crate::core::{ChoreographyLocation, HCons, HList, LocationSet, Portable, Transport};
 use crate::utils::queue::BlockingQueue;
 
 type QueueMap = HashMap<String, HashMap<String, BlockingQueue<String>>>;

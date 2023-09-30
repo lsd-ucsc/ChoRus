@@ -1,7 +1,6 @@
 extern crate chorus_lib;
-use chorus_lib::{
-    core::{ChoreoOp, Choreography, ChoreographyLocation, Located, Runner, Superposition},
-    LocationSet,
+use chorus_lib::core::{
+    ChoreoOp, Choreography, ChoreographyLocation, Located, LocationSet, Runner, Superposition,
 };
 
 #[derive(ChoreographyLocation)]

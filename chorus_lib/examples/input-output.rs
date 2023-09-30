@@ -1,8 +1,5 @@
 extern crate chorus_lib;
-use chorus_lib::{
-    core::{ChoreoOp, Choreography, ChoreographyLocation, Located},
-    LocationSet,
-};
+use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Located, LocationSet};
 #[derive(ChoreographyLocation)]
 struct Alice;
 #[derive(ChoreographyLocation)]

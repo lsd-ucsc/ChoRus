@@ -3,8 +3,7 @@
 pub mod http;
 pub mod local;
 
-use crate::core::{ChoreographyLocation, HCons, HList};
-use crate::LocationSet;
+use crate::core::{ChoreographyLocation, HCons, HList, LocationSet};
 use std::collections::HashMap;
 use std::marker::PhantomData;
 

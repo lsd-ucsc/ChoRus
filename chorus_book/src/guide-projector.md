@@ -9,8 +9,7 @@ To create a `Projector`, you need to provide the target location and the transpo
 ```rust
 # extern crate chorus_lib;
 # use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
-# use chorus_lib::core::{ChoreographyLocation, Projector};
-# use chorus_lib::{LocationSet};
+# use chorus_lib::core::{ChoreographyLocation, Projector, LocationSet};
 # let transport_channel = LocalTransportChannel::new().with(Alice).with(Bob);
 # let alice_transport = LocalTransport::new(Alice, transport_channel.clone());
 # #[derive(ChoreographyLocation)]
@@ -29,8 +28,7 @@ To execute a choreography, you need to call the `epp_and_run` method on the `Pro
 ```rust
 # extern crate chorus_lib;
 # use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
-# use chorus_lib::core::{ChoreographyLocation, Projector, Choreography, ChoreoOp};
-# use chorus_lib::{LocationSet};
+# use chorus_lib::core::{ChoreographyLocation, Projector, Choreography, ChoreoOp, LocationSet};
 # let transport_channel = LocalTransportChannel::new().with(Alice).with(Bob);
 # let alice_transport = LocalTransport::new(Alice, transport_channel.clone());
 # #[derive(ChoreographyLocation)]

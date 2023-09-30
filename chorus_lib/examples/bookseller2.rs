@@ -4,9 +4,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::thread;
 
-use chorus_lib::LocationSet;
 use chorus_lib::{
-    core::{ChoreoOp, Choreography, ChoreographyLocation, Located, Projector},
+    core::{ChoreoOp, Choreography, ChoreographyLocation, Located, LocationSet, Projector},
     transport::local::{LocalTransport, LocalTransportChannel},
 };
 use chrono::NaiveDate;
