@@ -6,6 +6,7 @@ use std::marker::PhantomData;
 
 use serde::de::DeserializeOwned;
 // re-export so that users can use derive macros without importing serde
+#[doc(no_inline)]
 pub use serde::{Deserialize, Serialize};
 
 /// Represents a location. It can be derived using `#[derive(ChoreographyLocation)]`.
@@ -92,15 +93,18 @@ where
 // --- HList and Helpers ---
 
 /// heterogeneous list
+#[doc(hidden)]
 pub trait HList {
     /// returns
     fn to_string_list() -> Vec<&'static str>;
 }
 
 /// end of HList
+#[doc(hidden)]
 pub struct HNil;
 
 /// An element of HList
+#[doc(hidden)]
 pub struct HCons<Head, Tail>(Head, Tail);
 
 impl HList for HNil {
@@ -150,13 +154,20 @@ macro_rules! __ChoRus_Internal_LocationSet {
 pub use __ChoRus_Internal_LocationSet as LocationSet;
 
 /// Marker
+#[doc(hidden)]
 pub struct Here;
 /// Marker
+#[doc(hidden)]
 pub struct There<Index>(Index);
 
-/// Check membership
+/// Check if a location is a member of a location set
+///
+/// The trait is used to check if a location is a member of a location set.
+///
+/// It takes two type parameters `L` and `Index`. `L` is a location set and `Index` is some type that is inferred by the compiler.
+/// If a location `L1` is in `L`, then there exists a type `Index` such that `L1` implements `Member<L, Index>`.
 pub trait Member<L, Index> {
-    /// Return HList of non-member
+    /// A location set that is the remainder of `L` after removing the member.
     type Remainder: HList;
 }
 
@@ -175,7 +186,12 @@ where
     type Remainder = HCons<Head, X::Remainder>;
 }
 
-/// Check subset
+/// Check if a location set is a subset of another location set
+///
+/// The trait is used to check if a location set is a subset of another location set.
+///
+/// It takes two type parameters `L` and `Index`. `L` is a location set and `Index` is some type that is inferred by the compiler.
+/// If a location set `M` is a subset of `L`, then there exists a type `Index` such that `M` implements `Subset<L, Index>`.
 pub trait Subset<L: HList, Index> {}
 
 // Base case: HNil is a subset of any set
