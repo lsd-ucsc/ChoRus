@@ -2,9 +2,11 @@ extern crate chorus_lib;
 use std::fmt::Debug;
 use std::thread;
 
-use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Located, Portable};
-use chorus_lib::transport::local::LocalTransport;
-use chorus_lib::{projector, LocationSet};
+use chorus_lib::core::{
+    ChoreoOp, Choreography, ChoreographyLocation, Located, Portable, Projector,
+};
+use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
+use chorus_lib::LocationSet;
 
 #[derive(ChoreographyLocation)]
 struct Alice;
@@ -55,20 +57,24 @@ impl Choreography<Located<i32, Alice>> for MainChoreography {
 }
 
 fn main() {
-    let transport = LocalTransport::from(&[Alice::name(), Bob::name(), Carol::name()]);
+    let transport_channel = LocalTransportChannel::new()
+        .with(Alice)
+        .with(Bob)
+        .with(Carol);
+
     let mut handles = vec![];
     {
-        let transport = transport.clone();
+        let transport = LocalTransport::new(Alice, transport_channel.clone());
         handles.push(thread::spawn(|| {
-            let p = projector!(LocationSet!(Alice, Bob), Alice, transport);
+            let p = Projector::new(Alice, transport);
             let v = p.epp_and_run(MainChoreography);
             assert_eq!(p.unwrap(v), 110);
         }));
     }
     {
-        let transport = transport.clone();
+        let transport = LocalTransport::new(Bob, transport_channel.clone());
         handles.push(thread::spawn(|| {
-            let p = projector!(LocationSet!(Alice, Bob), Bob, transport);
+            let p = Projector::new(Bob, transport);
             p.epp_and_run(MainChoreography);
         }));
     }

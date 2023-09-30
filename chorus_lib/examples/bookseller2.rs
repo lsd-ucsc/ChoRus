@@ -1,13 +1,14 @@
 extern crate chorus_lib;
 
+use std::collections::HashMap;
+use std::sync::Arc;
 use std::thread;
-use std::{collections::HashMap, sync::Arc};
 
+use chorus_lib::LocationSet;
 use chorus_lib::{
-    core::{ChoreoOp, Choreography, ChoreographyLocation, Located},
-    transport::local::LocalTransport,
+    core::{ChoreoOp, Choreography, ChoreographyLocation, Located, Projector},
+    transport::local::{LocalTransport, LocalTransportChannel},
 };
-use chorus_lib::{projector, LocationSet};
 use chrono::NaiveDate;
 
 #[derive(ChoreographyLocation)]
@@ -142,21 +143,22 @@ fn main() {
         i
     };
 
-    let transport = LocalTransport::from(&[Seller::name(), Buyer1::name(), Buyer2::name()]);
-    let seller_projector = Arc::new(projector!(
-        LocationSet!(Seller, Buyer1, Buyer2),
+    let transport_channel = LocalTransportChannel::new()
+        .with(Seller)
+        .with(Buyer1)
+        .with(Buyer2);
+
+    let seller_projector = Arc::new(Projector::new(
         Seller,
-        transport.clone()
+        LocalTransport::new(Seller, transport_channel.clone()),
     ));
-    let buyer1_projector = Arc::new(projector!(
-        LocationSet!(Seller, Buyer1, Buyer2),
+    let buyer1_projector = Arc::new(Projector::new(
         Buyer1,
-        transport.clone()
+        LocalTransport::new(Buyer1, transport_channel.clone()),
     ));
-    let buyer2_projector = Arc::new(projector!(
-        LocationSet!(Seller, Buyer1, Buyer2),
+    let buyer2_projector = Arc::new(Projector::new(
         Buyer2,
-        transport.clone()
+        LocalTransport::new(Buyer2, transport_channel.clone()),
     ));
 
     println!("Tries to buy HoTT with one buyer");

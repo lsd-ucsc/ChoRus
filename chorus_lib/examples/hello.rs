@@ -2,9 +2,9 @@ extern crate chorus_lib;
 
 use std::thread;
 
-use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation};
-use chorus_lib::transport::local::LocalTransport;
-use chorus_lib::{projector, LocationSet};
+use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
+use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
+use chorus_lib::LocationSet;
 
 // --- Define two locations (Alice and Bob) ---
 
@@ -39,21 +39,23 @@ impl Choreography for HelloWorldChoreography {
 
 fn main() {
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
-    // Create a local transport
-    let transport = LocalTransport::from(&[Alice::name(), Bob::name()]);
-
+    // Create a transport channel
+    // let transport_channel = LocalTransportChannel::<LocationSet!(Bob, Alice)>::new();
+    let transport_channel = LocalTransportChannel::new().with(Alice).with(Bob);
     // Run the choreography in two threads
     {
-        let transport = transport.clone();
+        // let transport_channel = transport_channel.clone();
+        let transport = LocalTransport::new(Alice, transport_channel.clone());
         handles.push(thread::spawn(move || {
-            let p = projector!(LocationSet!(Alice, Bob), Alice, transport);
+            let p = Projector::new(Alice, transport);
             p.epp_and_run(HelloWorldChoreography);
         }));
     }
     {
-        let transport = transport.clone();
+        // let transport_channel = transport_channel.clone();
+        let transport = LocalTransport::new(Bob, transport_channel.clone());
         handles.push(thread::spawn(move || {
-            let p = projector!(LocationSet!(Alice, Bob), Bob, transport);
+            let p = Projector::new(Bob, transport);
             p.epp_and_run(HelloWorldChoreography);
         }));
     }

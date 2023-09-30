@@ -43,7 +43,7 @@ let choreo = DemoChoreography {
     input: "World".to_string(),
 };
 
-let projector = projector!(LocationSet!(Alice), Alice, transport);
+let projector = Projector::new(Alice, alice_transport);
 projector.epp_and_run(choreo);
 ```
 
@@ -93,7 +93,7 @@ To run the sample choreography above at Alice, we use the `local` method to cons
 #         });
 #     }
 # }
-let projector_for_alice = projector!(LocationSet!(Alice), Alice, transport);
+let projector_for_alice = Projector::new(Alice, alice_transport);
 // Because the target of the projector is Alice, the located value is available at Alice.
 let string_at_alice: Located<String, Alice> = projector_for_alice.local("Hello, World!".to_string());
 // Instantiate the choreography with the located value
@@ -120,7 +120,7 @@ For Bob, we use the `remote` method to construct the located value.
 #         });
 #     }
 # }
-let projector_for_bob = projector!(LocationSet!(Alice, Bob), Bob, transport);
+let projector_for_bob = Projector::new(Bob, bob_transport);
 // Construct a remote located value at Alice. The actual value is not required.
 let string_at_alice = projector_for_bob.remote(Alice);
 // Instantiate the choreography with the located value
@@ -161,7 +161,7 @@ impl Choreography<String> for DemoChoreography {
 #     }
 # }
 let choreo = DemoChoreography;
-let projector = projector!(LocationSet!(Alice), Alice, transport);
+let projector = Projector::new(Alice, alice_transport);
 let output = projector.epp_and_run(choreo);
 assert_eq!(output, "Hello, World!".to_string());
 ```
@@ -183,7 +183,7 @@ impl Choreography<Located<String, Alice>> for DemoChoreography {
     }
 }
 
-let projector = projector!(LocationSet!(Alice), Alice, transport);
+let projector = Projector::new(Alice, alice_transport);
 let output = projector.epp_and_run(DemoChoreography);
 let string_at_alice = projector.unwrap(output);
 assert_eq!(string_at_alice, "Hello, World!".to_string());
