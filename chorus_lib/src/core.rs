@@ -9,13 +9,25 @@ use serde::de::DeserializeOwned;
 #[doc(no_inline)]
 pub use serde::{Deserialize, Serialize};
 
-/// Represents a location. It can be derived using `#[derive(ChoreographyLocation)]`.
+/// Represents a location.
+///
+/// It can be derived using `#[derive(ChoreographyLocation)]`.
+///
+/// ```
+/// # use chorus_lib::core::ChoreographyLocation;
+/// #
+/// #[derive(ChoreographyLocation)]
+/// struct Alice;
+/// ```
 pub trait ChoreographyLocation: Copy {
     /// Returns the name of the location as a string.
     fn name() -> &'static str;
 }
 
-/// Represents a value that can be used in a choreography. ChoRus uses [serde](https://serde.rs/) to serialize and deserialize values.
+/// Represents a value that can be used in a choreography.
+///
+/// ChoRus uses [serde](https://serde.rs/) to serialize and deserialize values.
+///
 /// It can be derived using `#[derive(Serialize, Deserialize)]` as long as all the fields satisfy the `Portable` trait.
 pub trait Portable: Serialize + DeserializeOwned {}
 impl<T: Serialize + DeserializeOwned> Portable for T {}
@@ -301,7 +313,7 @@ pub trait Choreography<R = ()> {
 ///
 /// The type parameter `L` is the location set that the transport is operating on.
 ///
-/// The type paramter `TargetLocation` is the target `ChoreographyLocation`.
+/// The type parameter `TargetLocation` is the target `ChoreographyLocation`.
 pub trait Transport<L: HList, TargetLocation: ChoreographyLocation> {
     /// Returns a list of locations.
     fn locations(&self) -> Vec<String>;
