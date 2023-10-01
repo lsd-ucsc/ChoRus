@@ -41,7 +41,7 @@ pub struct TransportConfig<Target: ChoreographyLocation, TargetInfo, L: HList, I
 pub struct TransportConfigBuilder<Target: ChoreographyLocation, TargetInfo, L: HList, Info> {
     target: (Target, TargetInfo),
     location_set: PhantomData<L>,
-    info: HashMap<&'static str, Info>,
+    info: HashMap<String, Info>,
 }
 
 impl<Target: ChoreographyLocation, TargetInfo, Info>
@@ -70,7 +70,7 @@ impl<Target: ChoreographyLocation, TargetInfo, L: HList, Info>
     ) -> TransportConfigBuilder<Target, TargetInfo, HCons<NewLocation, L>, Info> {
         _ = location;
         let mut new_info = self.info;
-        new_info.insert(NewLocation::name(), info);
+        new_info.insert(NewLocation::name().to_string(), info);
         TransportConfigBuilder {
             target: self.target,
             location_set: PhantomData,
@@ -81,7 +81,7 @@ impl<Target: ChoreographyLocation, TargetInfo, L: HList, Info>
     /// Builds a `TransportConfig` instance.
     pub fn build(self) -> TransportConfig<Target, TargetInfo, L, Info> {
         TransportConfig {
-            info: HashMap::new(),
+            info: self.info,
             target_info: self.target,
             location_set: PhantomData,
         }
