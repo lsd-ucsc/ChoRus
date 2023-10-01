@@ -8,7 +8,9 @@ ChoRus provides two built-in transports: `local` and `http`.
 
 ### The Local Transport
 
-The `local` transport is used to execute choreographies on the same machine on different threads. This is useful for testing and prototyping. Each `local` transport is defined over `LocalTransportChannel`, which contains the set of `ChoreographyLocation` that the `local` transport operates on. You can build a `LocalTransportChannel` by importing the `LocalTransportChannel` struct from the `chorus_lib` crate.
+The `local` transport is used to execute choreographies on the same machine on different threads. This is useful for testing and prototyping.
+
+To use the local transport, we first need to create a `LocalTransportChannel`, which works as a channel between threads and allows them to send messages to each other. To do so, we use the `LocalTransportChannelBuilder` struct from the `chorus_lib` crate.
 
 ```rust
 # extern crate chorus_lib;
@@ -17,32 +19,35 @@ The `local` transport is used to execute choreographies on the same machine on d
 # struct Alice;
 # #[derive(ChoreographyLocation)]
 # struct Bob;
-use chorus_lib::transport::local::LocalTransportChannel;
+use chorus_lib::transport::local::LocalTransportChannelBuilder;
 
-let transport_channel = LocalTransportChannel::new().with(Alice).with(Bob);
+let transport_channel = LocalTransportChannelBuilder::new()
+    .with(Alice)
+    .with(Bob)
+    .build();
 ```
 
-To use the `local` transport, first import the `LocalTransport` struct from the `chorus_lib` crate.
+Using the `with` method, we add locations to the channel. When we call `build`, it will create an instance of `LocalTransportChannel`.
 
-Then build the transport by using the `LocalTransport::new` associated function, which takes a target location (explained in the [Projector section](./guide-projector.md)) and the `LocalTransportChannel`.
+Then, create a transport by using the `LocalTransport::new` function, which takes a target location (explained in the [Projector section](./guide-projector.md)) and the `LocalTransportChannel`.
 
 ```rust
 # extern crate chorus_lib;
 # use chorus_lib::core::{ChoreographyLocation, LocationSet};
 # #[derive(ChoreographyLocation)]
 # struct Alice;
-# use chorus_lib::transport::local::LocalTransportChannel;
-# let transport_channel = LocalTransportChannel::new().with(Alice);
+# use chorus_lib::transport::local::LocalTransportChannelBuilder;
+# let transport_channel = LocalTransportChannelBuilder::new().with(Alice).build();
 use chorus_lib::transport::local::{LocalTransport};
 
 let alice_transport = LocalTransport::new(Alice, transport_channel.clone());
 ```
 
-Because of the nature of the `Local` transport, you must use the same `LocalTransportChannel` instance for all locations. You can `clone` the `LocalTransprotChannel` instance and pass it to each `Projector::new` constructor.
+Because of the nature of the `Local` transport, you must use the same `LocalTransportChannel` instance for all locations. You can `clone` the `LocalTransportChannel` instance and pass it to each `Projector::new` constructor.
 
 ```rust
 # extern crate chorus_lib;
-# use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
+# use chorus_lib::transport::local::{LocalTransport, LocalTransportChannelBuilder};
 # use std::thread;
 # use chorus_lib::core::{ChoreographyLocation, ChoreoOp, Choreography, Projector, LocationSet};
 # #[derive(ChoreographyLocation)]
@@ -55,7 +60,10 @@ Because of the nature of the `Local` transport, you must use the same `LocalTran
 #     fn run(self, op: &impl ChoreoOp<Self::L>) {
 #     }
 # }
-let transport_channel = LocalTransportChannel::new().with(Alice).with(Bob);
+let transport_channel = LocalTransportChannelBuilder::new()
+    .with(Alice)
+    .with(Bob)
+    .build();
 let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
 {
     // create a transport for Alice

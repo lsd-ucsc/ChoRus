@@ -3,7 +3,7 @@ extern crate chorus_lib;
 use std::thread;
 
 use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, LocationSet, Projector};
-use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
+use chorus_lib::transport::local::{LocalTransport, LocalTransportChannelBuilder};
 
 // --- Define two locations (Alice and Bob) ---
 
@@ -43,7 +43,10 @@ fn main() {
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     // Create a transport channel
     // let transport_channel = LocalTransportChannel::<LocationSet!(Bob, Alice)>::new();
-    let transport_channel = LocalTransportChannel::new().with(Alice).with(Bob);
+    let transport_channel = LocalTransportChannelBuilder::new()
+        .with(Alice)
+        .with(Bob)
+        .build();
     // Run the choreography in two threads
     {
         // let transport_channel = transport_channel.clone();

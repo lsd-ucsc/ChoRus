@@ -3,10 +3,11 @@ extern crate chorus_lib;
 use std::io;
 use std::thread;
 
+use chorus_lib::transport::local::LocalTransportChannelBuilder;
 use chrono::NaiveDate;
 
 use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, LocationSet, Projector};
-use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
+use chorus_lib::transport::local::LocalTransport;
 
 fn get_book(title: &str) -> Option<(i32, NaiveDate)> {
     match title.trim() {
@@ -72,7 +73,10 @@ impl Choreography for BooksellerChoreography {
 }
 
 fn main() {
-    let transport_channel = LocalTransportChannel::new().with(Seller).with(Buyer);
+    let transport_channel = LocalTransportChannelBuilder::new()
+        .with(Seller)
+        .with(Buyer)
+        .build();
     let transport_seller = LocalTransport::new(Seller, transport_channel.clone());
     let transport_buyer = LocalTransport::new(Buyer, transport_channel.clone());
 
