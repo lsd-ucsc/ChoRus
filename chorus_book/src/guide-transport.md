@@ -87,21 +87,23 @@ let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
 
 The `http` transport is used to execute choreographies on different machines. This is useful for executing choreographies in a distributed system.
 
-To use the `http` transport, import the `HttpTransport` struct and the `HttpTransportConfig` type alias from the `chorus_lib` crate.
+To use the `http` transport, import `HttpTransport` and `HttpTransportConfigBuilder` from the `chorus_lib` crate.
 
 ```rust
 # extern crate chorus_lib;
-use chorus_lib::transport::http::{HttpTransport, HttpTransportConfig};
+use chorus_lib::transport::http::{HttpTransport, HttpTransportConfigBuilder};
 ```
 
-The primary constructor requires an argument of type `HttpTransportConfig`. To create an instance of this configuration, start with `HttpTransportConfig::for_target(target_location, (hostname, port))`. It will create set a projection target and the hostname and port to listen on. Then, provide information to connect to other locations by method-chaining the `.with(other_location, (hostname, port))` method. You can think of `HttpTransportConfig` as a mapping from locations to their hostnames and ports.
+We need to construct a `HttpTransportConfig` using the `HttpTransportConfigBuilder`. First, we specify the target location and the hostname and port to listen on using the `for_target` method. Then, we specify the other locations and their `(hostname, port)` pairs using the `with` method.
 
 ```rust
 {{#include ./header.txt}}
-# use chorus_lib::transport::http::{HttpTransport, HttpTransportConfig};
-let config = HttpTransportConfig::for_target(Alice, ("localhost".to_string(), 8080))
-                .with(Bob, ("localhost".to_string(), 8081));
-
+# use chorus_lib::transport::http::{HttpTransport, HttpTransportConfigBuilder};
+// `Alice` listens on port 8080 on localhost
+let config = HttpTransportConfigBuilder::for_target(Alice, ("localhost".to_string(), 8080))
+                // Connect to `Bob` on port 8081 on localhost
+                .with(Bob, ("localhost".to_string(), 8081))
+                .build();
 let transport = HttpTransport::new(config);
 ```
 
@@ -113,10 +115,11 @@ You can also create your own transport by implementing the `Transport` trait. It
 
 ```rust
 {{#include ./header.txt}}
-# use chorus_lib::transport::TransportConfig;
-let config = TransportConfig::for_target(Alice, ())
+# use chorus_lib::transport::TransportConfigBuilder;
+let config = TransportConfigBuilder::for_target(Alice, ())
                 .with(Bob, ("localhost".to_string(), 8081))
-                .with(Carol, ("localhost".to_string(), 8082));
+                .with(Carol, ("localhost".to_string(), 8082))
+                .build();
 ```
 
 See the API documentation for more details.

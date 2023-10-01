@@ -12,16 +12,37 @@ use retry::{
 use tiny_http::Server;
 use ureq::{Agent, AgentBuilder};
 
-use crate::transport::TransportConfig;
-
 use crate::{
     core::{ChoreographyLocation, HList, Member, Portable, Transport},
+    transport::{TransportConfig, TransportConfigBuilder},
     utils::queue::BlockingQueue,
 };
 
 type QueueMap = HashMap<String, BlockingQueue<String>>;
-/// A type alias for `TransportConfig`s used for building `HttpTransport`
-pub type HttpTransportConfig<L, Target> = TransportConfig<L, (String, u16), Target, (String, u16)>;
+
+/// Config for `HttpTransport`.
+pub type HttpTransportConfig<L, Target> = TransportConfig<Target, (String, u16), L, (String, u16)>;
+
+/// A builder for `HttpTransportConfig`.
+///
+/// # Examples
+///
+/// ```
+/// # use chorus_lib::core::{LocationSet, ChoreographyLocation};
+/// # use chorus_lib::transport::http::HttpTransportConfigBuilder;
+/// #
+/// # #[derive(ChoreographyLocation)]
+/// # struct Alice;
+/// #
+/// # #[derive(ChoreographyLocation)]
+/// # struct Bob;
+/// #
+/// let transport_config = HttpTransportConfigBuilder::for_target(Alice, ("0.0.0.0".to_string(), 9010))
+///   .with(Bob, ("example.com".to_string(), 80))
+///   .build();
+/// ```
+pub type HttpTransportConfigBuilder<Target, L> =
+    TransportConfigBuilder<Target, (String, u16), L, (String, u16)>;
 
 /// The header name for the source location.
 const HEADER_SRC: &str = "X-CHORUS-SOURCE";
@@ -155,8 +176,10 @@ mod tests {
 
         let mut handles = Vec::new();
         {
-            let config = HttpTransportConfig::for_target(Alice, ("0.0.0.0".to_string(), 9010))
-                .with(Bob, ("localhost".to_string(), 9011));
+            let config =
+                HttpTransportConfigBuilder::for_target(Alice, ("0.0.0.0".to_string(), 9010))
+                    .with(Bob, ("localhost".to_string(), 9011))
+                    .build();
 
             handles.push(thread::spawn(move || {
                 wait.recv().unwrap(); // wait for Bob to start
@@ -165,8 +188,9 @@ mod tests {
             }));
         }
         {
-            let config = HttpTransportConfig::for_target(Bob, ("0.0.0.0".to_string(), 9011))
-                .with(Alice, ("localhost".to_string(), 9010));
+            let config = HttpTransportConfigBuilder::for_target(Bob, ("0.0.0.0".to_string(), 9011))
+                .with(Alice, ("localhost".to_string(), 9010))
+                .build();
 
             handles.push(thread::spawn(move || {
                 let transport = HttpTransport::new(config);
@@ -187,8 +211,10 @@ mod tests {
 
         let mut handles = Vec::new();
         {
-            let config = HttpTransportConfig::for_target(Alice, ("0.0.0.0".to_string(), 9020))
-                .with(Bob, ("localhost".to_string(), 9021));
+            let config =
+                HttpTransportConfigBuilder::for_target(Alice, ("0.0.0.0".to_string(), 9020))
+                    .with(Bob, ("localhost".to_string(), 9021))
+                    .build();
 
             handles.push(thread::spawn(move || {
                 signal.send(()).unwrap();
@@ -197,8 +223,9 @@ mod tests {
             }));
         }
         {
-            let config = HttpTransportConfig::for_target(Bob, ("0.0.0.0".to_string(), 9021))
-                .with(Alice, ("localhost".to_string(), 9020));
+            let config = HttpTransportConfigBuilder::for_target(Bob, ("0.0.0.0".to_string(), 9021))
+                .with(Alice, ("localhost".to_string(), 9020))
+                .build();
 
             handles.push(thread::spawn(move || {
                 // wait for Alice to start, which forces Alice to retry
