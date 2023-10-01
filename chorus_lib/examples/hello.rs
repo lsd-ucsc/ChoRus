@@ -18,6 +18,9 @@ struct HelloWorldChoreography;
 
 // Implement the `Choreography` trait for `HelloWorldChoreography`
 impl Choreography for HelloWorldChoreography {
+    // Define the set of locations involved in the choreography.
+    // In this case, the set consists of `Alice` and `Bob` and
+    // the choreography can use theses locations.
     type L = LocationSet!(Alice, Bob);
     fn run(self, op: &impl ChoreoOp<Self::L>) {
         // Create a located value at Alice
