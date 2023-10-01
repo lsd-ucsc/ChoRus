@@ -11,9 +11,9 @@ use std::marker::PhantomData;
 #[derive(Clone)]
 pub struct TransportConfig<Target: ChoreographyLocation, TargetInfo, L: HList, Info> {
     /// The information about locations
-    info: HashMap<String, Info>,
+    pub info: HashMap<String, Info>,
     /// The information about the target choreography
-    target_info: (Target, TargetInfo),
+    pub target_info: (Target, TargetInfo),
     /// The struct is parametrized by the location set (`L`).
     location_set: PhantomData<L>,
 }
