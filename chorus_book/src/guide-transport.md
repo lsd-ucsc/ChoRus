@@ -130,7 +130,7 @@ Note that when calling `epp_and_run` on a `Projector`, you will get a compile er
 
 ```rust, compile_fail
 # extern crate chorus_lib;
-# use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
+# use chorus_lib::transport::local::{LocalTransport, LocalTransportChannelBuilder};
 # use chorus_lib::core::{ChoreographyLocation, Projector, Choreography, ChoreoOp};
 # use chorus_lib::{LocationSet};
 
@@ -145,7 +145,7 @@ impl Choreography for HelloWorldChoreography {
      }
 }
 
-let transport_channel = LocalTransportChannel::<LocationSet!(Alice)>::new();
+let transport_channel = LocalTransportChannelBuilder::new().with(Alice).build();
 let transport = LocalTransport::new(Alice, transport_channel.clone());
 let projector = Projector::new(Alice, transport);
 projector.epp_and_run(HelloWorldChoreography);
