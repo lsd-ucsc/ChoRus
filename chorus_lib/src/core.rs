@@ -342,7 +342,8 @@ where
     ///
     /// - `target` is the projection target of the choreography.
     /// - `transport` is an implementation of `Transport`.
-    pub fn new(_target: L1, transport: B) -> Self {
+    pub fn new(target: L1, transport: B) -> Self {
+        _ = target;
         Projector {
             target: PhantomData,
             transport,

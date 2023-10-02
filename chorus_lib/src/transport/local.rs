@@ -132,7 +132,9 @@ pub struct LocalTransport<L: HList, TargetLocation> {
 
 impl<L: HList, TargetLocation> LocalTransport<L, TargetLocation> {
     /// Creates a new `LocalTransport` instance from a Target `ChoreographyLocation` and a `LocalTransportChannel`.
-    pub fn new(_target: TargetLocation, local_channel: LocalTransportChannel<L>) -> Self {
+    pub fn new(target: TargetLocation, local_channel: LocalTransportChannel<L>) -> Self {
+        _ = target;
+
         let locations_list = L::to_string_list();
 
         let mut locations_vec = Vec::new();
