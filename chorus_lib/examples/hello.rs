@@ -48,7 +48,6 @@ fn main() {
         .build();
     // Run the choreography in two threads
     {
-        // let transport_channel = transport_channel.clone();
         let transport = LocalTransport::new(Alice, transport_channel.clone());
         handles.push(thread::spawn(move || {
             let p = Projector::new(Alice, transport);
@@ -56,7 +55,6 @@ fn main() {
         }));
     }
     {
-        // let transport_channel = transport_channel.clone();
         let transport = LocalTransport::new(Bob, transport_channel.clone());
         handles.push(thread::spawn(move || {
             let p = Projector::new(Bob, transport);
