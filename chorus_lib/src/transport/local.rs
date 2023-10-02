@@ -122,7 +122,7 @@ impl<L: HList> LocalTransportChannelBuilder<L> {
 ///
 /// This transport uses a blocking queue to allow for communication between threads. Each location must be executed in its thread.
 ///
-/// Unlike network-based transports, all locations must share the same `LocalTransport` instance. The struct implements `Clone` so that it can be shared across threads.
+/// All locations must share the same `LocalTransportChannel` instance. `LocalTransportChannel` implements `Clone` so that it can be shared across threads.
 pub struct LocalTransport<L: HList, TargetLocation> {
     internal_locations: Vec<String>,
     location_set: PhantomData<L>,
