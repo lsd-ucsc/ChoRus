@@ -42,7 +42,6 @@ impl Choreography for HelloWorldChoreography {
 fn main() {
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     // Create a transport channel
-    // let transport_channel = LocalTransportChannel::<LocationSet!(Bob, Alice)>::new();
     let transport_channel = LocalTransportChannelBuilder::new()
         .with(Alice)
         .with(Bob)
