@@ -4,10 +4,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::thread;
 
-use chorus_lib::LocationSet;
 use chorus_lib::{
-    core::{ChoreoOp, Choreography, ChoreographyLocation, Located, Projector},
-    transport::local::{LocalTransport, LocalTransportChannel},
+    core::{ChoreoOp, Choreography, ChoreographyLocation, Located, LocationSet, Projector},
+    transport::local::{LocalTransport, LocalTransportChannelBuilder},
 };
 use chrono::NaiveDate;
 
@@ -143,10 +142,11 @@ fn main() {
         i
     };
 
-    let transport_channel = LocalTransportChannel::new()
+    let transport_channel = LocalTransportChannelBuilder::new()
         .with(Seller)
         .with(Buyer1)
-        .with(Buyer2);
+        .with(Buyer2)
+        .build();
 
     let seller_projector = Arc::new(Projector::new(
         Seller,

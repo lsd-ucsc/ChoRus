@@ -3,10 +3,9 @@ use std::fmt::Debug;
 use std::thread;
 
 use chorus_lib::core::{
-    ChoreoOp, Choreography, ChoreographyLocation, Located, Portable, Projector,
+    ChoreoOp, Choreography, ChoreographyLocation, Located, LocationSet, Portable, Projector,
 };
-use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
-use chorus_lib::LocationSet;
+use chorus_lib::transport::local::{LocalTransport, LocalTransportChannelBuilder};
 
 #[derive(ChoreographyLocation)]
 struct Alice;
@@ -57,10 +56,11 @@ impl Choreography<Located<i32, Alice>> for MainChoreography {
 }
 
 fn main() {
-    let transport_channel = LocalTransportChannel::new()
+    let transport_channel = LocalTransportChannelBuilder::new()
         .with(Alice)
         .with(Bob)
-        .with(Carol);
+        .with(Carol)
+        .build();
 
     let mut handles = vec![];
     {

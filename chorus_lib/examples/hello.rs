@@ -2,9 +2,8 @@ extern crate chorus_lib;
 
 use std::thread;
 
-use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
-use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
-use chorus_lib::LocationSet;
+use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, LocationSet, Projector};
+use chorus_lib::transport::local::{LocalTransport, LocalTransportChannelBuilder};
 
 // --- Define two locations (Alice and Bob) ---
 
@@ -19,6 +18,9 @@ struct HelloWorldChoreography;
 
 // Implement the `Choreography` trait for `HelloWorldChoreography`
 impl Choreography for HelloWorldChoreography {
+    // Define the set of locations involved in the choreography.
+    // In this case, the set consists of `Alice` and `Bob` and
+    // the choreography can use theses locations.
     type L = LocationSet!(Alice, Bob);
     fn run(self, op: &impl ChoreoOp<Self::L>) {
         // Create a located value at Alice
@@ -40,11 +42,12 @@ impl Choreography for HelloWorldChoreography {
 fn main() {
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     // Create a transport channel
-    // let transport_channel = LocalTransportChannel::<LocationSet!(Bob, Alice)>::new();
-    let transport_channel = LocalTransportChannel::new().with(Alice).with(Bob);
+    let transport_channel = LocalTransportChannelBuilder::new()
+        .with(Alice)
+        .with(Bob)
+        .build();
     // Run the choreography in two threads
     {
-        // let transport_channel = transport_channel.clone();
         let transport = LocalTransport::new(Alice, transport_channel.clone());
         handles.push(thread::spawn(move || {
             let p = Projector::new(Alice, transport);
@@ -52,7 +55,6 @@ fn main() {
         }));
     }
     {
-        // let transport_channel = transport_channel.clone();
         let transport = LocalTransport::new(Bob, transport_channel.clone());
         handles.push(thread::spawn(move || {
             let p = Projector::new(Bob, transport);

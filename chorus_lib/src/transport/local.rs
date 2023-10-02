@@ -7,9 +7,7 @@ use serde_json;
 
 use std::marker::PhantomData;
 
-use crate::LocationSet;
-
-use crate::core::{ChoreographyLocation, HCons, HList, Portable, Transport};
+use crate::core::{ChoreographyLocation, HCons, HList, LocationSet, Portable, Transport};
 use crate::utils::queue::BlockingQueue;
 
 type QueueMap = HashMap<String, HashMap<String, BlockingQueue<String>>>;
@@ -30,25 +28,29 @@ impl<L: HList> Clone for LocalTransportChannel<L> {
     }
 }
 
-impl LocalTransportChannel<LocationSet!()> {
-    /// Creates a new `LocalTransportChannel` instance
-    pub fn new() -> Self {
-        Self {
-            location_set: PhantomData,
-            queue_map: HashMap::new().into(),
-        }
-    }
-}
-
 impl<L: HList> LocalTransportChannel<L> {
-    /// Adds a new location to the set of locations in the `LocalTransportChannel`.
-    pub fn with<NewLocation: ChoreographyLocation>(
-        self,
-        _location: NewLocation,
-    ) -> LocalTransportChannel<HCons<NewLocation, L>> {
+    /// Creates a new `LocalTransportChannel` instance.
+    ///
+    /// You must specify the location set of the channel. The channel can only be used by locations in the set.
+    ///
+    /// In most cases, you should use `LocalTransportChannelBuilder` instead of calling this method directly.
+    ///
+    /// # Examples
+    /// ```
+    /// use chorus_lib::transport::local::{LocalTransportChannel};
+    /// use chorus_lib::core::{LocationSet, ChoreographyLocation};
+    ///
+    /// #[derive(ChoreographyLocation)]
+    /// struct Alice;
+    ///
+    /// #[derive(ChoreographyLocation)]
+    /// struct Bob;
+    ///
+    /// let transport_channel = LocalTransportChannel::<LocationSet!(Alice, Bob)>::new();
+    /// ```
+    pub fn new() -> LocalTransportChannel<L> {
         let mut queue_map: QueueMap = HashMap::new();
-        let mut str_list = L::to_string_list();
-        str_list.push(NewLocation::name());
+        let str_list = L::to_string_list();
         for sender in &str_list {
             let mut n = HashMap::new();
             for receiver in &str_list {
@@ -64,11 +66,63 @@ impl<L: HList> LocalTransportChannel<L> {
     }
 }
 
+/// A builder for `LocalTransportChannel`.
+///
+/// Use this builder to create a `LocalTransportChannel` instance.
+///
+/// # Examples
+///
+/// ```
+/// use chorus_lib::core::{LocationSet, ChoreographyLocation};
+/// use chorus_lib::transport::local::{LocalTransportChannelBuilder};
+///
+/// #[derive(ChoreographyLocation)]
+/// struct Alice;
+///
+/// #[derive(ChoreographyLocation)]
+/// struct Bob;
+///
+/// let transport_channel = LocalTransportChannelBuilder::new()
+///     .with(Alice)
+///     .with(Bob)
+///     .build();
+/// ```
+pub struct LocalTransportChannelBuilder<L: HList> {
+    location_set: PhantomData<L>,
+}
+
+impl LocalTransportChannelBuilder<LocationSet!()> {
+    /// Creates a new `LocalTransportChannelBuilder` instance
+    pub fn new() -> Self {
+        Self {
+            location_set: PhantomData,
+        }
+    }
+}
+
+impl<L: HList> LocalTransportChannelBuilder<L> {
+    /// Adds a new location to the set of locations in the `LocalTransportChannel`.
+    pub fn with<NewLocation: ChoreographyLocation>(
+        &self,
+        location: NewLocation,
+    ) -> LocalTransportChannelBuilder<HCons<NewLocation, L>> {
+        _ = location;
+        LocalTransportChannelBuilder {
+            location_set: PhantomData,
+        }
+    }
+
+    /// Builds a `LocalTransportChannel` instance.
+    pub fn build(&self) -> LocalTransportChannel<L> {
+        LocalTransportChannel::new()
+    }
+}
+
 /// The local transport.
 ///
 /// This transport uses a blocking queue to allow for communication between threads. Each location must be executed in its thread.
 ///
-/// Unlike network-based transports, all locations must share the same `LocalTransport` instance. The struct implements `Clone` so that it can be shared across threads.
+/// All locations must share the same `LocalTransportChannel` instance. `LocalTransportChannel` implements `Clone` so that it can be shared across threads.
 pub struct LocalTransport<L: HList, TargetLocation> {
     internal_locations: Vec<String>,
     location_set: PhantomData<L>,
@@ -78,7 +132,9 @@ pub struct LocalTransport<L: HList, TargetLocation> {
 
 impl<L: HList, TargetLocation> LocalTransport<L, TargetLocation> {
     /// Creates a new `LocalTransport` instance from a Target `ChoreographyLocation` and a `LocalTransportChannel`.
-    pub fn new(_target: TargetLocation, local_channel: LocalTransportChannel<L>) -> Self {
+    pub fn new(target: TargetLocation, local_channel: LocalTransportChannel<L>) -> Self {
+        _ = target;
+
         let locations_list = L::to_string_list();
 
         let mut locations_vec = Vec::new();
@@ -142,7 +198,10 @@ mod tests {
     fn test_local_transport() {
         let v = 42;
 
-        let transport_channel = LocalTransportChannel::new().with(Alice).with(Bob);
+        let transport_channel = LocalTransportChannelBuilder::new()
+            .with(Alice)
+            .with(Bob)
+            .build();
 
         let mut handles = Vec::new();
         {

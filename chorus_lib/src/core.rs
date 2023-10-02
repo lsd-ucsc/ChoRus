@@ -6,15 +6,28 @@ use std::marker::PhantomData;
 
 use serde::de::DeserializeOwned;
 // re-export so that users can use derive macros without importing serde
+#[doc(no_inline)]
 pub use serde::{Deserialize, Serialize};
 
-/// Represents a location. It can be derived using `#[derive(ChoreographyLocation)]`.
+/// Represents a location.
+///
+/// It can be derived using `#[derive(ChoreographyLocation)]`.
+///
+/// ```
+/// # use chorus_lib::core::ChoreographyLocation;
+/// #
+/// #[derive(ChoreographyLocation)]
+/// struct Alice;
+/// ```
 pub trait ChoreographyLocation: Copy {
     /// Returns the name of the location as a string.
     fn name() -> &'static str;
 }
 
-/// Represents a value that can be used in a choreography. ChoRus uses [serde](https://serde.rs/) to serialize and deserialize values.
+/// Represents a value that can be used in a choreography.
+///
+/// ChoRus uses [serde](https://serde.rs/) to serialize and deserialize values.
+///
 /// It can be derived using `#[derive(Serialize, Deserialize)]` as long as all the fields satisfy the `Portable` trait.
 pub trait Portable: Serialize + DeserializeOwned {}
 impl<T: Serialize + DeserializeOwned> Portable for T {}
@@ -92,15 +105,18 @@ where
 // --- HList and Helpers ---
 
 /// heterogeneous list
+#[doc(hidden)]
 pub trait HList {
     /// returns
     fn to_string_list() -> Vec<&'static str>;
 }
 
 /// end of HList
+#[doc(hidden)]
 pub struct HNil;
 
 /// An element of HList
+#[doc(hidden)]
 pub struct HCons<Head, Tail>(Head, Tail);
 
 impl HList for HNil {
@@ -120,24 +136,50 @@ where
     }
 }
 
-// TODO(shumbo): Export the macro under the `core` module
+// To export `LocationSet` under the `core` module, we define an internal macro and export it.
+// This is because Rust does not allow us to export a macro from a module without re-exporting it.
+// `__ChoRus_Internal_LocationSet` is the internal macro and it is configured not to be visible in the documentation.
 
-/// Macro to generate hlist
+/// Macro to define a set of locations that a choreography is defined on.
+///
+/// ```
+/// # use chorus_lib::core::{ChoreographyLocation, LocationSet};
+/// #
+/// # #[derive(ChoreographyLocation)]
+/// # struct Alice;
+/// # #[derive(ChoreographyLocation)]
+/// # struct Bob;
+/// # #[derive(ChoreographyLocation)]
+/// # struct Carol;
+/// #
+/// type L = LocationSet!(Alice, Bob, Carol);
+/// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! LocationSet {
+macro_rules! __ChoRus_Internal_LocationSet {
     () => { $crate::core::HNil };
     ($head:ty $(,)*) => { $crate::core::HCons<$head, $crate::core::HNil> };
-    ($head:ty, $($tail:tt)*) => { $crate::core::HCons<$head, $crate::LocationSet!($($tail)*)> };
+    ($head:ty, $($tail:tt)*) => { $crate::core::HCons<$head, $crate::core::LocationSet!($($tail)*)> };
 }
 
+#[doc(inline)]
+pub use __ChoRus_Internal_LocationSet as LocationSet;
+
 /// Marker
+#[doc(hidden)]
 pub struct Here;
 /// Marker
+#[doc(hidden)]
 pub struct There<Index>(Index);
 
-/// Check membership
+/// Check if a location is a member of a location set
+///
+/// The trait is used to check if a location is a member of a location set.
+///
+/// It takes two type parameters `L` and `Index`. `L` is a location set and `Index` is some type that is inferred by the compiler.
+/// If a location `L1` is in `L`, then there exists a type `Index` such that `L1` implements `Member<L, Index>`.
 pub trait Member<L, Index> {
-    /// Return HList of non-member
+    /// A location set that is the remainder of `L` after removing the member.
     type Remainder: HList;
 }
 
@@ -156,7 +198,12 @@ where
     type Remainder = HCons<Head, X::Remainder>;
 }
 
-/// Check subset
+/// Check if a location set is a subset of another location set
+///
+/// The trait is used to check if a location set is a subset of another location set.
+///
+/// It takes two type parameters `L` and `Index`. `L` is a location set and `Index` is some type that is inferred by the compiler.
+/// If a location set `M` is a subset of `L`, then there exists a type `Index` such that `M` implements `Subset<L, Index>`.
 pub trait Subset<L: HList, Index> {}
 
 // Base case: HNil is a subset of any set
@@ -266,7 +313,7 @@ pub trait Choreography<R = ()> {
 ///
 /// The type parameter `L` is the location set that the transport is operating on.
 ///
-/// The type paramter `TargetLocation` is the target `ChoreographyLocation`.
+/// The type parameter `TargetLocation` is the target `ChoreographyLocation`.
 pub trait Transport<L: HList, TargetLocation: ChoreographyLocation> {
     /// Returns a list of locations.
     fn locations(&self) -> Vec<String>;
@@ -295,7 +342,8 @@ where
     ///
     /// - `target` is the projection target of the choreography.
     /// - `transport` is an implementation of `Transport`.
-    pub fn new(_target: L1, transport: B) -> Self {
+    pub fn new(target: L1, transport: B) -> Self {
+        _ = target;
         Projector {
             target: PhantomData,
             transport,

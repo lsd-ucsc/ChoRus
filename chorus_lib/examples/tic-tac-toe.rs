@@ -1,13 +1,12 @@
 /// Choreographic tik-tak-toe game
 extern crate chorus_lib;
 
-use chorus_lib::transport::http::HttpTransportConfig;
 use chorus_lib::{
     core::{
-        ChoreoOp, Choreography, ChoreographyLocation, Deserialize, Located, Projector, Serialize,
+        ChoreoOp, Choreography, ChoreographyLocation, Deserialize, Located, LocationSet, Projector,
+        Serialize,
     },
-    transport::http::HttpTransport,
-    LocationSet,
+    transport::http::{HttpTransport, HttpTransportConfigBuilder},
 };
 
 use clap::Parser;
@@ -295,7 +294,7 @@ fn main() {
 
     match args.player {
         'X' => {
-            let config = HttpTransportConfig::for_target(
+            let config = HttpTransportConfigBuilder::for_target(
                 PlayerX,
                 (args.hostname.as_str().to_string(), args.port),
             )
@@ -305,7 +304,8 @@ fn main() {
                     args.opponent_hostname.as_str().to_string(),
                     args.opponent_port,
                 ),
-            );
+            )
+            .build();
 
             let transport = HttpTransport::new(config);
             let projector = Projector::new(PlayerX, transport);
@@ -315,7 +315,7 @@ fn main() {
             });
         }
         'O' => {
-            let config = HttpTransportConfig::for_target(
+            let config = HttpTransportConfigBuilder::for_target(
                 PlayerO,
                 (args.hostname.as_str().to_string(), args.port),
             )
@@ -325,7 +325,8 @@ fn main() {
                     args.opponent_hostname.as_str().to_string(),
                     args.opponent_port,
                 ),
-            );
+            )
+            .build();
 
             let transport = HttpTransport::new(config);
             let projector = Projector::new(PlayerO, transport);

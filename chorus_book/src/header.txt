@@ -1,14 +1,13 @@
 # extern crate chorus_lib;
-# use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector, Located, Superposition, Runner};
-# use chorus_lib::transport::local::{LocalTransport, LocalTransportChannel};
-# use chorus_lib::{LocationSet};
+# use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector, Located, Superposition, Runner, LocationSet};
+# use chorus_lib::transport::local::{LocalTransport, LocalTransportChannelBuilder};
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # #[derive(ChoreographyLocation)]
 # struct Bob;
 # #[derive(ChoreographyLocation)]
 # struct Carol;
-# let transport_channel = LocalTransportChannel::new().with(Alice).with(Bob).with(Carol);
+# let transport_channel = LocalTransportChannelBuilder::new().with(Alice).with(Bob).with(Carol).build();
 # let alice_transport = LocalTransport::new(Alice, transport_channel.clone());
 # let bob_transport = LocalTransport::new(Bob, transport_channel.clone());
 # let carol_transport = LocalTransport::new(Carol, transport_channel.clone());
