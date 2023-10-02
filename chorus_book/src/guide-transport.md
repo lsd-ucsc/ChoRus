@@ -131,8 +131,7 @@ Note that when calling `epp_and_run` on a `Projector`, you will get a compile er
 ```rust, compile_fail
 # extern crate chorus_lib;
 # use chorus_lib::transport::local::{LocalTransport, LocalTransportChannelBuilder};
-# use chorus_lib::core::{ChoreographyLocation, Projector, Choreography, ChoreoOp};
-# use chorus_lib::{LocationSet};
+# use chorus_lib::core::{ChoreographyLocation, Projector, Choreography, ChoreoOp, LocationSet};
 
 # #[derive(ChoreographyLocation)]
 # struct Alice;
