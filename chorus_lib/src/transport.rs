@@ -3,13 +3,13 @@
 pub mod http;
 pub mod local;
 
-use crate::core::{ChoreographyLocation, HCons, HList, LocationSet};
+use crate::core::{ChoreographyLocation, HCons, LocationSet};
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
 /// A generic struct for configuration of `Transport`.
 #[derive(Clone)]
-pub struct TransportConfig<Target: ChoreographyLocation, TargetInfo, L: HList, Info> {
+pub struct TransportConfig<Target: ChoreographyLocation, TargetInfo, L: LocationSet, Info> {
     /// The information about locations
     pub info: HashMap<String, Info>,
     /// The information about the target choreography
@@ -38,7 +38,7 @@ pub struct TransportConfig<Target: ChoreographyLocation, TargetInfo, L: HList, I
 ///    .with(Bob, "value_for_bob".to_string())
 ///    .build();
 /// ```
-pub struct TransportConfigBuilder<Target: ChoreographyLocation, TargetInfo, L: HList, Info> {
+pub struct TransportConfigBuilder<Target: ChoreographyLocation, TargetInfo, L: LocationSet, Info> {
     target: (Target, TargetInfo),
     location_set: PhantomData<L>,
     info: HashMap<String, Info>,
@@ -57,7 +57,7 @@ impl<Target: ChoreographyLocation, TargetInfo, Info>
     }
 }
 
-impl<Target: ChoreographyLocation, TargetInfo, L: HList, Info>
+impl<Target: ChoreographyLocation, TargetInfo, L: LocationSet, Info>
     TransportConfigBuilder<Target, TargetInfo, L, Info>
 {
     /// Adds information about a new `ChoreographyLocation`.
