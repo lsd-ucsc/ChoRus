@@ -129,14 +129,17 @@ impl Brain for UserBrain {
         board.draw();
         let mut pos = String::new();
         loop {
+            pos.clear();
             println!("Player {}: Enter the number", self.player);
             std::io::stdin().read_line(&mut pos).unwrap();
             if let Ok(pos) = pos.trim().parse::<usize>() {
                 if pos >= 9 {
                     println!("{}: Invalid number: {}", self.player, pos);
+                    continue;
                 }
                 if board.board[pos] != std::char::from_digit(pos as u32, 10).unwrap() {
                     println!("{}: Position already taken: {}", self.player, pos);
+                    continue;
                 }
                 // Valid position
                 let mut new_board = board.clone();
