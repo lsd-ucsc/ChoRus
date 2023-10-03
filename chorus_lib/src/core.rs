@@ -106,7 +106,7 @@ where
 
 /// heterogeneous list
 #[doc(hidden)]
-pub trait HList {
+pub trait LocationSet {
     /// returns
     fn to_string_list() -> Vec<&'static str>;
 }
@@ -119,15 +119,15 @@ pub struct HNil;
 #[doc(hidden)]
 pub struct HCons<Head, Tail>(Head, Tail);
 
-impl HList for HNil {
+impl LocationSet for HNil {
     fn to_string_list() -> Vec<&'static str> {
         Vec::new()
     }
 }
-impl<Head, Tail> HList for HCons<Head, Tail>
+impl<Head, Tail> LocationSet for HCons<Head, Tail>
 where
     Head: ChoreographyLocation,
-    Tail: HList,
+    Tail: LocationSet,
 {
     fn to_string_list() -> Vec<&'static str> {
         let mut v = Tail::to_string_list();
@@ -180,12 +180,12 @@ pub struct There<Index>(Index);
 /// If a location `L1` is in `L`, then there exists a type `Index` such that `L1` implements `Member<L, Index>`.
 pub trait Member<L, Index> {
     /// A location set that is the remainder of `L` after removing the member.
-    type Remainder: HList;
+    type Remainder: LocationSet;
 }
 
 impl<Head, Tail> Member<HCons<Head, Tail>, Here> for Head
 where
-    Tail: HList,
+    Tail: LocationSet,
 {
     type Remainder = Tail;
 }
@@ -204,13 +204,14 @@ where
 ///
 /// It takes two type parameters `L` and `Index`. `L` is a location set and `Index` is some type that is inferred by the compiler.
 /// If a location set `M` is a subset of `L`, then there exists a type `Index` such that `M` implements `Subset<L, Index>`.
-pub trait Subset<L: HList, Index> {}
+pub trait Subset<L: LocationSet, Index> {}
 
 // Base case: HNil is a subset of any set
-impl<L: HList> Subset<L, Here> for HNil {}
+impl<L: LocationSet> Subset<L, Here> for HNil {}
 
 // Recursive case
-impl<L: HList, Head, Tail: HList, IHead, ITail> Subset<L, HCons<IHead, ITail>> for HCons<Head, Tail>
+impl<L: LocationSet, Head, Tail: LocationSet, IHead, ITail> Subset<L, HCons<IHead, ITail>>
+    for HCons<Head, Tail>
 where
     Head: Member<L, IHead>,
     Tail: Subset<L, ITail>,
@@ -233,7 +234,7 @@ impl<L1: ChoreographyLocation> Unwrapper<L1> {
 ///
 /// The trait provides methods to work with located values. An implementation of the trait is "injected" into
 /// a choreography at runtime and provides the actual implementation of the operators.
-pub trait ChoreoOp<L: HList> {
+pub trait ChoreoOp<L: LocationSet> {
     /// Performs a computation at the specified location.
     ///
     /// `locally` performs a computation at a location, which are specified by `location` and `computation`, respectively.
@@ -278,10 +279,10 @@ pub trait ChoreoOp<L: HList> {
     /// Calls a choreography.
     fn call<R, M, Index, C: Choreography<R, L = M>>(&self, choreo: C) -> R
     where
-        M: HList + Subset<L, Index>;
+        M: LocationSet + Subset<L, Index>;
 
     /// Calls a choreography on a subset of locations.
-    fn colocally<R: Superposition, S: HList, C: Choreography<R, L = S>, Index>(
+    fn colocally<R: Superposition, S: LocationSet, C: Choreography<R, L = S>, Index>(
         &self,
         choreo: C,
     ) -> R
@@ -298,7 +299,7 @@ pub trait ChoreoOp<L: HList> {
 /// The trait provides a method `run` that takes an implementation of `ChoreoOp` and returns a value of type `R`.
 pub trait Choreography<R = ()> {
     /// Locations
-    type L: HList;
+    type L: LocationSet;
     /// A method that executes a choreography.
     ///
     /// The method takes an implementation of `ChoreoOp`. Inside the method, you can use the operators provided by `ChoreoOp` to define a choreography.
@@ -314,7 +315,7 @@ pub trait Choreography<R = ()> {
 /// The type parameter `L` is the location set that the transport is operating on.
 ///
 /// The type parameter `TargetLocation` is the target `ChoreographyLocation`.
-pub trait Transport<L: HList, TargetLocation: ChoreographyLocation> {
+pub trait Transport<L: LocationSet, TargetLocation: ChoreographyLocation> {
     /// Returns a list of locations.
     fn locations(&self) -> Vec<String>;
     /// Sends a message from `from` to `to`.
@@ -324,7 +325,7 @@ pub trait Transport<L: HList, TargetLocation: ChoreographyLocation> {
 }
 
 /// Provides a method to perform end-point projection.
-pub struct Projector<LS: HList, L1: ChoreographyLocation, T: Transport<LS, L1>, Index>
+pub struct Projector<LS: LocationSet, L1: ChoreographyLocation, T: Transport<LS, L1>, Index>
 where
     L1: Member<LS, Index>,
 {
@@ -334,7 +335,8 @@ where
     index: PhantomData<Index>,
 }
 
-impl<LS: HList, L1: ChoreographyLocation, B: Transport<LS, L1>, Index> Projector<LS, L1, B, Index>
+impl<LS: LocationSet, L1: ChoreographyLocation, B: Transport<LS, L1>, Index>
+    Projector<LS, L1, B, Index>
 where
     L1: Member<LS, Index>,
 {
@@ -377,22 +379,28 @@ where
     }
 
     /// Performs end-point projection and runs a choreography.
-    pub fn epp_and_run<'a, V, L: HList, C: Choreography<V, L = L>, IndexSet>(
+    pub fn epp_and_run<'a, V, L: LocationSet, C: Choreography<V, L = L>, IndexSet>(
         &'a self,
         choreo: C,
     ) -> V
     where
         L: Subset<LS, IndexSet>,
     {
-        struct EppOp<'a, L: HList, L1: ChoreographyLocation, LS: HList, B: Transport<LS, L1>> {
+        struct EppOp<
+            'a,
+            L: LocationSet,
+            L1: ChoreographyLocation,
+            LS: LocationSet,
+            B: Transport<LS, L1>,
+        > {
             target: PhantomData<L1>,
             transport: &'a B,
             locations: Vec<String>,
             marker: PhantomData<L>,
             projector_location_set: PhantomData<LS>,
         }
-        impl<'a, L: HList, T: ChoreographyLocation, LS: HList, B: Transport<LS, T>> ChoreoOp<L>
-            for EppOp<'a, L, T, LS, B>
+        impl<'a, L: LocationSet, T: ChoreographyLocation, LS: LocationSet, B: Transport<LS, T>>
+            ChoreoOp<L> for EppOp<'a, L, T, LS, B>
         {
             fn locally<V, L1: ChoreographyLocation, Index>(
                 &self,
@@ -453,7 +461,7 @@ where
 
             fn call<R, M, Index, C: Choreography<R, L = M>>(&self, choreo: C) -> R
             where
-                M: HList + Subset<L, Index>,
+                M: LocationSet + Subset<L, Index>,
             {
                 let op: EppOp<'a, M, T, LS, B> = EppOp {
                     target: PhantomData::<T>,
@@ -465,7 +473,7 @@ where
                 choreo.run(&op)
             }
 
-            fn colocally<R: Superposition, S: HList, C: Choreography<R, L = S>, Index>(
+            fn colocally<R: Superposition, S: LocationSet, C: Choreography<R, L = S>, Index>(
                 &self,
                 choreo: C,
             ) -> R {
@@ -499,11 +507,11 @@ where
 }
 
 /// Provides a method to run a choreography without end-point projection.
-pub struct Runner<L: HList> {
+pub struct Runner<L: LocationSet> {
     marker: PhantomData<L>,
 }
 
-impl<L: HList> Runner<L> {
+impl<L: LocationSet> Runner<L> {
     /// Constructs a runner.
     pub fn new() -> Self {
         Runner {
@@ -528,7 +536,7 @@ impl<L: HList> Runner<L> {
     /// Runs a choreography directly
     pub fn run<'a, V, C: Choreography<V, L = L>>(&'a self, choreo: C) -> V {
         struct RunOp<L>(PhantomData<L>);
-        impl<L: HList> ChoreoOp<L> for RunOp<L> {
+        impl<L: LocationSet> ChoreoOp<L> for RunOp<L> {
             fn locally<V, L1: ChoreographyLocation, Index>(
                 &self,
                 _location: L1,
@@ -569,13 +577,13 @@ impl<L: HList> Runner<L> {
 
             fn call<R, M, Index, C: Choreography<R, L = M>>(&self, choreo: C) -> R
             where
-                M: HList + Subset<L, Index>,
+                M: LocationSet + Subset<L, Index>,
             {
                 let op: RunOp<M> = RunOp(PhantomData);
                 choreo.run(&op)
             }
 
-            fn colocally<R: Superposition, S: HList, C: Choreography<R, L = S>, Index>(
+            fn colocally<R: Superposition, S: LocationSet, C: Choreography<R, L = S>, Index>(
                 &self,
                 choreo: C,
             ) -> R {

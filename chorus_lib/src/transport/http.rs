@@ -13,7 +13,7 @@ use tiny_http::Server;
 use ureq::{Agent, AgentBuilder};
 
 use crate::{
-    core::{ChoreographyLocation, HList, Member, Portable, Transport},
+    core::{ChoreographyLocation, LocationSet, Member, Portable, Transport},
     transport::{TransportConfig, TransportConfigBuilder},
     utils::queue::BlockingQueue,
 };
@@ -48,7 +48,7 @@ pub type HttpTransportConfigBuilder<Target, L> =
 const HEADER_SRC: &str = "X-CHORUS-SOURCE";
 
 /// The HTTP transport.
-pub struct HttpTransport<L: HList, TLocation> {
+pub struct HttpTransport<L: LocationSet, TLocation> {
     config: HashMap<String, (String, u16)>,
     agent: Agent,
     server: Arc<Server>,
@@ -58,7 +58,7 @@ pub struct HttpTransport<L: HList, TLocation> {
     target_location: PhantomData<TLocation>,
 }
 
-impl<L: HList, TLocation: ChoreographyLocation> HttpTransport<L, TLocation> {
+impl<L: LocationSet, TLocation: ChoreographyLocation> HttpTransport<L, TLocation> {
     /// Creates a new `HttpTransport` instance from the configuration.
     pub fn new<Index>(http_config: HttpTransportConfig<L, TLocation>) -> Self
     where
@@ -119,14 +119,14 @@ impl<L: HList, TLocation: ChoreographyLocation> HttpTransport<L, TLocation> {
     }
 }
 
-impl<L: HList, TLocation> Drop for HttpTransport<L, TLocation> {
+impl<L: LocationSet, TLocation> Drop for HttpTransport<L, TLocation> {
     fn drop(&mut self) {
         self.server.unblock();
         self.join_handle.take().map(thread::JoinHandle::join);
     }
 }
 
-impl<L: HList, TLocation: ChoreographyLocation> Transport<L, TLocation>
+impl<L: LocationSet, TLocation: ChoreographyLocation> Transport<L, TLocation>
     for HttpTransport<L, TLocation>
 {
     fn locations(&self) -> Vec<String> {
