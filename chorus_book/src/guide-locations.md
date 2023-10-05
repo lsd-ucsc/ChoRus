@@ -29,3 +29,22 @@ The `ChoreographyLocation` trait provides the `name` method, which returns the n
 let name = Alice::name();
 assert_eq!(name, "Alice");
 ```
+
+## Location Set
+
+Each Choreography is allowed to operate on a set of `ChoreographyLocation`, called its `LocationSet`. You can use the macro `LocationSet!` and give it a comma separated list of `ChoreographyLocation` to build a `LocationSet`.
+
+```rust
+# extern crate chorus_lib;
+# use chorus_lib::core::ChoreographyLocation;
+# #[derive(ChoreographyLocation)]
+# struct Alice;
+#
+# #[derive(ChoreographyLocation)]
+# struct Bob;
+use chorus_lib::core::LocationSet;
+
+type L = LocationSet!(Alice, Bob);
+```
+
+Internally, `LocationSet` is also used at other places like [Projector](./guide-projector.md) and [Transport](./guide-transport.md) to ensure that they have comprehensive information regarding the `ChoreographyLocation` values they're working with. This is crucial as it allows the system to catch potential errors during compile time instead of runtime, leading to safer code. You can check the API documentation for more details.
