@@ -21,7 +21,7 @@ impl Choreography for HelloWorldChoreography {
 
 `Choreography` must implement the `run` method which defines the behavior of the system. The `run` method takes a reference to an object that implements the `ChoreoOp` trait. The `ChoreoOp` trait provides choreographic operators such as `locally` and `comm`.
 
-Also, each `Choreography` has an associated type `L`, called it's location set; this is the set of `ChoreographyLocation`s that the `Choreography` can operate on. To build a location set, you can use the macro `LocationSet!`.
+Also, each `Choreography` has an associated `LocationSet` type, `L`; this is the `LocationSet` that the `Choreography` can operate on.
 
 ## Choreographic Operators
 

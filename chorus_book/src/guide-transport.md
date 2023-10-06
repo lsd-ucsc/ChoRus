@@ -111,7 +111,7 @@ In the above example, the transport will start the HTTP server on port 8080 on l
 
 ## Creating a Custom Transport
 
-You can also create your own transport by implementing the `Transport` trait. It might be helpful first build a `TransportConfig` to have the the information that you need for each `ChoreographyLocation`, and then have a constructor that takes the `TransportConfig` and builds the `Transport` based on it. While the syntax is similar to `HttpTransportConfig`, the type of information for each `ChoreographyLocation` might diverge from the `(host_name, port)` format presented here. In some cases, the `target_information` could even have a different type than the following `other_location_information` types. But all the `other_location_information`s should have the same type.
+You can also create your own transport by implementing the `Transport` trait. It might be helpful to first build a `TransportConfig` to have the the information that you need for each `ChoreographyLocation`, and then have a constructor that takes the `TransportConfig` and builds the `Transport` based on it. While the syntax is similar to `HttpTransportConfig`, which is `HttpTransportConfigBuilder::for_target(target_location, target_information)`, chained with information about other locations using the `.with(other_location, other_location_information)`,  the type of information for each `ChoreographyLocation` might diverge from the `(host_name, port)` format presented in `HttpTransport`. In some cases, the `target_information` could even have a different type than the following `other_location_information` types. But all the `other_location_information`s should have the same type.
 
 ```rust
 {{#include ./header.txt}}
