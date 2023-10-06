@@ -32,7 +32,7 @@ assert_eq!(name, "Alice");
 
 ## Location Set
 
-A `LocationSet` is a set of `ChoreographyLocation` values. It's primarily used to ensure type safety within the system, and you'll see its application in future sections.
+A `LocationSet` is a special type representing a set of `ChoreographyLocation` types. It's used to ensure type safety within the system, and you'll see its application in future sections.
 
 
 ```rust
