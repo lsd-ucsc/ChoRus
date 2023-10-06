@@ -32,7 +32,8 @@ assert_eq!(name, "Alice");
 
 ## Location Set
 
-Each Choreography is allowed to operate on a set of `ChoreographyLocation`, called its `LocationSet`. You can use the macro `LocationSet!` and give it a comma separated list of `ChoreographyLocation` to build a `LocationSet`.
+A `LocationSet` is a set of `ChoreographyLocation` values. It's primarily used to ensure type safety within the system, and you'll see its application in future sections.
+
 
 ```rust
 # extern crate chorus_lib;
@@ -46,5 +47,3 @@ use chorus_lib::core::LocationSet;
 
 type L = LocationSet!(Alice, Bob);
 ```
-
-Internally, `LocationSet` is also used at other places like [Projector](./guide-projector.md) and [Transport](./guide-transport.md) to ensure that they have comprehensive information regarding the `ChoreographyLocation` values they're working with. This is crucial as it allows the system to catch potential errors during compile time instead of runtime, leading to safer code. You can check the API documentation for more details.
