@@ -32,8 +32,7 @@ assert_eq!(name, "Alice");
 
 ## Location Set
 
-A `LocationSet` is a special type representing a set of `ChoreographyLocation` types. It's used to ensure type safety within the system, and you'll see its application in future sections.
-
+A `LocationSet` is a special type representing a set of `ChoreographyLocation` types. It's used to ensure type safety within the system, and you'll see its application in future sections. To build a `LocationSet` type, you can use the `LocationSet` macro from the `chorus_lib` crate.
 
 ```rust
 # extern crate chorus_lib;
