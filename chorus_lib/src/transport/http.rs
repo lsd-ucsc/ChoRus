@@ -18,10 +18,11 @@ use crate::{
     utils::queue::BlockingQueue,
 };
 
-type QueueMap = HashMap<String, BlockingQueue<String>>;
+type QueueMap = HashMap<&'static str, BlockingQueue<String>>;
 
 /// Config for `HttpTransport`.
-pub type HttpTransportConfig<L, Target> = TransportConfig<Target, (String, u16), L, (String, u16)>;
+pub type HttpTransportConfig<'a, L, Target> =
+    TransportConfig<'a, Target, (&'a str, u16), L, (&'a str, u16)>;
 
 /// A builder for `HttpTransportConfig`.
 ///
@@ -37,19 +38,19 @@ pub type HttpTransportConfig<L, Target> = TransportConfig<Target, (String, u16),
 /// # #[derive(ChoreographyLocation)]
 /// # struct Bob;
 /// #
-/// let transport_config = HttpTransportConfigBuilder::for_target(Alice, ("0.0.0.0".to_string(), 9010))
-///   .with(Bob, ("example.com".to_string(), 80))
+/// let transport_config = HttpTransportConfigBuilder::for_target(Alice, ("0.0.0.0", 9010))
+///   .with(Bob, ("example.com", 80))
 ///   .build();
 /// ```
-pub type HttpTransportConfigBuilder<Target, L> =
-    TransportConfigBuilder<Target, (String, u16), L, (String, u16)>;
+pub type HttpTransportConfigBuilder<'a, Target, L> =
+    TransportConfigBuilder<'a, Target, (&'a str, u16), L, (&'a str, u16)>;
 
 /// The header name for the source location.
 const HEADER_SRC: &str = "X-CHORUS-SOURCE";
 
 /// The HTTP transport.
-pub struct HttpTransport<L: LocationSet, TLocation> {
-    config: HashMap<String, (String, u16)>,
+pub struct HttpTransport<'a, L: LocationSet, TLocation> {
+    config: HashMap<&'static str, (&'a str, u16)>,
     agent: Agent,
     server: Arc<Server>,
     join_handle: Option<thread::JoinHandle<()>>,
@@ -58,16 +59,16 @@ pub struct HttpTransport<L: LocationSet, TLocation> {
     target_location: PhantomData<TLocation>,
 }
 
-impl<L: LocationSet, TLocation: ChoreographyLocation> HttpTransport<L, TLocation> {
+impl<'a, L: LocationSet, TLocation: ChoreographyLocation> HttpTransport<'a, L, TLocation> {
     /// Creates a new `HttpTransport` instance from the configuration.
-    pub fn new<Index>(http_config: HttpTransportConfig<L, TLocation>) -> Self
+    pub fn new<Index>(http_config: HttpTransportConfig<'a, L, TLocation>) -> Self
     where
         TLocation: Member<L, Index>,
     {
         let queue_map: Arc<QueueMap> = {
             let mut m = HashMap::new();
             for loc in L::to_string_list() {
-                m.insert(loc.to_string(), BlockingQueue::new());
+                m.insert(loc, BlockingQueue::new());
             }
             Arc::new(m.into())
         };
@@ -119,18 +120,18 @@ impl<L: LocationSet, TLocation: ChoreographyLocation> HttpTransport<L, TLocation
     }
 }
 
-impl<L: LocationSet, TLocation> Drop for HttpTransport<L, TLocation> {
+impl<'a, L: LocationSet, TLocation> Drop for HttpTransport<'a, L, TLocation> {
     fn drop(&mut self) {
         self.server.unblock();
         self.join_handle.take().map(thread::JoinHandle::join);
     }
 }
 
-impl<L: LocationSet, TLocation: ChoreographyLocation> Transport<L, TLocation>
-    for HttpTransport<L, TLocation>
+impl<'a, L: LocationSet, TLocation: ChoreographyLocation> Transport<L, TLocation>
+    for HttpTransport<'a, L, TLocation>
 {
-    fn locations(&self) -> Vec<String> {
-        Vec::from_iter(self.config.keys().map(|s| s.clone()))
+    fn locations(&self) -> Vec<&'static str> {
+        self.config.keys().cloned().collect()
     }
 
     fn send<V: Portable>(&self, from: &str, to: &str, data: &V) -> () {
@@ -176,10 +177,9 @@ mod tests {
 
         let mut handles = Vec::new();
         {
-            let config =
-                HttpTransportConfigBuilder::for_target(Alice, ("0.0.0.0".to_string(), 9010))
-                    .with(Bob, ("localhost".to_string(), 9011))
-                    .build();
+            let config = HttpTransportConfigBuilder::for_target(Alice, ("0.0.0.0", 9010))
+                .with(Bob, ("localhost", 9011))
+                .build();
 
             handles.push(thread::spawn(move || {
                 wait.recv().unwrap(); // wait for Bob to start
@@ -188,8 +188,8 @@ mod tests {
             }));
         }
         {
-            let config = HttpTransportConfigBuilder::for_target(Bob, ("0.0.0.0".to_string(), 9011))
-                .with(Alice, ("localhost".to_string(), 9010))
+            let config = HttpTransportConfigBuilder::for_target(Bob, ("0.0.0.0", 9011))
+                .with(Alice, ("localhost", 9010))
                 .build();
 
             handles.push(thread::spawn(move || {
@@ -211,10 +211,9 @@ mod tests {
 
         let mut handles = Vec::new();
         {
-            let config =
-                HttpTransportConfigBuilder::for_target(Alice, ("0.0.0.0".to_string(), 9020))
-                    .with(Bob, ("localhost".to_string(), 9021))
-                    .build();
+            let config = HttpTransportConfigBuilder::for_target(Alice, ("0.0.0.0", 9020))
+                .with(Bob, ("localhost", 9021))
+                .build();
 
             handles.push(thread::spawn(move || {
                 signal.send(()).unwrap();
@@ -223,8 +222,8 @@ mod tests {
             }));
         }
         {
-            let config = HttpTransportConfigBuilder::for_target(Bob, ("0.0.0.0".to_string(), 9021))
-                .with(Alice, ("localhost".to_string(), 9020))
+            let config = HttpTransportConfigBuilder::for_target(Bob, ("0.0.0.0", 9021))
+                .with(Alice, ("localhost", 9020))
                 .build();
 
             handles.push(thread::spawn(move || {

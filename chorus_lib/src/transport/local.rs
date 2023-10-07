@@ -124,7 +124,7 @@ impl<L: LocationSet> LocalTransportChannelBuilder<L> {
 ///
 /// All locations must share the same `LocalTransportChannel` instance. `LocalTransportChannel` implements `Clone` so that it can be shared across threads.
 pub struct LocalTransport<L: LocationSet, TargetLocation> {
-    internal_locations: Vec<String>,
+    internal_locations: Vec<&'static str>,
     location_set: PhantomData<L>,
     local_channel: LocalTransportChannel<L>,
     target_location: PhantomData<TargetLocation>,
@@ -135,15 +135,8 @@ impl<L: LocationSet, TargetLocation> LocalTransport<L, TargetLocation> {
     pub fn new(target: TargetLocation, local_channel: LocalTransportChannel<L>) -> Self {
         _ = target;
 
-        let locations_list = L::to_string_list();
-
-        let mut locations_vec = Vec::new();
-        for loc in locations_list.clone() {
-            locations_vec.push(loc.to_string());
-        }
-
         LocalTransport {
-            internal_locations: locations_vec,
+            internal_locations: L::to_string_list(),
             location_set: PhantomData,
             local_channel,
             target_location: PhantomData,
@@ -154,7 +147,7 @@ impl<L: LocationSet, TargetLocation> LocalTransport<L, TargetLocation> {
 impl<L: LocationSet, TargetLocation: ChoreographyLocation> Transport<L, TargetLocation>
     for LocalTransport<L, TargetLocation>
 {
-    fn locations(&self) -> Vec<String> {
+    fn locations(&self) -> Vec<&'static str> {
         return self.internal_locations.clone();
     }
 

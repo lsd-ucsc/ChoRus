@@ -317,7 +317,7 @@ pub trait Choreography<R = ()> {
 /// The type parameter `TargetLocation` is the target `ChoreographyLocation`.
 pub trait Transport<L: LocationSet, TargetLocation: ChoreographyLocation> {
     /// Returns a list of locations.
-    fn locations(&self) -> Vec<String>;
+    fn locations(&self) -> Vec<&'static str>;
     /// Sends a message from `from` to `to`.
     fn send<V: Portable>(&self, from: &str, to: &str, data: &V) -> ();
     /// Receives a message from `from` to `at`.
@@ -396,7 +396,7 @@ where
         > {
             target: PhantomData<L1>,
             transport: &'a B,
-            locations: Vec<String>,
+            locations: Vec<&'static str>,
             marker: PhantomData<L>,
             projector_location_set: PhantomData<LS>,
         }
@@ -478,15 +478,14 @@ where
                 &self,
                 choreo: C,
             ) -> R {
-                let locs_vec =
-                    Vec::from_iter(S::to_string_list().into_iter().map(|s| s.to_string()));
+                let locs_vec = S::to_string_list();
 
                 for location in &locs_vec {
                     if *location == T::name().to_string() {
                         let op = EppOp {
                             target: PhantomData::<T>,
                             transport: self.transport,
-                            locations: locs_vec.clone(),
+                            locations: locs_vec,
                             marker: PhantomData::<S>,
                             projector_location_set: PhantomData::<LS>,
                         };

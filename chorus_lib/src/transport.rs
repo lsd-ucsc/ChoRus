@@ -9,13 +9,14 @@ use std::marker::PhantomData;
 
 /// A generic struct for configuration of `Transport`.
 #[derive(Clone)]
-pub struct TransportConfig<Target: ChoreographyLocation, TargetInfo, L: LocationSet, Info> {
+pub struct TransportConfig<'a, Target: ChoreographyLocation, TargetInfo, L: LocationSet, Info> {
     /// The information about locations
-    pub info: HashMap<String, Info>,
+    pub info: HashMap<&'static str, Info>,
     /// The information about the target choreography
     pub target_info: (Target, TargetInfo),
     /// The struct is parametrized by the location set (`L`).
     location_set: PhantomData<L>,
+    lifetime: PhantomData<&'a ()>,
 }
 
 /// A builder for `TransportConfig`.
@@ -38,14 +39,21 @@ pub struct TransportConfig<Target: ChoreographyLocation, TargetInfo, L: Location
 ///    .with(Bob, "value_for_bob".to_string())
 ///    .build();
 /// ```
-pub struct TransportConfigBuilder<Target: ChoreographyLocation, TargetInfo, L: LocationSet, Info> {
+pub struct TransportConfigBuilder<
+    'a,
+    Target: ChoreographyLocation,
+    TargetInfo,
+    L: LocationSet,
+    Info,
+> {
     target: (Target, TargetInfo),
     location_set: PhantomData<L>,
-    info: HashMap<String, Info>,
+    info: HashMap<&'static str, Info>,
+    lifetime: PhantomData<&'a ()>,
 }
 
-impl<Target: ChoreographyLocation, TargetInfo, Info>
-    TransportConfigBuilder<Target, TargetInfo, LocationSet!(Target), Info>
+impl<'a, Target: ChoreographyLocation, TargetInfo, Info>
+    TransportConfigBuilder<'a, Target, TargetInfo, LocationSet!(Target), Info>
 {
     /// Creates a new `TransportConfigBuilder` instance for a given target.
     pub fn for_target(target: Target, info: TargetInfo) -> Self {
@@ -53,37 +61,40 @@ impl<Target: ChoreographyLocation, TargetInfo, Info>
             target: (target, info),
             location_set: PhantomData,
             info: HashMap::new(),
+            lifetime: PhantomData,
         }
     }
 }
 
-impl<Target: ChoreographyLocation, TargetInfo, L: LocationSet, Info>
-    TransportConfigBuilder<Target, TargetInfo, L, Info>
+impl<'a, Target: ChoreographyLocation, TargetInfo, L: LocationSet, Info>
+    TransportConfigBuilder<'a, Target, TargetInfo, L, Info>
 {
     /// Adds information about a new `ChoreographyLocation`.
     ///
     /// This method tells the builder that the choreography involves a new location and how to communicate with it.
-    pub fn with<NewLocation: ChoreographyLocation>(
+    pub fn with<'b, NewLocation: ChoreographyLocation>(
         self,
         location: NewLocation,
         info: Info,
-    ) -> TransportConfigBuilder<Target, TargetInfo, HCons<NewLocation, L>, Info> {
+    ) -> TransportConfigBuilder<'b, Target, TargetInfo, HCons<NewLocation, L>, Info> {
         _ = location;
         let mut new_info = self.info;
-        new_info.insert(NewLocation::name().to_string(), info);
+        new_info.insert(NewLocation::name(), info);
         TransportConfigBuilder {
             target: self.target,
             location_set: PhantomData,
             info: new_info,
+            lifetime: PhantomData,
         }
     }
 
     /// Builds a `TransportConfig` instance.
-    pub fn build(self) -> TransportConfig<Target, TargetInfo, L, Info> {
+    pub fn build<'b>(self) -> TransportConfig<'b, Target, TargetInfo, L, Info> {
         TransportConfig {
             info: self.info,
             target_info: self.target,
             location_set: PhantomData,
+            lifetime: PhantomData,
         }
     }
 }
