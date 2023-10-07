@@ -296,14 +296,11 @@ fn main() {
         'X' => {
             let config = HttpTransportConfigBuilder::for_target(
                 PlayerX,
-                (args.hostname.as_str().to_string(), args.port),
+                (args.hostname.as_str(), args.port),
             )
             .with(
                 PlayerO,
-                (
-                    args.opponent_hostname.as_str().to_string(),
-                    args.opponent_port,
-                ),
+                (args.opponent_hostname.as_str(), args.opponent_port),
             )
             .build();
 
@@ -317,14 +314,11 @@ fn main() {
         'O' => {
             let config = HttpTransportConfigBuilder::for_target(
                 PlayerO,
-                (args.hostname.as_str().to_string(), args.port),
+                (args.hostname.as_str(), args.port),
             )
             .with(
                 PlayerX,
-                (
-                    args.opponent_hostname.as_str().to_string(),
-                    args.opponent_port,
-                ),
+                (args.opponent_hostname.as_str(), args.opponent_port),
             )
             .build();
 
