@@ -3,9 +3,10 @@ extern crate chorus_lib;
 use std::io;
 use std::thread;
 
+use chorus_lib::transport::local::LocalTransportChannelBuilder;
 use chrono::NaiveDate;
 
-use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Projector};
+use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, LocationSet, Projector};
 use chorus_lib::transport::local::LocalTransport;
 
 fn get_book(title: &str) -> Option<(i32, NaiveDate)> {
@@ -26,7 +27,8 @@ struct Buyer;
 
 struct BooksellerChoreography;
 impl Choreography for BooksellerChoreography {
-    fn run(self, op: &impl ChoreoOp) {
+    type L = LocationSet!(Seller, Buyer);
+    fn run(self, op: &impl ChoreoOp<Self::L>) {
         let title_at_buyer = op.locally(Buyer, |_| {
             println!("Enter the title of the book to buy (TAPL or HoTT)");
             let mut title = String::new();
@@ -71,9 +73,15 @@ impl Choreography for BooksellerChoreography {
 }
 
 fn main() {
-    let transport = LocalTransport::from(&[Seller.name(), Buyer.name()]);
-    let seller_projector = Projector::new(Seller, transport.clone());
-    let buyer_projector = Projector::new(Buyer, transport.clone());
+    let transport_channel = LocalTransportChannelBuilder::new()
+        .with(Seller)
+        .with(Buyer)
+        .build();
+    let transport_seller = LocalTransport::new(Seller, transport_channel.clone());
+    let transport_buyer = LocalTransport::new(Buyer, transport_channel.clone());
+
+    let seller_projector = Projector::new(Seller, transport_seller);
+    let buyer_projector = Projector::new(Buyer, transport_buyer);
 
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     handles.push(thread::spawn(move || {

@@ -2,11 +2,15 @@
 extern crate chorus_lib;
 
 use chorus_lib::{
-    core::{Choreography, ChoreographyLocation, Deserialize, Located, Projector, Serialize},
-    transport::http::HttpTransport,
+    core::{
+        ChoreoOp, Choreography, ChoreographyLocation, Deserialize, Located, LocationSet, Projector,
+        Serialize,
+    },
+    transport::http::{HttpTransport, HttpTransportConfigBuilder},
 };
+
 use clap::Parser;
-use std::{collections::HashMap, io::Write};
+use std::io::Write;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -228,7 +232,8 @@ struct TicTacToeChoreography {
 }
 
 impl Choreography for TicTacToeChoreography {
-    fn run(self, op: &impl chorus_lib::core::ChoreoOp) -> () {
+    type L = LocationSet!(PlayerX, PlayerO);
+    fn run(self, op: &impl ChoreoOp<Self::L>) -> () {
         let mut board = Board::new();
         loop {
             let board_x = op.locally(PlayerX, |un| {
@@ -289,15 +294,20 @@ fn main() {
     } else {
         Box::new(UserBrain::new(args.player))
     };
+
     match args.player {
         'X' => {
-            let mut config = HashMap::new();
-            config.insert(PlayerX.name(), (args.hostname.as_str(), args.port));
-            config.insert(
-                PlayerO.name(),
+            let config = HttpTransportConfigBuilder::for_target(
+                PlayerX,
+                (args.hostname.as_str(), args.port),
+            )
+            .with(
+                PlayerO,
                 (args.opponent_hostname.as_str(), args.opponent_port),
-            );
-            let transport = HttpTransport::new(PlayerX.name(), &config);
+            )
+            .build();
+
+            let transport = HttpTransport::new(config);
             let projector = Projector::new(PlayerX, transport);
             projector.epp_and_run(TicTacToeChoreography {
                 brain_for_x: projector.local(brain),
@@ -305,13 +315,17 @@ fn main() {
             });
         }
         'O' => {
-            let mut config = HashMap::new();
-            config.insert(PlayerO.name(), (args.hostname.as_str(), args.port));
-            config.insert(
-                PlayerX.name(),
+            let config = HttpTransportConfigBuilder::for_target(
+                PlayerO,
+                (args.hostname.as_str(), args.port),
+            )
+            .with(
+                PlayerX,
                 (args.opponent_hostname.as_str(), args.opponent_port),
-            );
-            let transport = HttpTransport::new(PlayerO.name(), &config);
+            )
+            .build();
+
+            let transport = HttpTransport::new(config);
             let projector = Projector::new(PlayerO, transport);
             projector.epp_and_run(TicTacToeChoreography {
                 brain_for_x: projector.remote(PlayerX),

@@ -4,22 +4,22 @@ Projector is responsible for performing the end-point projection and executing t
 
 ## Creating a Projector
 
-To create a `Projector`, you need to provide the location and the transport.
+To create a `Projector`, you need to provide the target location and the transport.
 
 ```rust
 # extern crate chorus_lib;
-# use chorus_lib::transport::local::LocalTransport;
-# use chorus_lib::core::{ChoreographyLocation, Projector};
-# let transport = LocalTransport::from(&[Alice.name(), Bob.name()]);
+# use chorus_lib::transport::local::{LocalTransport, LocalTransportChannelBuilder};
+# use chorus_lib::core::{ChoreographyLocation, Projector, LocationSet};
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # #[derive(ChoreographyLocation)]
 # struct Bob;
-#
-let projector = Projector::new(Alice, transport);
+# let transport_channel = LocalTransportChannelBuilder::new().with(Alice).with(Bob).build();
+# let alice_transport = LocalTransport::new(Alice, transport_channel.clone());
+let projector = Projector::new(Alice, alice_transport);
 ```
 
-Notice that the `Projector` is parameterized by the location type. You will need one projector for each location to execute choreography.
+Notice that the `Projector` is parameterized by its target location type. You will need one projector for each location to execute choreography.
 
 ## Executing a Choreography
 
@@ -27,20 +27,21 @@ To execute a choreography, you need to call the `epp_and_run` method on the `Pro
 
 ```rust
 # extern crate chorus_lib;
-# use chorus_lib::transport::local::LocalTransport;
-# use chorus_lib::core::{ChoreographyLocation, Projector, Choreography, ChoreoOp};
-# let transport = LocalTransport::from(&[Alice.name(), Bob.name()]);
+# use chorus_lib::transport::local::{LocalTransport, LocalTransportChannelBuilder};
+# use chorus_lib::core::{ChoreographyLocation, Projector, Choreography, ChoreoOp, LocationSet};
+# let transport_channel = LocalTransportChannelBuilder::new().with(Alice).with(Bob).build();
+# let alice_transport = LocalTransport::new(Alice, transport_channel.clone());
 # #[derive(ChoreographyLocation)]
 # struct Alice;
 # #[derive(ChoreographyLocation)]
 # struct Bob;
 # struct HelloWorldChoreography;
 # impl Choreography for HelloWorldChoreography {
-#     fn run(self, op: &impl ChoreoOp) {
+#     type L = LocationSet!(Alice);
+#     fn run(self, op: &impl ChoreoOp<Self::L>) {
 #     }
 # }
-#
-# let projector = Projector::new(Alice, transport);
+# let projector = Projector::new(Alice, alice_transport);
 projector.epp_and_run(HelloWorldChoreography);
 ```
 

@@ -3,6 +3,8 @@
 use std::thread;
 use std::{collections::HashMap, sync::Arc};
 
+use std::marker::PhantomData;
+
 use retry::{
     delay::{jitter, Fixed},
     retry,
@@ -11,45 +13,72 @@ use tiny_http::Server;
 use ureq::{Agent, AgentBuilder};
 
 use crate::{
-    core::{Portable, Transport},
+    core::{ChoreographyLocation, LocationSet, Member, Portable, Transport},
+    transport::{TransportConfig, TransportConfigBuilder},
     utils::queue::BlockingQueue,
 };
+
+type QueueMap = HashMap<&'static str, BlockingQueue<String>>;
+
+/// Config for `HttpTransport`.
+pub type HttpTransportConfig<'a, L, Target> =
+    TransportConfig<'a, Target, (&'a str, u16), L, (&'a str, u16)>;
+
+/// A builder for `HttpTransportConfig`.
+///
+/// # Examples
+///
+/// ```
+/// # use chorus_lib::core::{LocationSet, ChoreographyLocation};
+/// # use chorus_lib::transport::http::HttpTransportConfigBuilder;
+/// #
+/// # #[derive(ChoreographyLocation)]
+/// # struct Alice;
+/// #
+/// # #[derive(ChoreographyLocation)]
+/// # struct Bob;
+/// #
+/// let transport_config = HttpTransportConfigBuilder::for_target(Alice, ("0.0.0.0", 9010))
+///   .with(Bob, ("example.com", 80))
+///   .build();
+/// ```
+pub type HttpTransportConfigBuilder<'a, Target, L> =
+    TransportConfigBuilder<'a, Target, (&'a str, u16), L, (&'a str, u16)>;
 
 /// The header name for the source location.
 const HEADER_SRC: &str = "X-CHORUS-SOURCE";
 
 /// The HTTP transport.
-pub struct HttpTransport {
-    config: HashMap<String, (String, u16)>,
+pub struct HttpTransport<'a, L: LocationSet, TLocation> {
+    config: HashMap<&'static str, (&'a str, u16)>,
     agent: Agent,
-    queue_map: Arc<HashMap<String, BlockingQueue<String>>>,
     server: Arc<Server>,
     join_handle: Option<thread::JoinHandle<()>>,
+    location_set: PhantomData<L>,
+    queue_map: Arc<QueueMap>,
+    target_location: PhantomData<TLocation>,
 }
 
-impl HttpTransport {
-    /// Creates a new `HttpTransport` instance from the projection target and a configuration.
-    pub fn new(at: &'static str, config: &HashMap<&str, (&str, u16)>) -> Self {
-        let config = HashMap::from_iter(
-            config
-                .iter()
-                .map(|(k, (hostname, port))| (k.to_string(), (hostname.to_string(), *port))),
-        );
-        let locs = Vec::from_iter(config.keys().map(|s| s.clone()));
-
-        let queue_map = {
+impl<'a, L: LocationSet, TLocation: ChoreographyLocation> HttpTransport<'a, L, TLocation> {
+    /// Creates a new `HttpTransport` instance from the configuration.
+    pub fn new<Index>(http_config: HttpTransportConfig<'a, L, TLocation>) -> Self
+    where
+        TLocation: Member<L, Index>,
+    {
+        let queue_map: Arc<QueueMap> = {
             let mut m = HashMap::new();
-            for loc in &locs {
-                m.insert(loc.to_string(), BlockingQueue::new());
+            for loc in L::to_string_list() {
+                m.insert(loc, BlockingQueue::new());
             }
-            Arc::new(m)
+            Arc::new(m.into())
         };
 
-        let (hostname, port) = config.get(at).unwrap();
+        let (_, (hostname, port)) = &http_config.target_info;
         let server = Arc::new(Server::http(format!("{}:{}", hostname, port)).unwrap());
         let join_handle = Some({
             let server = server.clone();
             let queue_map = queue_map.clone();
+
             thread::spawn(move || {
                 for mut request in server.incoming_requests() {
                     let mut body = String::new();
@@ -80,25 +109,29 @@ impl HttpTransport {
         let agent = AgentBuilder::new().build();
 
         Self {
-            config,
+            config: http_config.info,
             agent,
-            queue_map,
             join_handle,
             server,
+            location_set: PhantomData,
+            queue_map,
+            target_location: PhantomData,
         }
     }
 }
 
-impl Drop for HttpTransport {
+impl<'a, L: LocationSet, TLocation> Drop for HttpTransport<'a, L, TLocation> {
     fn drop(&mut self) {
         self.server.unblock();
         self.join_handle.take().map(thread::JoinHandle::join);
     }
 }
 
-impl Transport for HttpTransport {
-    fn locations(&self) -> Vec<String> {
-        Vec::from_iter(self.config.keys().map(|s| s.clone()))
+impl<'a, L: LocationSet, TLocation: ChoreographyLocation> Transport<L, TLocation>
+    for HttpTransport<'a, L, TLocation>
+{
+    fn locations(&self) -> Vec<&'static str> {
+        self.config.keys().cloned().collect()
     }
 
     fn send<V: Portable>(&self, from: &str, to: &str, data: &V) -> () {
@@ -133,28 +166,36 @@ mod tests {
     #[derive(ChoreographyLocation)]
     struct Bob;
 
+    #[derive(ChoreographyLocation)]
+    struct Carol;
+
     #[test]
     fn test_http_transport() {
         let v = 42;
-        let mut config = HashMap::new();
+
         let (signal, wait) = mpsc::channel::<()>();
-        config.insert(Alice.name(), ("localhost", 9010));
-        config.insert(Bob.name(), ("localhost", 9011));
+
         let mut handles = Vec::new();
         {
-            let config = config.clone();
+            let config = HttpTransportConfigBuilder::for_target(Alice, ("0.0.0.0", 9010))
+                .with(Bob, ("localhost", 9011))
+                .build();
+
             handles.push(thread::spawn(move || {
                 wait.recv().unwrap(); // wait for Bob to start
-                let transport = HttpTransport::new(Alice.name(), &config);
-                transport.send::<i32>(Alice.name(), Bob.name(), &v);
+                let transport = HttpTransport::new(config);
+                transport.send::<i32>(Alice::name(), Bob::name(), &v);
             }));
         }
         {
-            let config = config.clone();
+            let config = HttpTransportConfigBuilder::for_target(Bob, ("0.0.0.0", 9011))
+                .with(Alice, ("localhost", 9010))
+                .build();
+
             handles.push(thread::spawn(move || {
-                let transport = HttpTransport::new(Bob.name(), &config);
+                let transport = HttpTransport::new(config);
                 signal.send(()).unwrap();
-                let v2 = transport.receive::<i32>(Alice.name(), Bob.name());
+                let v2 = transport.receive::<i32>(Alice::name(), Bob::name());
                 assert_eq!(v, v2);
             }));
         }
@@ -166,27 +207,31 @@ mod tests {
     #[test]
     fn test_http_transport_retry() {
         let v = 42;
-        let mut config = HashMap::new();
         let (signal, wait) = mpsc::channel::<()>();
-        config.insert(Alice.name(), ("localhost", 9020));
-        config.insert(Bob.name(), ("localhost", 9021));
+
         let mut handles = Vec::new();
         {
-            let config = config.clone();
+            let config = HttpTransportConfigBuilder::for_target(Alice, ("0.0.0.0", 9020))
+                .with(Bob, ("localhost", 9021))
+                .build();
+
             handles.push(thread::spawn(move || {
                 signal.send(()).unwrap();
-                let transport = HttpTransport::new(Alice.name(), &config);
-                transport.send::<i32>(Alice.name(), Bob.name(), &v);
+                let transport = HttpTransport::new(config);
+                transport.send::<i32>(Alice::name(), Bob::name(), &v);
             }));
         }
         {
-            let config = config.clone();
+            let config = HttpTransportConfigBuilder::for_target(Bob, ("0.0.0.0", 9021))
+                .with(Alice, ("localhost", 9020))
+                .build();
+
             handles.push(thread::spawn(move || {
                 // wait for Alice to start, which forces Alice to retry
                 wait.recv().unwrap();
                 sleep(Duration::from_millis(100));
-                let transport = HttpTransport::new(Bob.name(), &config);
-                let v2 = transport.receive::<i32>(Alice.name(), Bob.name());
+                let transport = HttpTransport::new(config);
+                let v2 = transport.receive::<i32>(Alice::name(), Bob::name());
                 assert_eq!(v, v2);
             }));
         }

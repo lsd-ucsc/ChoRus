@@ -26,6 +26,23 @@ The `ChoreographyLocation` trait provides the `name` method, which returns the n
 # #[derive(ChoreographyLocation)]
 # struct Bob;
 #
-let name = Alice.name();
+let name = Alice::name();
 assert_eq!(name, "Alice");
+```
+
+## Location Set
+
+A `LocationSet` is a special type representing a set of `ChoreographyLocation` types. It's used to ensure type safety within the system, and you'll see its application in future sections. To build a `LocationSet` type, you can use the `LocationSet` macro from the `chorus_lib` crate.
+
+```rust
+# extern crate chorus_lib;
+# use chorus_lib::core::ChoreographyLocation;
+# #[derive(ChoreographyLocation)]
+# struct Alice;
+#
+# #[derive(ChoreographyLocation)]
+# struct Bob;
+use chorus_lib::core::LocationSet;
+
+type L = LocationSet!(Alice, Bob);
 ```
