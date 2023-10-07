@@ -22,6 +22,11 @@ ureq = "2.7.1"
 
 [dev-dependencies]
 chrono = { version = "0.4.26", features = ["serde"] }
+criterion = { version = "0.5.1", features = ["html_reports"] }
 clap = { version = "4.3.21", features = ["derive"] }
 rand = "0.8.5"
 termcolor = "1.2.0"
+
+[[bench]]
+name = "chorus_benchmark"
+harness = false
