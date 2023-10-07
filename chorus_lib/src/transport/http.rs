@@ -130,8 +130,8 @@ impl<'a, L: LocationSet, TLocation> Drop for HttpTransport<'a, L, TLocation> {
 impl<'a, L: LocationSet, TLocation: ChoreographyLocation> Transport<L, TLocation>
     for HttpTransport<'a, L, TLocation>
 {
-    fn locations(&self) -> Vec<String> {
-        Vec::from_iter(self.config.keys().map(|s| s.to_string()))
+    fn locations(&self) -> Vec<&'static str> {
+        self.config.keys().cloned().collect()
     }
 
     fn send<V: Portable>(&self, from: &str, to: &str, data: &V) -> () {
