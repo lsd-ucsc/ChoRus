@@ -24,11 +24,13 @@ impl Choreography for AddToNChoreography {
     fn run(self, op: &impl ChoreoOp<Self::L>) -> () {
         let mut i = 0;
         loop {
-            i = op.broadcast(Alice, op.locally(Alice, |_| i + 1));
+            let tmp = op.locally(Alice, |_| i + 1);
+            i = op.broadcast(Alice, tmp);
             if i >= self.n {
                 break;
             }
-            i = op.broadcast(Bob, op.locally(Bob, |_| i + 1));
+            let tmp = op.locally(Bob, |_| i + 1);
+            i = op.broadcast(Bob, tmp);
             if i >= self.n {
                 break;
             }
@@ -66,6 +68,7 @@ fn add_to_n_choreography(n: u64) {
 }
 
 fn add_to_n(n: u64) {
+    let n = n;
     let mut handles = Vec::new();
     let channel = LocalTransportChannelBuilder::new()
         .with(Alice)
@@ -73,16 +76,17 @@ fn add_to_n(n: u64) {
         .build();
     {
         let channel = channel.clone();
-        let transport = LocalTransport::new(Alice, channel);
         handles.push(spawn(move || {
-            let mut i = 0;
+            let n = n;
+            let transport = LocalTransport::new(Alice, channel);
+            let mut i: u64 = 0;
             loop {
                 i += 1;
-                transport.send(Alice::name(), Bob::name(), &i);
+                transport.send("Alice", "Bob", &i);
                 if i >= n {
                     break;
                 }
-                i = transport.receive(Bob::name(), Alice::name());
+                i = transport.receive("Bob", "Alice");
                 if i >= n {
                     break;
                 }
@@ -91,16 +95,16 @@ fn add_to_n(n: u64) {
     }
     {
         let channel = channel.clone();
-        let transport = LocalTransport::new(Bob, channel);
         handles.push(spawn(move || {
-            let mut i = 0;
+            let n = n;
+            let transport = LocalTransport::new(Bob, channel);
             loop {
-                i = transport.receive(Alice::name(), Bob::name());
+                let mut i = transport.receive::<u64>("Alice", "Bob");
                 if i >= n {
                     break;
                 }
                 i += 1;
-                transport.send(Bob::name(), Alice::name(), &i);
+                transport.send("Bob", "Alice", &i);
                 if i >= n {
                     break;
                 }
@@ -114,7 +118,7 @@ fn add_to_n(n: u64) {
 
 fn bench_add_to_n_local(c: &mut Criterion) {
     let mut group = c.benchmark_group("Add to N (Local Transport)");
-    for i in [10000].iter() {
+    for i in [1000].iter() {
         group.bench_with_input(BenchmarkId::new("Choreographic", i), i, |b, i| {
             b.iter(|| add_to_n_choreography(*i))
         });
