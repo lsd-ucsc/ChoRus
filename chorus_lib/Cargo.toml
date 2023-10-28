@@ -28,5 +28,9 @@ rand = "0.8.5"
 termcolor = "1.2.0"
 
 [[bench]]
-name = "chorus_benchmark"
+name = "locally_benchmark"
+harness = false
+
+[[bench]]
+name = "comm_benchmark"
 harness = false
