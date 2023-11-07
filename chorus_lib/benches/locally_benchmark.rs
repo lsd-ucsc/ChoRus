@@ -1,8 +1,5 @@
 use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, Located, LocationSet};
-use criterion::{
-    black_box, criterion_group, criterion_main, AxisScale, BenchmarkId, Criterion,
-    PlotConfiguration,
-};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
 #[derive(ChoreographyLocation)]
 struct Alice;
@@ -43,9 +40,6 @@ fn add_to_n_locally_handwritten(n: f64) {
 
 fn bench_add_to_n_locally(c: &mut Criterion) {
     let mut group = c.benchmark_group("Locally");
-    let plot_config = PlotConfiguration::default().summary_scale(AxisScale::Logarithmic);
-    // group.plot_config(plot_config);
-    // let range = [1, 10, 100, 1000, 10000];
     let range = [2000, 4000, 6000, 8000, 10000];
     for i in range.iter() {
         group.bench_with_input(BenchmarkId::new("Handwritten", i), i, |b, i| {

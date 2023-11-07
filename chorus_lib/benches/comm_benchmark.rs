@@ -2,10 +2,7 @@ use chorus_lib::core::{
     ChoreoOp, Choreography, ChoreographyLocation, LocationSet, Projector, Transport,
 };
 use chorus_lib::transport::local::{LocalTransport, LocalTransportChannelBuilder};
-use criterion::{
-    black_box, criterion_group, criterion_main, AxisScale, BenchmarkId, Criterion,
-    PlotConfiguration,
-};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::thread::spawn;
 
 #[derive(ChoreographyLocation)]
@@ -96,14 +93,13 @@ fn comm_handwritten(n: u64) {
 
 fn bench_comm(c: &mut Criterion) {
     let mut group = c.benchmark_group("Comm");
-    let plot_config = PlotConfiguration::default().summary_scale(AxisScale::Logarithmic);
-    group.plot_config(plot_config);
-    for i in [1, 10, 100, 1000, 10000].iter() {
+    let range = [2000, 4000, 6000, 8000, 10000];
+    for i in range.iter() {
         group.bench_with_input(BenchmarkId::new("Handwritten", i), i, |b, i| {
             b.iter(|| comm_handwritten(black_box(*i)))
         });
     }
-    for i in [1, 10, 100, 1000, 10000].iter() {
+    for i in range.iter() {
         group.bench_with_input(BenchmarkId::new("Choreographic", i), i, |b, i| {
             b.iter(|| comm_choreography(black_box(*i)))
         });
