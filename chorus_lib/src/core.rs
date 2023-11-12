@@ -451,7 +451,8 @@ where
                 if L1::name() == T::name() {
                     for dest in &self.locations {
                         if T::name() != *dest {
-                            self.transport.send(&T::name(), &dest, &data.value);
+                            self.transport
+                                .send(&T::name(), &dest, data.value.as_ref().unwrap());
                         }
                     }
                     return data.value.unwrap();
