@@ -32,7 +32,7 @@ pub trait ChoreographyLocation: Copy {
 pub trait Portable: Serialize + DeserializeOwned {}
 impl<T: Serialize + DeserializeOwned> Portable for T {}
 
-/// Represents a value that might *NOT* be located at a location. Values returned by `colocally` must satisfy this trait.
+/// Represents a value that might *NOT* be located at a location. Values returned by `enclave` must satisfy this trait.
 ///
 /// In most cases, you don't need to implement this trait manually. You can derive it using `#[derive(Superposition)]` as long as all the fields consist of located values.
 pub trait Superposition {
@@ -282,7 +282,7 @@ pub trait ChoreoOp<L: LocationSet> {
         M: LocationSet + Subset<L, Index>;
 
     /// Calls a choreography on a subset of locations.
-    fn colocally<R: Superposition, S: LocationSet, C: Choreography<R, L = S>, Index>(
+    fn enclave<R: Superposition, S: LocationSet, C: Choreography<R, L = S>, Index>(
         &self,
         choreo: C,
     ) -> R
@@ -475,7 +475,7 @@ where
                 choreo.run(&op)
             }
 
-            fn colocally<R: Superposition, S: LocationSet, C: Choreography<R, L = S>, Index>(
+            fn enclave<R: Superposition, S: LocationSet, C: Choreography<R, L = S>, Index>(
                 &self,
                 choreo: C,
             ) -> R {
@@ -584,7 +584,7 @@ impl<L: LocationSet> Runner<L> {
                 choreo.run(&op)
             }
 
-            fn colocally<R: Superposition, S: LocationSet, C: Choreography<R, L = S>, Index>(
+            fn enclave<R: Superposition, S: LocationSet, C: Choreography<R, L = S>, Index>(
                 &self,
                 choreo: C,
             ) -> R {

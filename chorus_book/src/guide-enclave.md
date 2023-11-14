@@ -1,6 +1,6 @@
-# colocally and Efficient Conditional
+# Choreographic Enclave and Efficient Conditional
 
-ChoRus supports the `colocally` operator to achieve efficient conditional execution.
+ChoRus supports the `enclave` operator to achieve efficient conditional execution.
 
 ## Conditional with Broadcast
 
@@ -44,7 +44,7 @@ impl Choreography for DemoChoreography {
 
 While this code correctly implements the protocol, it is inefficient. The `is_even` value is broadcasted to all locations, but Alice does not need to receive the value. Ideally, we want to send `is_even_at_bob` only to Carol and branch only on Bob and Carol.
 
-In ChoRus, we can achieve this using the `colocally` operator. First, let us define a sub-choreography that describes the communication between Bob and Carol:
+In ChoRus, we can achieve this using the `enclave` operator. First, let us define a sub-choreography that describes the communication between Bob and Carol:
 
 ```rust
 {{#include ./header.txt}}
@@ -70,7 +70,7 @@ impl Choreography for BobCarolChoreography {
 }
 ```
 
-Notice that `BobCarolChoreography` only describes the behavior of Bob and Carol (see its location set `L`). `colocally` is an operator to execute a choreography only at locations that is included in the location set. In this case, if we invoke `BobCarolChoreography` with `colocally` in the main choreography, it will only be executed at Bob and Carol and not at Alice.
+Notice that `BobCarolChoreography` only describes the behavior of Bob and Carol (see its location set `L`). `enclave` is an operator to execute a choreography only at locations that is included in the location set. In this case, if we invoke `BobCarolChoreography` with `enclave` in the main choreography, it will only be executed at Bob and Carol and not at Alice.
 
 ```rust
 {{#include ./header.txt}}
@@ -105,16 +105,16 @@ impl Choreography for MainChoreography {
             get_random_number()
         });
         let x_at_bob = op.comm(Alice, Bob, &x_at_alice);
-        op.colocally(BobCarolChoreography {
+        op.enclave(BobCarolChoreography {
             x_at_bob,
         });
     }
 }
 ```
 
-## Returning Values from Colocally
+## Returning Values from Enclave
 
-Just like the `call` operator, the `colocally` operator can return a value. However, the type of the returned value must implement the `Superposition` trait. `Superposition` provides a way for ChoRus to construct a value on locations that are not specified in the `colocally` operator.
+Just like the `call` operator, the `enclave` operator can return a value. However, the type of the returned value must implement the `Superposition` trait. `Superposition` provides a way for ChoRus to construct a value on locations that are not specified in the `enclave` operator.
 
 In general, `Superposition` is either a located value or a struct consisting only of located values. The `Located` struct implements the `Superposition` trait, so you can return located values without any code. If you wish to return a struct of located values, you need to derive the `Superposition` trait using the derive macro.
 
@@ -168,7 +168,7 @@ impl Choreography for MainChoreography {
         let BobCarolResult {
             is_even_at_bob,
             is_even_at_carol,
-        } = op.colocally(BobCarolChoreography {
+        } = op.enclave(BobCarolChoreography {
             x_at_bob,
         });
         // can access is_even_at_bob and is_even_at_carol using `locally` on Bob and Carol
