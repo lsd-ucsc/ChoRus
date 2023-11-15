@@ -1,6 +1,6 @@
 [workspace]
 
-members = ["chorus_lib", "chorus_derive"]
+members = ["chorus_lib", "chorus_derive", "kvs"]
 resolver = "2"
 
 [workspace.package]
