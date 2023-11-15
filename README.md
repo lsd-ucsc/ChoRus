@@ -30,6 +30,12 @@ docker run -it --rm -v "$PWD":/usr/src/chorus -w /usr/src/chorus rust:1.73.0-sli
 
 The source code of the library is located in `chorus_lib/src`. The `core` module contains the core definitions of the library and the `transport` module contains the transport implementations.
 
+The API documentation of the library can be generated with the following command:
+
+```bash
+cargo doc --open -p chorus_lib
+```
+
 ### Examples
 
 `chorus_lib/examples` contains examples that illustrate how to use the library. Please refer to the [chorus_lib/examples/README.md](./chorus_lib/examples/README.md) for more information.
