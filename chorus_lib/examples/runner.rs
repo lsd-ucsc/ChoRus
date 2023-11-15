@@ -56,7 +56,7 @@ impl Choreography for MainChoreography {
         let BobCarolResult {
             is_even_at_bob,
             is_even_at_carol,
-        } = op.colocally(BobCarolChoreography { x_at_bob });
+        } = op.enclave(BobCarolChoreography { x_at_bob });
         op.locally(Bob, |un| {
             let is_even = un.unwrap(&is_even_at_bob);
             assert!(is_even);

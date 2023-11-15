@@ -12,6 +12,6 @@
   - [Input and Output](./guide-input-and-output.md)
   - [Higher-order Choreography](./guide-higher-order-choreography.md)
   - [Location Polymorphism](./guide-location-polymorphism.md)
-  - [Colocally and Efficient Conditional](./guide-colocally.md)
+  - [Choreographic Enclave and Efficient Conditional](./guide-enclave.md)
   - [Runner](./guide-runner.md)
 - [Links](./links.md)
