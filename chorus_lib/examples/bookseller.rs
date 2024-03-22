@@ -9,10 +9,30 @@ use chrono::NaiveDate;
 use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, LocationSet, Projector};
 use chorus_lib::transport::local::LocalTransport;
 
-fn get_book(title: &str) -> Option<(i32, NaiveDate)> {
+struct BookEntry {
+    price: i32,
+    delivery_date: NaiveDate,
+}
+
+impl BookEntry {
+    fn new(price: i32, delivery_date: NaiveDate) -> Self {
+        BookEntry {
+            price,
+            delivery_date,
+        }
+    }
+}
+
+fn get_book(title: &str) -> Option<BookEntry> {
     match title.trim() {
-        "TAPL" => Some((80, NaiveDate::from_ymd_opt(2023, 8, 3).unwrap())),
-        "HoTT" => Some((120, NaiveDate::from_ymd_opt(2023, 9, 18).unwrap())),
+        "TAPL" => Some(BookEntry::new(
+            80,
+            NaiveDate::from_ymd_opt(2023, 8, 3).unwrap(),
+        )),
+        "HoTT" => Some(BookEntry::new(
+            120,
+            NaiveDate::from_ymd_opt(2023, 9, 18).unwrap(),
+        )),
         _ => None,
     }
 }
@@ -35,29 +55,25 @@ impl Choreography for BooksellerChoreography {
             io::stdin().read_line(&mut title).unwrap();
             title
         });
+        op.locally(Buyer, |un| {
+            println!("Title: {}", un.unwrap(&title_at_buyer));
+        });
         let title_at_seller = op.comm(Buyer, Seller, &title_at_buyer);
         let price_at_seller = op.locally(Seller, |un| {
             let title = un.unwrap(&title_at_seller);
-            if let Some((price, _)) = get_book(&title) {
-                return Some(price);
-            }
-            return None;
+            get_book(&title).map(|entry| entry.price)
         });
         let price_at_buyer = op.comm(Seller, Buyer, &price_at_seller);
         let decision_at_buyer = op.locally(Buyer, |un| {
-            if let Some(price) = un.unwrap(&price_at_buyer) {
-                println!("Price is {}", price);
-                return *price < BUDGET;
-            }
-            println!("The book does not exist");
-            return false;
+            un.unwrap(&price_at_buyer)
+                .map(|price| price < BUDGET)
+                .unwrap_or(false) // if the book is not found, the buyer cannot buy it
         });
         let decision = op.broadcast(Buyer, decision_at_buyer);
         if decision {
             let delivery_date_at_seller = op.locally(Seller, |un| {
                 let title = un.unwrap(&title_at_seller);
-                let (_, delivery_date) = get_book(&title).unwrap();
-                return delivery_date;
+                get_book(&title).unwrap().delivery_date
             });
             let delivery_date_at_buyer = op.comm(Seller, Buyer, &delivery_date_at_seller);
             op.locally(Buyer, |un| {
