@@ -102,6 +102,41 @@ where
     }
 }
 
+/// Represents a value located at multiple locations.
+pub struct MultiplyLocated<V, L>
+where
+    L: LocationSet,
+{
+    value: Option<V>,
+    phantom: PhantomData<L>,
+}
+
+impl<V, L> MultiplyLocated<V, L>
+where
+    L: LocationSet,
+{
+    /// Constructs a struct located at the current location with value
+    pub fn local(value: V) -> Self {
+        MultiplyLocated {
+            value: Some(value),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<V, L> Superposition for MultiplyLocated<V, L>
+where
+    L: LocationSet,
+{
+    /// Constructs a struct located at another location
+    fn remote() -> Self {
+        MultiplyLocated {
+            value: None,
+            phantom: PhantomData,
+        }
+    }
+}
+
 // --- HList and Helpers ---
 
 /// heterogeneous list
@@ -275,6 +310,25 @@ pub trait ChoreoOp<L: LocationSet> {
     ) -> V
     where
         L1: Member<L, Index>;
+
+    /// TODO: documentation
+    fn multicast<L1: ChoreographyLocation, V: Portable, D: LocationSet, Index1, Index2>(
+        &self,
+        sender: L1,
+        data: Located<V, L1>,
+        destinations: D,
+    ) -> MultiplyLocated<V, D>
+    where
+        L1: Member<L, Index1>,
+        D: Subset<L, Index2>;
+
+    /// TODO: documentation
+    fn naked<S: LocationSet, V, Index>(&self, data: MultiplyLocated<V, S>) -> V
+    where
+        L: Subset<S, Index>;
+
+    /// TODO: documentation
+    fn unnaked<V, Index>(&self, data: V) -> MultiplyLocated<V, L>;
 
     /// Calls a choreography.
     fn call<R, M, Index, C: Choreography<R, L = M>>(&self, choreo: C) -> R
@@ -461,6 +515,47 @@ where
                 }
             }
 
+            fn multicast<L1: ChoreographyLocation, V: Portable, D: LocationSet, Index1, Index2>(
+                &self,
+                _sender: L1,
+                data: Located<V, L1>,
+                _destinations: D,
+            ) -> MultiplyLocated<V, D> {
+                if L1::name() == T::name() {
+                    for dest in D::to_string_list() {
+                        if T::name() != dest {
+                            self.transport
+                                .send(&T::name(), dest, data.value.as_ref().unwrap());
+                        }
+                    }
+                    return MultiplyLocated {
+                        value: data.value,
+                        phantom: PhantomData,
+                    };
+                } else {
+                    let mut is_receiver = false;
+                    for dest in D::to_string_list() {
+                        if T::name() == dest {
+                            is_receiver = true;
+                        }
+                    }
+                    if is_receiver {
+                        let v = self.transport.receive(L1::name(), T::name());
+                        return MultiplyLocated::local(v);
+                    } else {
+                        return MultiplyLocated::remote();
+                    }
+                }
+            }
+
+            fn naked<S: LocationSet, V, Index>(&self, data: MultiplyLocated<V, S>) -> V {
+                return data.value.unwrap();
+            }
+
+            fn unnaked<V, Index>(&self, data: V) -> MultiplyLocated<V, L> {
+                return MultiplyLocated::local(data);
+            }
+
             fn call<R, M, Index, C: Choreography<R, L = M>>(&self, choreo: C) -> R
             where
                 M: LocationSet + Subset<L, Index>,
@@ -574,6 +669,26 @@ impl<L: LocationSet> Runner<L> {
                 data: Located<V, L1>,
             ) -> V {
                 data.value.unwrap()
+            }
+
+            fn multicast<L1: ChoreographyLocation, V: Portable, D: LocationSet, Index1, Index2>(
+                &self,
+                _sender: L1,
+                data: Located<V, L1>,
+                _destinations: D,
+            ) -> MultiplyLocated<V, D> {
+                MultiplyLocated {
+                    value: data.value,
+                    phantom: PhantomData,
+                }
+            }
+
+            fn naked<S: LocationSet, V, Index>(&self, data: MultiplyLocated<V, S>) -> V {
+                return data.value.unwrap();
+            }
+
+            fn unnaked<V, Index>(&self, data: V) -> MultiplyLocated<V, L> {
+                return MultiplyLocated::local(data);
             }
 
             fn call<R, M, Index, C: Choreography<R, L = M>>(&self, choreo: C) -> R
