@@ -263,6 +263,50 @@ impl<L1: ChoreographyLocation> Unwrapper<L1> {
     pub fn unwrap<'a, V>(&self, located: &'a Located<V, L1>) -> &'a V {
         located.value.as_ref().unwrap()
     }
+    /// TODO: documentation
+    pub fn unwrap2<'a, V, S: LocationSet, Index>(&self, mlv: &'a MultiplyLocated<V, S>) -> &'a V
+    where
+        L1: Member<S, Index>,
+    {
+        mlv.value.as_ref().unwrap()
+    }
+}
+
+/// TODO: documentation
+pub struct MulticastBuilder<L: LocationSet, V: Portable, S: ChoreographyLocation, D: LocationSet> {
+    data: Located<V, S>,
+    phantom: PhantomData<(L, D)>,
+}
+
+impl<L: LocationSet, V: Portable, S: ChoreographyLocation> MulticastBuilder<L, V, S, HNil> {
+    /// Constructs a `MulticastBuilder` struct.
+    ///
+    /// - `source` is the source location of the multicast.
+    /// - `data` is the located value to be multicast.
+    pub fn new(source: S, data: Located<V, S>) -> MulticastBuilder<L, V, S, HNil> {
+        MulticastBuilder {
+            data,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<L: LocationSet, V: Portable, S: ChoreographyLocation, D: LocationSet>
+    MulticastBuilder<L, V, S, D>
+{
+    /// Adds a destination to the multicast.
+    pub fn to<D1: ChoreographyLocation, Index>(
+        self,
+        _destination: D1,
+    ) -> MulticastBuilder<L, V, S, HCons<D1, D>>
+    where
+        D1: Member<L, Index>,
+    {
+        MulticastBuilder {
+            data: self.data,
+            phantom: PhantomData,
+        }
+    }
 }
 
 /// Provides choreographic operations.
@@ -314,9 +358,7 @@ pub trait ChoreoOp<L: LocationSet> {
     /// TODO: documentation
     fn multicast<L1: ChoreographyLocation, V: Portable, D: LocationSet, Index1, Index2>(
         &self,
-        sender: L1,
-        data: Located<V, L1>,
-        destinations: D,
+        builder: MulticastBuilder<L, V, L1, D>,
     ) -> MultiplyLocated<V, D>
     where
         L1: Member<L, Index1>,
@@ -517,19 +559,20 @@ where
 
             fn multicast<L1: ChoreographyLocation, V: Portable, D: LocationSet, Index1, Index2>(
                 &self,
-                _sender: L1,
-                data: Located<V, L1>,
-                _destinations: D,
+                builder: MulticastBuilder<L, V, L1, D>,
             ) -> MultiplyLocated<V, D> {
                 if L1::name() == T::name() {
                     for dest in D::to_string_list() {
                         if T::name() != dest {
-                            self.transport
-                                .send(&T::name(), dest, data.value.as_ref().unwrap());
+                            self.transport.send(
+                                &T::name(),
+                                dest,
+                                builder.data.value.as_ref().unwrap(),
+                            );
                         }
                     }
                     return MultiplyLocated {
-                        value: data.value,
+                        value: builder.data.value,
                         phantom: PhantomData,
                     };
                 } else {
@@ -673,12 +716,10 @@ impl<L: LocationSet> Runner<L> {
 
             fn multicast<L1: ChoreographyLocation, V: Portable, D: LocationSet, Index1, Index2>(
                 &self,
-                _sender: L1,
-                data: Located<V, L1>,
-                _destinations: D,
+                builder: MulticastBuilder<L, V, L1, D>,
             ) -> MultiplyLocated<V, D> {
                 MultiplyLocated {
-                    value: data.value,
+                    value: builder.data.value,
                     phantom: PhantomData,
                 }
             }
