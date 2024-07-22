@@ -370,7 +370,7 @@ pub trait ChoreoOp<L: LocationSet> {
         L: Subset<S, Index>;
 
     /// TODO: documentation
-    fn unnaked<V, Index>(&self, data: V) -> MultiplyLocated<V, L>;
+    fn unnaked<V>(&self, data: V) -> MultiplyLocated<V, L>;
 
     /// Calls a choreography.
     fn call<R, M, Index, C: Choreography<R, L = M>>(&self, choreo: C) -> R
@@ -595,7 +595,7 @@ where
                 return data.value.unwrap();
             }
 
-            fn unnaked<V, Index>(&self, data: V) -> MultiplyLocated<V, L> {
+            fn unnaked<V>(&self, data: V) -> MultiplyLocated<V, L> {
                 return MultiplyLocated::local(data);
             }
 
@@ -728,7 +728,7 @@ impl<L: LocationSet> Runner<L> {
                 return data.value.unwrap();
             }
 
-            fn unnaked<V, Index>(&self, data: V) -> MultiplyLocated<V, L> {
+            fn unnaked<V>(&self, data: V) -> MultiplyLocated<V, L> {
                 return MultiplyLocated::local(data);
             }
 
