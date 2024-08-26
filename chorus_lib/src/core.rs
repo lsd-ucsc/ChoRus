@@ -2,7 +2,7 @@
 //!
 //! This module provides core choreography constructs, such as `Choreography`, `Located`, and `Projector`.
 
-use std::marker::PhantomData;
+use std::{collections::HashMap, marker::PhantomData};
 
 use serde::de::DeserializeOwned;
 // re-export so that users can use derive macros without importing serde
@@ -20,6 +20,8 @@ pub use serde::{Deserialize, Serialize};
 /// struct Alice;
 /// ```
 pub trait ChoreographyLocation: Copy {
+    /// Constructs a location.
+    fn new() -> Self;
     /// Returns the name of the location as a string.
     fn name() -> &'static str;
 }
@@ -137,24 +139,40 @@ where
     }
 }
 
+/// Represents possibly different values located at multiple locations
+#[derive(Debug)]
+pub struct Faceted<V, L>
+where
+    L: LocationSet,
+{
+    value: HashMap<String, V>,
+    phantom: PhantomData<L>,
+}
+
 // --- HList and Helpers ---
 
 /// heterogeneous list
 #[doc(hidden)]
 pub trait LocationSet {
+    fn new() -> Self;
     /// returns
     fn to_string_list() -> Vec<&'static str>;
 }
 
 /// end of HList
 #[doc(hidden)]
+#[derive(Debug)]
 pub struct HNil;
 
 /// An element of HList
 #[doc(hidden)]
+#[derive(Debug)]
 pub struct HCons<Head, Tail>(Head, Tail);
 
 impl LocationSet for HNil {
+    fn new() -> Self {
+        HNil
+    }
     fn to_string_list() -> Vec<&'static str> {
         Vec::new()
     }
@@ -164,6 +182,9 @@ where
     Head: ChoreographyLocation,
     Tail: LocationSet,
 {
+    fn new() -> Self {
+        HCons(Head::new(), Tail::new())
+    }
     fn to_string_list() -> Vec<&'static str> {
         let mut v = Tail::to_string_list();
         v.push(Head::name());
@@ -269,6 +290,13 @@ impl<L1: ChoreographyLocation> Unwrapper<L1> {
         L1: Member<S, Index>,
     {
         mlv.value.as_ref().unwrap()
+    }
+    /// TODO: documentation
+    pub fn unwrap3<'a, V, S: LocationSet, Index>(&self, faceted: &'a Faceted<V, S>) -> &'a V
+    where
+        L1: Member<S, Index>,
+    {
+        faceted.value.get(L1::name()).unwrap()
     }
 }
 
@@ -382,6 +410,15 @@ pub trait ChoreoOp<L: LocationSet> {
         &self,
         choreo: C,
     ) -> R
+    where
+        S: Subset<L, Index>;
+
+    /// Performs parallel computation.
+    fn parallel<V, S: LocationSet, Index>(
+        &self,
+        locations: S,
+        computation: impl Fn() -> V, // TODO: add unwrapper for S
+    ) -> Faceted<V, S>
     where
         S: Subset<L, Index>;
 }
@@ -633,6 +670,27 @@ where
                 }
                 R::remote()
             }
+
+            fn parallel<V, S: LocationSet, Index>(
+                &self,
+                locations: S,
+                computation: impl Fn() -> V, // TODO: add unwrapper for S
+            ) -> Faceted<V, S>
+            where
+                S: Subset<L, Index>,
+            {
+                let mut values = HashMap::new();
+                for location in S::to_string_list() {
+                    if location == T::name() {
+                        let v = computation();
+                        values.insert(String::from(location), v);
+                    }
+                }
+                Faceted {
+                    value: values,
+                    phantom: PhantomData,
+                }
+            }
         }
         let op: EppOp<'a, L, L1, LS, B> = EppOp {
             target: PhantomData::<L1>,
@@ -746,6 +804,25 @@ impl<L: LocationSet> Runner<L> {
             ) -> R {
                 let op = RunOp::<S>(PhantomData);
                 choreo.run(&op)
+            }
+
+            fn parallel<V, S: LocationSet, Index>(
+                &self,
+                locations: S,
+                computation: impl Fn() -> V, // TODO: add unwrapper for S
+            ) -> Faceted<V, S>
+            where
+                S: Subset<L, Index>,
+            {
+                let mut values = HashMap::new();
+                for location in S::to_string_list() {
+                    let v = computation();
+                    values.insert(location.to_string(), v);
+                }
+                Faceted {
+                    value: values,
+                    phantom: PhantomData,
+                }
             }
         }
         let op: RunOp<L> = RunOp(PhantomData);
