@@ -682,6 +682,10 @@ where
                 _receiver: L2,
                 data: &Located<V, L1>,
             ) -> Located<V, L2> {
+                if L1::name() == T::name() && L1::name() == L2::name() {
+                    let s = serde_json::to_string(data.value.as_ref().unwrap()).unwrap();
+                    return Located::local(serde_json::from_str(s.as_str()).unwrap());
+                }
                 if L1::name() == T::name() {
                     self.transport
                         .send(L1::name(), L2::name(), data.value.as_ref().unwrap());
@@ -879,10 +883,13 @@ where
                         Q: Member<Self::QS, QMemberQS>,
                     {
                         let c = FOC::new();
-                        let v = c.run::<Q, QSSubsetL2, QMemberL, QMemberQS>(&self.op);
-                        if Target::name() == Q::name() {
-                            acc.insert(String::from(Q::name()), v.value.unwrap());
-                        }
+                        let v = c.run::<Q, QSSubsetL, QMemberL, QMemberQS>(&self.op);
+                        match v.value {
+                            Some(value) => {
+                                acc.insert(String::from(Q::name()), value);
+                            }
+                            None => {}
+                        };
                         acc
                     }
                 }

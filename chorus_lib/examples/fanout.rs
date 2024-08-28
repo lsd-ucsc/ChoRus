@@ -3,11 +3,9 @@ extern crate chorus_lib;
 use std::marker::PhantomData;
 use std::thread;
 
-use rand::Rng;
-
 use chorus_lib::core::{
-    ChoreoOp, Choreography, ChoreographyLocation, FanOutChoreography, HCons, HNil, Here, Located,
-    LocationSet, LocationSetFoldable, Member, Projector, Subset, There,
+    ChoreoOp, Choreography, ChoreographyLocation, FanOutChoreography, Located, LocationSet, Member,
+    Projector, Subset,
 };
 use chorus_lib::transport::local::{LocalTransport, LocalTransportChannelBuilder};
 
@@ -32,7 +30,7 @@ impl<L: LocationSet, QS: LocationSet, Alice: ChoreographyLocation, AliceMemberL>
 where
     Alice: Member<L, AliceMemberL>,
 {
-    fn new(x: Alice) -> Self
+    fn new(_: Alice) -> Self
     where
         Alice: Member<L, AliceMemberL>,
     {
@@ -67,6 +65,9 @@ where
             format!("{} says hi to {}", Alice::name(), Q::name())
         });
         let msg_at_q = op.comm(Alice::new(), Q::new(), &msg_at_alice);
+        op.locally(Q::new(), |un| {
+            println!("{} received: \"{}\"", Q::name(), un.unwrap(&msg_at_q))
+        });
         msg_at_q
     }
 }
@@ -75,7 +76,7 @@ struct ParallelChoreography;
 impl Choreography for ParallelChoreography {
     type L = LocationSet!(Alice, Bob, Carol);
     fn run(self, op: &impl ChoreoOp<Self::L>) {
-        let v = op.fanout(<LocationSet!(Bob, Carol)>::new(), FanOut::new(Alice));
+        let v = op.fanout(<LocationSet!(Bob, Carol)>::new(), FanOut::new(Bob));
         op.locally(Bob, |un| {
             println!("{}", un.unwrap3(&v));
         });
@@ -100,15 +101,30 @@ fn main() {
     let carol_projector = Projector::new(Carol, transport_carol);
 
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
-    handles.push(thread::spawn(move || {
-        alice_projector.epp_and_run(ParallelChoreography);
-    }));
-    handles.push(thread::spawn(move || {
-        bob_projector.epp_and_run(ParallelChoreography);
-    }));
-    handles.push(thread::spawn(move || {
-        carol_projector.epp_and_run(ParallelChoreography);
-    }));
+    handles.push(
+        thread::Builder::new()
+            .name("Alice".to_string())
+            .spawn(move || {
+                alice_projector.epp_and_run(ParallelChoreography);
+            })
+            .unwrap(),
+    );
+    handles.push(
+        thread::Builder::new()
+            .name("Bob".to_string())
+            .spawn(move || {
+                bob_projector.epp_and_run(ParallelChoreography);
+            })
+            .unwrap(),
+    );
+    handles.push(
+        thread::Builder::new()
+            .name("Carol".to_string())
+            .spawn(move || {
+                carol_projector.epp_and_run(ParallelChoreography);
+            })
+            .unwrap(),
+    );
     for handle in handles {
         handle.join().unwrap();
     }
