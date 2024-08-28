@@ -489,14 +489,14 @@ pub trait ChoreoOp<L: LocationSet> {
         // Proof that QS is a subset of L
         QSSubsetL,
         QSFoldable,
-        F: LocationSetFoldable<L, QS, QSFoldable>,
     >(
         &self,
         locations: QS,
         c: FOC,
     ) -> Faceted<V, QS>
     where
-        QS: Subset<L, QSSubsetL>;
+        QS: Subset<L, QSSubsetL>,
+        QS: LocationSetFoldable<L, QS, QSFoldable>;
     // fn fanout<
     //     V,
     //     S: LocationSet,
@@ -820,7 +820,6 @@ where
                 // Proof that QS is a subset of L
                 QSSubsetL,
                 QSFoldable,
-                F: LocationSetFoldable<L, QS, QSFoldable>,
             >(
                 &self,
                 locations: QS,
@@ -828,6 +827,7 @@ where
             ) -> Faceted<V, QS>
             where
                 QS: Subset<L, QSSubsetL>,
+                QS: LocationSetFoldable<L, QS, QSFoldable>,
             {
                 let op: EppOp<L, T, LS, B> = EppOp {
                     target: PhantomData::<T>,
@@ -880,14 +880,16 @@ where
                     {
                         let c = FOC::new();
                         let v = c.run::<Q, QSSubsetL2, QMemberL, QMemberQS>(&self.op);
-                        acc.insert(String::from(Q::name()), v.value.unwrap());
+                        if Target::name() == Q::name() {
+                            acc.insert(String::from(Q::name()), v.value.unwrap());
+                        }
                         acc
                     }
                 }
-                let values = F::foldr(
+                let values = QS::foldr(
                     Loop::<L, T, LS, B, V, QSSubsetL, QS, FOC> {
                         phantom: PhantomData,
-                        op: op,
+                        op,
                     },
                     values,
                 );
@@ -896,80 +898,6 @@ where
                     phantom: PhantomData,
                 }
             }
-
-            // fn fanout<
-            //     V,
-            //     S: LocationSet,
-            //     Index,
-            //     SF: LocationSetFoldable<S, Index>,
-            //     F: FanOutChoreography<V, L = L>,
-            // >(
-            //     &self,
-            //     locations: S,
-            //     c: F,
-            // ) -> Faceted<V, S> {
-            //     let op: EppOp<L, T, LS, B> = EppOp {
-            //         target: PhantomData::<T>,
-            //         transport: self.transport,
-            //         locations: self.transport.locations(),
-            //         marker: PhantomData::<L>,
-            //         projector_location_set: PhantomData::<LS>,
-            //     };
-            //     let values = HashMap::new();
-            //     // struct Loop<
-            //     //     // parameters required for EppOp
-            //     //     'a,
-            //     //     L: LocationSet,               // all locations
-            //     //     Target: ChoreographyLocation, // target location
-            //     //     LS: LocationSet,
-            //     //     B: Transport<LS, Target>, // transport
-            //     //     // Required for FanOutChoreography
-            //     //     V,
-            //     //     QS: LocationSet,
-            //     //     F: FanOutChoreography<V, L = L>,
-            //     // > {
-            //     //     phantom: PhantomData<(V, QS, F)>,
-            //     //     op: EppOp<'a, L, Target, LS, B>,
-            //     // }
-            //     // impl<
-            //     //         'a,
-            //     //         L: LocationSet,
-            //     //         Target: ChoreographyLocation,
-            //     //         LS: LocationSet,
-            //     //         B: Transport<LS, Target>,
-            //     //         V,
-            //     //         QS: LocationSet,
-            //     //         F: FanOutChoreography<V, L = L>,
-            //     //     > LocationSetFolder<HashMap<String, V>>
-            //     //     for Loop<'a, L, Target, LS, B, V, QS, F>
-            //     // {
-            //     //     type L = L;
-            //     //     fn f<I: ChoreographyLocation, Index>(
-            //     //         &self,
-            //     //         mut acc: HashMap<String, V>,
-            //     //         _curr: I,
-            //     //     ) -> HashMap<String, V>
-            //     //     where
-            //     //         I: Member<L, Index>,
-            //     //     {
-            //     //         let c = F::new();
-            //     //         let v = c.run::<I, Index>(&self.op);
-            //     //         acc.insert(String::from(I::name()), v.value.unwrap());
-            //     //         acc
-            //     //     }
-            //     // }
-            //     // let values = SF::foldr(
-            //     //     Loop::<L, T, LS, B, V, S, F> {
-            //     //         phantom: PhantomData::<(V, S, F)>,
-            //     //         op,
-            //     //     },
-            //     //     values,
-            //     // );
-            //     Faceted {
-            //         value: values,
-            //         phantom: PhantomData,
-            //     }
-            // }
         }
         let op: EppOp<'a, L, L1, LS, B> = EppOp {
             target: PhantomData::<L1>,
@@ -1113,7 +1041,6 @@ impl<L: LocationSet> Runner<L> {
                 // Proof that QS is a subset of L
                 QSSubsetL,
                 QSFoldable,
-                F: LocationSetFoldable<L, QS, QSFoldable>,
             >(
                 &self,
                 locations: QS,
@@ -1121,6 +1048,7 @@ impl<L: LocationSet> Runner<L> {
             ) -> Faceted<V, QS>
             where
                 QS: Subset<L, QSSubsetL>,
+                QS: LocationSetFoldable<L, QS, QSFoldable>,
             {
                 unimplemented!()
             }

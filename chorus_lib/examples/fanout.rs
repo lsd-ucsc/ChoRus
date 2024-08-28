@@ -7,7 +7,7 @@ use rand::Rng;
 
 use chorus_lib::core::{
     ChoreoOp, Choreography, ChoreographyLocation, FanOutChoreography, HCons, HNil, Here, Located,
-    LocationSet, LocationSetFoldable, Member, Projector, There,
+    LocationSet, LocationSetFoldable, Member, Projector, Subset, There,
 };
 use chorus_lib::transport::local::{LocalTransport, LocalTransportChannelBuilder};
 
@@ -20,11 +20,33 @@ struct Bob;
 #[derive(ChoreographyLocation, Debug)]
 struct Carol;
 
-struct FanOut<L: LocationSet, QS: LocationSet> {
-    phantom: PhantomData<(L, QS)>,
+struct FanOut<L: LocationSet, QS: LocationSet, Alice: ChoreographyLocation, AliceMemberL>
+where
+    Alice: Member<L, AliceMemberL>,
+{
+    phantom: PhantomData<(L, QS, Alice, AliceMemberL)>,
 }
 
-impl<L: LocationSet, QS: LocationSet> FanOutChoreography<String> for FanOut<L, QS> {
+impl<L: LocationSet, QS: LocationSet, Alice: ChoreographyLocation, AliceMemberL>
+    FanOut<L, QS, Alice, AliceMemberL>
+where
+    Alice: Member<L, AliceMemberL>,
+{
+    fn new(x: Alice) -> Self
+    where
+        Alice: Member<L, AliceMemberL>,
+    {
+        FanOut {
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<L: LocationSet, QS: LocationSet, Alice: ChoreographyLocation, AliceMemberL>
+    FanOutChoreography<String> for FanOut<L, QS, Alice, AliceMemberL>
+where
+    Alice: Member<L, AliceMemberL>,
+{
     type L = L;
     type QS = QS;
     fn new() -> Self {
@@ -37,11 +59,15 @@ impl<L: LocationSet, QS: LocationSet> FanOutChoreography<String> for FanOut<L, Q
         op: &impl ChoreoOp<Self::L>,
     ) -> Located<String, Q>
     where
-        Self::QS: chorus_lib::core::Subset<Self::L, QSSubsetL>,
+        Self::QS: Subset<Self::L, QSSubsetL>,
         Q: Member<Self::L, QMemberL>,
         Q: Member<Self::QS, QMemberQS>,
     {
-        op.locally(Q::new(), |_| String::from(Q::name()))
+        let msg_at_alice = op.locally(Alice::new(), |_| {
+            format!("{} says hi to {}", Alice::name(), Q::name())
+        });
+        let msg_at_q = op.comm(Alice::new(), Q::new(), &msg_at_alice);
+        msg_at_q
     }
 }
 
@@ -49,13 +75,13 @@ struct ParallelChoreography;
 impl Choreography for ParallelChoreography {
     type L = LocationSet!(Alice, Bob, Carol);
     fn run(self, op: &impl ChoreoOp<Self::L>) {
-        type L = LocationSet!(Alice, Bob, Carol);
-        op.fanout(
-            <LocationSet!(Bob, Carol)>::new(),
-            FanOut {
-                phantom: PhantomData,
-            },
-        );
+        let v = op.fanout(<LocationSet!(Bob, Carol)>::new(), FanOut::new(Alice));
+        op.locally(Bob, |un| {
+            println!("{}", un.unwrap3(&v));
+        });
+        op.locally(Carol, |un| {
+            println!("{}", un.unwrap3(&v));
+        });
     }
 }
 
