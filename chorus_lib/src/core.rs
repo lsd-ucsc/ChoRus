@@ -497,17 +497,6 @@ pub trait ChoreoOp<L: LocationSet> {
     where
         QS: Subset<L, QSSubsetL>,
         QS: LocationSetFoldable<L, QS, QSFoldable>;
-    // fn fanout<
-    //     V,
-    //     S: LocationSet,
-    //     Index,
-    //     SF: LocationSetFoldable<S, Index>,
-    //     B: FanOutChoreography<V, L = L>,
-    // >(
-    //     &self,
-    //     locations: S,
-    //     c: B,
-    // ) -> Faceted<V, S>;
 }
 
 struct X<L: LocationSet> {
@@ -1059,20 +1048,6 @@ impl<L: LocationSet> Runner<L> {
             {
                 unimplemented!()
             }
-
-            // fn fanout<
-            //     V,
-            //     S: LocationSet,
-            //     Index,
-            //     SF: LocationSetFoldable<S, Index>,
-            //     B: FanOutChoreography<V, L = L>,
-            // >(
-            //     &self,
-            //     locations: S,
-            //     c: B,
-            // ) -> Faceted<V, S> {
-            //     unimplemented!()
-            // }
         }
         let op: RunOp<L> = RunOp(PhantomData);
         choreo.run(&op)
