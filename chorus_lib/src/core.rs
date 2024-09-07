@@ -499,10 +499,6 @@ pub trait ChoreoOp<L: LocationSet> {
         QS: LocationSetFoldable<L, QS, QSFoldable>;
 }
 
-struct X<L: LocationSet> {
-    phantom: PhantomData<(L,)>,
-}
-
 /// TODO: documentation
 pub trait FanOutChoreography<V> {
     /// All locations
@@ -520,14 +516,6 @@ pub trait FanOutChoreography<V> {
         Self::QS: Subset<Self::L, QSSubsetL>,
         Q: Member<Self::L, QMemberL>,
         Q: Member<Self::QS, QMemberQS>;
-}
-
-impl<L: LocationSet, L1: ChoreographyLocation> Choreography<Located<i32, L1>> for X<L> {
-    type L = HCons<L1, L>;
-    fn run(self, op: &impl ChoreoOp<Self::L>) -> Located<i32, L1> {
-        let x = op.locally(L1::new(), |_| 1);
-        x
-    }
 }
 
 /// Represents a choreography.
