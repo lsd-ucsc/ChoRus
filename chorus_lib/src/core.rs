@@ -397,7 +397,7 @@ impl<L: LocationSet, V: Portable, S: ChoreographyLocation, D: LocationSet>
 ///
 /// The trait provides methods to work with located values. An implementation of the trait is "injected" into
 /// a choreography at runtime and provides the actual implementation of the operators.
-pub trait ChoreoOp<L: LocationSet> {
+pub trait ChoreoOp<ChoreoLS: LocationSet> {
     /// Performs a computation at the specified location.
     ///
     /// `locally` performs a computation at a location, which are specified by `location` and `computation`, respectively.
@@ -412,54 +412,60 @@ pub trait ChoreoOp<L: LocationSet> {
         computation: impl Fn(Unwrapper<L1>) -> V,
     ) -> Located<V, L1>
     where
-        L1: Member<L, Index>;
+        L1: Member<ChoreoLS, Index>;
     /// Performs a communication between two locations.
     ///
     /// `comm` sends `data` from `sender` to `receiver`. The `data` must be a `Located` struct at the `sender` location
     /// and the value type must implement `Portable`.
-    fn comm<L1: ChoreographyLocation, L2: ChoreographyLocation, V: Portable, Index1, Index2>(
+    fn comm<
+        Sender: ChoreographyLocation,
+        Receiver: ChoreographyLocation,
+        V: Portable,
+        Index1,
+        Index2,
+    >(
         &self,
-        sender: L1,
-        receiver: L2,
-        data: &Located<V, L1>,
-    ) -> Located<V, L2>
+        sender: Sender,
+        receiver: Receiver,
+        data: &Located<V, Sender>,
+    ) -> Located<V, Receiver>
     where
-        L1: Member<L, Index1>,
-        L2: Member<L, Index2>;
+        Sender: Member<ChoreoLS, Index1>,
+        Receiver: Member<ChoreoLS, Index2>;
 
     /// Performs a broadcast from a location to all other locations.
     ///
     /// `broadcast` broadcasts `data` from `sender` to all other locations. The `data` must be a `Located` struct at the `sender` location.
     /// The method returns the non-located value.
-    fn broadcast<L1: ChoreographyLocation, V: Portable, Index>(
+    fn broadcast<Sender: ChoreographyLocation, V: Portable, Index>(
         &self,
-        sender: L1,
-        data: Located<V, L1>,
+        sender: Sender,
+        data: Located<V, Sender>,
     ) -> V
     where
-        L1: Member<L, Index>;
+        Sender: Member<ChoreoLS, Index>;
 
     /// TODO: documentation
-    fn multicast<L1: ChoreographyLocation, V: Portable, D: LocationSet, Index1, Index2>(
+    fn multicast<Sender: ChoreographyLocation, V: Portable, D: LocationSet, Index1, Index2>(
         &self,
-        builder: MulticastBuilder<L, V, L1, D>,
+        builder: MulticastBuilder<ChoreoLS, V, Sender, D>,
     ) -> MultiplyLocated<V, D>
     where
-        L1: Member<L, Index1>,
-        D: Subset<L, Index2>;
+        Sender: Member<ChoreoLS, Index1>,
+        D: Subset<ChoreoLS, Index2>;
 
     /// TODO: documentation
     fn naked<S: LocationSet, V, Index>(&self, data: MultiplyLocated<V, S>) -> V
     where
-        L: Subset<S, Index>;
+        ChoreoLS: Subset<S, Index>;
 
     /// TODO: documentation
-    fn unnaked<V>(&self, data: V) -> MultiplyLocated<V, L>;
+    fn unnaked<V>(&self, data: V) -> MultiplyLocated<V, ChoreoLS>;
 
     /// Calls a choreography.
     fn call<R, M, Index, C: Choreography<R, L = M>>(&self, choreo: C) -> R
     where
-        M: LocationSet + Subset<L, Index>;
+        M: LocationSet + Subset<ChoreoLS, Index>;
 
     /// Calls a choreography on a subset of locations.
     fn enclave<R: Superposition, S: LocationSet, C: Choreography<R, L = S>, Index>(
@@ -467,7 +473,7 @@ pub trait ChoreoOp<L: LocationSet> {
         choreo: C,
     ) -> R
     where
-        S: Subset<L, Index>;
+        S: Subset<ChoreoLS, Index>;
 
     /// Performs parallel computation.
     fn parallel<V, S: LocationSet, Index>(
@@ -476,7 +482,7 @@ pub trait ChoreoOp<L: LocationSet> {
         computation: impl Fn() -> V, // TODO: add unwrapper for S
     ) -> Faceted<V, S>
     where
-        S: Subset<L, Index>;
+        S: Subset<ChoreoLS, Index>;
 
     /// Performs fanout computation.
     fn fanout<
@@ -485,7 +491,7 @@ pub trait ChoreoOp<L: LocationSet> {
         // locations looping over
         QS: LocationSet,
         // FanOut Choreography over L iterating over QS returning V
-        FOC: FanOutChoreography<V, L = L, QS = QS>,
+        FOC: FanOutChoreography<V, L = ChoreoLS, QS = QS>,
         // Proof that QS is a subset of L
         QSSubsetL,
         QSFoldable,
@@ -495,13 +501,13 @@ pub trait ChoreoOp<L: LocationSet> {
         c: FOC,
     ) -> Faceted<V, QS>
     where
-        QS: Subset<L, QSSubsetL>,
-        QS: LocationSetFoldable<L, QS, QSFoldable>;
+        QS: Subset<ChoreoLS, QSSubsetL>,
+        QS: LocationSetFoldable<ChoreoLS, QS, QSFoldable>;
 }
 
 /// TODO: documentation
 pub trait FanOutChoreography<V> {
-    /// All locations
+    /// All locations involved in the choreography
     type L: LocationSet;
     /// Locations looping over
     type QS: LocationSet;
@@ -553,26 +559,38 @@ pub trait Transport<L: LocationSet, TargetLocation: ChoreographyLocation> {
 }
 
 /// Provides a method to perform end-point projection.
-pub struct Projector<LS: LocationSet, L1: ChoreographyLocation, T: Transport<LS, L1>, Index>
-where
-    L1: Member<LS, Index>,
+pub struct Projector<
+    // `LS` is a location set supported by the transport
+    // Projector is capable of projecting any choreographies whose location set is a subset of `LS`
+    TransportLS: LocationSet,
+    // `L1` is the projection target
+    Target: ChoreographyLocation,
+    // `T` is the transport that supports locations `LS` and for target `L1`
+    T: Transport<TransportLS, Target>,
+    Index,
+> where
+    Target: Member<TransportLS, Index>,
 {
-    target: PhantomData<L1>,
+    target: PhantomData<Target>,
     transport: T,
-    location_set: PhantomData<LS>,
+    location_set: PhantomData<TransportLS>,
     index: PhantomData<Index>,
 }
 
-impl<LS: LocationSet, L1: ChoreographyLocation, B: Transport<LS, L1>, Index>
-    Projector<LS, L1, B, Index>
+impl<
+        TransportLS: LocationSet,
+        Target: ChoreographyLocation,
+        B: Transport<TransportLS, Target>,
+        Index,
+    > Projector<TransportLS, Target, B, Index>
 where
-    L1: Member<LS, Index>,
+    Target: Member<TransportLS, Index>,
 {
     /// Constructs a `Projector` struct.
     ///
     /// - `target` is the projection target of the choreography.
     /// - `transport` is an implementation of `Transport`.
-    pub fn new(target: L1, transport: B) -> Self {
+    pub fn new(target: Target, transport: B) -> Self {
         _ = target;
         Projector {
             target: PhantomData,
@@ -585,16 +603,16 @@ where
     /// Constructs a `Located` struct located at the projection target using the actual value.
     ///
     /// Use this method to run a choreography that takes a located value as an input.
-    pub fn local<V>(&self, value: V) -> Located<V, L1> {
+    pub fn local<V>(&self, value: V) -> Located<V, Target> {
         Located::local(value)
     }
 
     /// Constructs a `Located` struct *NOT* located at the projection target.
     ///
     /// Use this method to run a choreography that takes a located value as an input.
-    pub fn remote<V, L2: ChoreographyLocation, Index2>(&self, at: L2) -> Located<V, L2>
+    pub fn remote<V, L: ChoreographyLocation, Index2>(&self, at: L) -> Located<V, L>
     where
-        L2: Member<<L1 as Member<LS, Index>>::Remainder, Index2>,
+        L: Member<<Target as Member<TransportLS, Index>>::Remainder, Index2>,
     {
         _ = at;
         Located::remote()
@@ -603,40 +621,52 @@ where
     /// Unwraps a located value at the projection target.
     ///
     /// Use this method to access the located value returned by a choreography.
-    pub fn unwrap<V>(&self, located: Located<V, L1>) -> V {
+    pub fn unwrap<V>(&self, located: Located<V, Target>) -> V {
         located.value.unwrap()
     }
 
     /// Performs end-point projection and runs a choreography.
-    pub fn epp_and_run<'a, V, L: LocationSet, C: Choreography<V, L = L>, IndexSet>(
+    pub fn epp_and_run<
+        'a,
+        V,
+        // location set of the choreography to EPP
+        ChoreoLS: LocationSet,
+        C: Choreography<V, L = ChoreoLS>,
+        IndexSet,
+    >(
         &'a self,
         choreo: C,
     ) -> V
     where
-        L: Subset<LS, IndexSet>,
+        ChoreoLS: Subset<TransportLS, IndexSet>,
     {
         struct EppOp<
             'a,
-            L: LocationSet,
-            L1: ChoreographyLocation,
-            LS: LocationSet,
-            B: Transport<LS, L1>,
+            ChoreoLS: LocationSet, // L is a location set associated with the choreography
+            Target: ChoreographyLocation,
+            TransportLS: LocationSet,
+            B: Transport<TransportLS, Target>,
         > {
-            target: PhantomData<L1>,
+            target: PhantomData<Target>,
             transport: &'a B,
             locations: Vec<&'static str>,
-            marker: PhantomData<L>,
-            projector_location_set: PhantomData<LS>,
+            marker: PhantomData<ChoreoLS>,
+            projector_location_set: PhantomData<TransportLS>,
         }
-        impl<'a, L: LocationSet, T: ChoreographyLocation, LS: LocationSet, B: Transport<LS, T>>
-            ChoreoOp<L> for EppOp<'a, L, T, LS, B>
+        impl<
+                'a,
+                ChoreoLS: LocationSet,
+                Target: ChoreographyLocation,
+                TransportLS: LocationSet,
+                B: Transport<TransportLS, Target>,
+            > ChoreoOp<ChoreoLS> for EppOp<'a, ChoreoLS, Target, TransportLS, B>
         {
             fn locally<V, L1: ChoreographyLocation, Index>(
                 &self,
                 _location: L1,
                 computation: impl Fn(Unwrapper<L1>) -> V,
             ) -> Located<V, L1> {
-                if L1::name() == T::name() {
+                if L1::name() == Target::name() {
                     let unwrapper = Unwrapper {
                         phantom: PhantomData,
                     };
@@ -659,15 +689,15 @@ where
                 _receiver: L2,
                 data: &Located<V, L1>,
             ) -> Located<V, L2> {
-                if L1::name() == T::name() && L1::name() == L2::name() {
+                if L1::name() == Target::name() && L1::name() == L2::name() {
                     let s = serde_json::to_string(data.value.as_ref().unwrap()).unwrap();
                     return Located::local(serde_json::from_str(s.as_str()).unwrap());
                 }
-                if L1::name() == T::name() {
+                if L1::name() == Target::name() {
                     self.transport
                         .send(L1::name(), L2::name(), data.value.as_ref().unwrap());
                     Located::remote()
-                } else if L2::name() == T::name() {
+                } else if L2::name() == Target::name() {
                     let value = self.transport.receive(L1::name(), L2::name());
                     Located::local(value)
                 } else {
@@ -680,28 +710,31 @@ where
                 _sender: L1,
                 data: Located<V, L1>,
             ) -> V {
-                if L1::name() == T::name() {
+                if L1::name() == Target::name() {
                     for dest in &self.locations {
-                        if T::name() != *dest {
-                            self.transport
-                                .send(&T::name(), &dest, data.value.as_ref().unwrap());
+                        if Target::name() != *dest {
+                            self.transport.send(
+                                &Target::name(),
+                                &dest,
+                                data.value.as_ref().unwrap(),
+                            );
                         }
                     }
                     return data.value.unwrap();
                 } else {
-                    self.transport.receive(L1::name(), &T::name())
+                    self.transport.receive(L1::name(), &Target::name())
                 }
             }
 
             fn multicast<L1: ChoreographyLocation, V: Portable, D: LocationSet, Index1, Index2>(
                 &self,
-                builder: MulticastBuilder<L, V, L1, D>,
+                builder: MulticastBuilder<ChoreoLS, V, L1, D>,
             ) -> MultiplyLocated<V, D> {
-                if L1::name() == T::name() {
+                if L1::name() == Target::name() {
                     for dest in D::to_string_list() {
-                        if T::name() != dest {
+                        if Target::name() != dest {
                             self.transport.send(
-                                &T::name(),
+                                &Target::name(),
                                 dest,
                                 builder.data.value.as_ref().unwrap(),
                             );
@@ -714,12 +747,12 @@ where
                 } else {
                     let mut is_receiver = false;
                     for dest in D::to_string_list() {
-                        if T::name() == dest {
+                        if Target::name() == dest {
                             is_receiver = true;
                         }
                     }
                     if is_receiver {
-                        let v = self.transport.receive(L1::name(), T::name());
+                        let v = self.transport.receive(L1::name(), Target::name());
                         return MultiplyLocated::local(v);
                     } else {
                         return MultiplyLocated::remote();
@@ -731,20 +764,20 @@ where
                 return data.value.unwrap();
             }
 
-            fn unnaked<V>(&self, data: V) -> MultiplyLocated<V, L> {
+            fn unnaked<V>(&self, data: V) -> MultiplyLocated<V, ChoreoLS> {
                 return MultiplyLocated::local(data);
             }
 
             fn call<R, M, Index, C: Choreography<R, L = M>>(&self, choreo: C) -> R
             where
-                M: LocationSet + Subset<L, Index>,
+                M: LocationSet + Subset<ChoreoLS, Index>,
             {
-                let op: EppOp<'a, M, T, LS, B> = EppOp {
-                    target: PhantomData::<T>,
+                let op: EppOp<'a, M, Target, TransportLS, B> = EppOp {
+                    target: PhantomData::<Target>,
                     transport: &self.transport,
                     locations: self.transport.locations(),
                     marker: PhantomData::<M>,
-                    projector_location_set: PhantomData::<LS>,
+                    projector_location_set: PhantomData::<TransportLS>,
                 };
                 choreo.run(&op)
             }
@@ -756,13 +789,13 @@ where
                 let locs_vec = S::to_string_list();
 
                 for location in &locs_vec {
-                    if *location == T::name().to_string() {
+                    if *location == Target::name().to_string() {
                         let op = EppOp {
-                            target: PhantomData::<T>,
+                            target: PhantomData::<Target>,
                             transport: self.transport,
                             locations: locs_vec,
                             marker: PhantomData::<S>,
-                            projector_location_set: PhantomData::<LS>,
+                            projector_location_set: PhantomData::<TransportLS>,
                         };
                         return choreo.run(&op);
                     }
@@ -776,11 +809,11 @@ where
                 computation: impl Fn() -> V, // TODO: add unwrapper for S
             ) -> Faceted<V, S>
             where
-                S: Subset<L, Index>,
+                S: Subset<ChoreoLS, Index>,
             {
                 let mut values = HashMap::new();
                 for location in S::to_string_list() {
-                    if location == T::name() {
+                    if location == Target::name() {
                         let v = computation();
                         values.insert(String::from(location), v);
                     }
@@ -797,7 +830,7 @@ where
                 // locations looping over
                 QS: LocationSet,
                 // FanOut Choreography over L iterating over QS returning V
-                FOC: FanOutChoreography<V, L = L, QS = QS>,
+                FOC: FanOutChoreography<V, L = ChoreoLS, QS = QS>,
                 // Proof that QS is a subset of L
                 QSSubsetL,
                 QSFoldable,
@@ -807,47 +840,47 @@ where
                 c: FOC,
             ) -> Faceted<V, QS>
             where
-                QS: Subset<L, QSSubsetL>,
-                QS: LocationSetFoldable<L, QS, QSFoldable>,
+                QS: Subset<ChoreoLS, QSSubsetL>,
+                QS: LocationSetFoldable<ChoreoLS, QS, QSFoldable>,
             {
-                let op: EppOp<L, T, LS, B> = EppOp {
-                    target: PhantomData::<T>,
+                let op: EppOp<ChoreoLS, Target, TransportLS, B> = EppOp {
+                    target: PhantomData::<Target>,
                     transport: self.transport,
                     locations: self.transport.locations(),
-                    marker: PhantomData::<L>,
-                    projector_location_set: PhantomData::<LS>,
+                    marker: PhantomData::<ChoreoLS>,
+                    projector_location_set: PhantomData::<TransportLS>,
                 };
                 let values = HashMap::new();
 
                 struct Loop<
                     'a,
-                    L: LocationSet,
+                    ChoreoLS: LocationSet,
                     Target: ChoreographyLocation,
-                    LS: LocationSet,
-                    B: Transport<LS, Target>,
+                    TransportLS: LocationSet,
+                    B: Transport<TransportLS, Target>,
                     V,
                     QSSubsetL,
-                    QS: LocationSet + Subset<L, QSSubsetL>,
-                    FOC: FanOutChoreography<V, L = L, QS = QS>,
+                    QS: LocationSet + Subset<ChoreoLS, QSSubsetL>,
+                    FOC: FanOutChoreography<V, L = ChoreoLS, QS = QS>,
                 > {
                     phantom: PhantomData<(V, QS, QSSubsetL, FOC)>,
-                    op: EppOp<'a, L, Target, LS, B>,
+                    op: EppOp<'a, ChoreoLS, Target, TransportLS, B>,
                 }
 
                 impl<
                         'a,
-                        L: LocationSet,
+                        ChoreoLS: LocationSet,
                         Target: ChoreographyLocation,
-                        LS: LocationSet,
-                        B: Transport<LS, Target>,
+                        TransportLS: LocationSet,
+                        B: Transport<TransportLS, Target>,
                         V,
                         QSSubsetL,
-                        QS: LocationSet + Subset<L, QSSubsetL>,
-                        FOC: FanOutChoreography<V, L = L, QS = QS>,
+                        QS: LocationSet + Subset<ChoreoLS, QSSubsetL>,
+                        FOC: FanOutChoreography<V, L = ChoreoLS, QS = QS>,
                     > LocationSetFolder<HashMap<String, V>>
-                    for Loop<'a, L, Target, LS, B, V, QSSubsetL, QS, FOC>
+                    for Loop<'a, ChoreoLS, Target, TransportLS, B, V, QSSubsetL, QS, FOC>
                 {
-                    type L = L;
+                    type L = ChoreoLS;
                     type QS = QS;
                     fn f<Q: ChoreographyLocation, QSSubsetL2, QMemberL, QMemberQS>(
                         &self,
@@ -871,7 +904,7 @@ where
                     }
                 }
                 let values = QS::foldr(
-                    Loop::<L, T, LS, B, V, QSSubsetL, QS, FOC> {
+                    Loop::<ChoreoLS, Target, TransportLS, B, V, QSSubsetL, QS, FOC> {
                         phantom: PhantomData,
                         op,
                     },
@@ -883,27 +916,27 @@ where
                 }
             }
         }
-        let op: EppOp<'a, L, L1, LS, B> = EppOp {
-            target: PhantomData::<L1>,
+        let op: EppOp<'a, ChoreoLS, Target, TransportLS, B> = EppOp {
+            target: PhantomData::<Target>,
             transport: &self.transport,
             locations: self.transport.locations(),
-            marker: PhantomData::<L>,
-            projector_location_set: PhantomData::<LS>,
+            marker: PhantomData::<ChoreoLS>,
+            projector_location_set: PhantomData::<TransportLS>,
         };
         choreo.run(&op)
     }
 }
 
 /// Provides a method to run a choreography without end-point projection.
-pub struct Runner<L: LocationSet> {
-    marker: PhantomData<L>,
+pub struct Runner<RunnerLS: LocationSet> {
+    marker: PhantomData<RunnerLS>,
 }
 
-impl<L: LocationSet> Runner<L> {
+impl<RunnerLS: LocationSet> Runner<RunnerLS> {
     /// Constructs a runner.
     pub fn new() -> Self {
         Runner {
-            marker: PhantomData::<L>,
+            marker: PhantomData::<RunnerLS>,
         }
     }
 
@@ -922,7 +955,10 @@ impl<L: LocationSet> Runner<L> {
     }
 
     /// Runs a choreography directly
-    pub fn run<'a, V, C: Choreography<V, L = L>>(&'a self, choreo: C) -> V {
+    pub fn run<'a, V, C: Choreography<V, L = RunnerLS>>(&'a self, choreo: C) -> V {
+        // Note: Technically, the location set of the choreography can be a subset of `RunnerLS`.
+        // However, by using the same type, the compiler can infer `RunnerLS` for given choreography.
+
         struct RunOp<L>(PhantomData<L>);
         impl<L: LocationSet> ChoreoOp<L> for RunOp<L> {
             fn locally<V, L1: ChoreographyLocation, Index>(
@@ -1037,7 +1073,7 @@ impl<L: LocationSet> Runner<L> {
                 unimplemented!()
             }
         }
-        let op: RunOp<L> = RunOp(PhantomData);
+        let op: RunOp<RunnerLS> = RunOp(PhantomData);
         choreo.run(&op)
     }
 }
