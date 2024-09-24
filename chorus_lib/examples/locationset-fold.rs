@@ -19,7 +19,7 @@ fn main() {
         fn f<Q: ChoreographyLocation, QSSubsetL, QMemberL, QMemberQS>(
             &self,
             acc: String,
-            curr: Q,
+            _curr: Q,
         ) -> String
         where
             Self::QS: Subset<Self::L, QSSubsetL>,

@@ -49,60 +49,7 @@ impl Superposition for () {
 }
 
 /// Represents a value located at a location.
-///
-/// The struct takes two type parameters: `V` and `L1`.
-///
-/// - `V` is an actual type of the value.
-/// - `L1` is the location of the value. It must satisfy the `ChoreographicLocation` trait.
-#[derive(PartialEq)]
-pub struct Located<V, L1>
-where
-    L1: ChoreographyLocation,
-{
-    /// `Some` if it is located at the current location and `None` if it is located at another location.
-    value: Option<V>,
-    /// The struct is parametrized by the location (`L1`).
-    phantom: PhantomData<L1>,
-}
-
-impl<V, L1> Located<V, L1>
-where
-    L1: ChoreographyLocation,
-{
-    /// Constructs a struct located at the current location with value
-    fn local(value: V) -> Self {
-        Located {
-            value: Some(value),
-            phantom: PhantomData,
-        }
-    }
-}
-
-/// If the value implements `Clone`, the located value of the same type also implements `Clone`.
-impl<V: Clone, L1> Clone for Located<V, L1>
-where
-    L1: ChoreographyLocation,
-{
-    fn clone(&self) -> Self {
-        Located {
-            value: self.value.clone(),
-            phantom: PhantomData,
-        }
-    }
-}
-
-impl<V, L1> Superposition for Located<V, L1>
-where
-    L1: ChoreographyLocation,
-{
-    /// Constructs a struct located at another location
-    fn remote() -> Self {
-        Located {
-            value: None,
-            phantom: PhantomData,
-        }
-    }
-}
+pub type Located<V, L1> = MultiplyLocated<V, LocationSet!(L1)>;
 
 /// Represents a value located at multiple locations.
 pub struct MultiplyLocated<V, L>
@@ -121,6 +68,19 @@ where
     pub fn local(value: V) -> Self {
         MultiplyLocated {
             value: Some(value),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<V, L> Clone for MultiplyLocated<V, L>
+where
+    V: Clone,
+    L: LocationSet,
+{
+    fn clone(&self) -> Self {
+        MultiplyLocated {
+            value: self.value.clone(),
             phantom: PhantomData,
         }
     }
@@ -336,12 +296,8 @@ pub struct Unwrapper<L1: ChoreographyLocation> {
 }
 
 impl<L1: ChoreographyLocation> Unwrapper<L1> {
-    /// Takes a reference to the located value at the current location and returns its reference
-    pub fn unwrap<'a, V>(&self, located: &'a Located<V, L1>) -> &'a V {
-        located.value.as_ref().unwrap()
-    }
     /// TODO: documentation
-    pub fn unwrap2<'a, V, S: LocationSet, Index>(&self, mlv: &'a MultiplyLocated<V, S>) -> &'a V
+    pub fn unwrap<'a, V, S: LocationSet, Index>(&self, mlv: &'a MultiplyLocated<V, S>) -> &'a V
     where
         L1: Member<S, Index>,
     {
@@ -410,7 +366,7 @@ pub trait ChoreoOp<ChoreoLS: LocationSet> {
         &self,
         location: L1,
         computation: impl Fn(Unwrapper<L1>) -> V,
-    ) -> Located<V, L1>
+    ) -> MultiplyLocated<V, LocationSet!(L1)>
     where
         L1: Member<ChoreoLS, Index>;
     /// Performs a communication between two locations.
@@ -418,32 +374,36 @@ pub trait ChoreoOp<ChoreoLS: LocationSet> {
     /// `comm` sends `data` from `sender` to `receiver`. The `data` must be a `Located` struct at the `sender` location
     /// and the value type must implement `Portable`.
     fn comm<
+        L: LocationSet,
         Sender: ChoreographyLocation,
         Receiver: ChoreographyLocation,
         V: Portable,
         Index1,
         Index2,
+        Index3,
     >(
         &self,
         sender: Sender,
         receiver: Receiver,
-        data: &Located<V, Sender>,
-    ) -> Located<V, Receiver>
+        data: &MultiplyLocated<V, L>,
+    ) -> MultiplyLocated<V, LocationSet!(Receiver)>
     where
-        Sender: Member<ChoreoLS, Index1>,
-        Receiver: Member<ChoreoLS, Index2>;
+        L: Subset<ChoreoLS, Index1>,
+        Sender: Member<ChoreoLS, Index2>,
+        Receiver: Member<ChoreoLS, Index3>;
 
     /// Performs a broadcast from a location to all other locations.
     ///
     /// `broadcast` broadcasts `data` from `sender` to all other locations. The `data` must be a `Located` struct at the `sender` location.
     /// The method returns the non-located value.
-    fn broadcast<Sender: ChoreographyLocation, V: Portable, Index>(
+    fn broadcast<L: LocationSet, Sender: ChoreographyLocation, V: Portable, Index1, Index2>(
         &self,
         sender: Sender,
-        data: Located<V, Sender>,
+        data: MultiplyLocated<V, L>,
     ) -> V
     where
-        Sender: Member<ChoreoLS, Index>;
+        L: Subset<ChoreoLS, Index1>,
+        Sender: Member<ChoreoLS, Index2>;
 
     /// TODO: documentation
     fn multicast<Sender: ChoreographyLocation, V: Portable, D: LocationSet, Index1, Index2>(
@@ -621,7 +581,11 @@ where
     /// Unwraps a located value at the projection target.
     ///
     /// Use this method to access the located value returned by a choreography.
-    pub fn unwrap<V>(&self, located: Located<V, Target>) -> V {
+    pub fn unwrap<L: LocationSet, V, Index1, Index2>(&self, located: MultiplyLocated<V, L>) -> V
+    where
+        L: Subset<TransportLS, Index1>,
+        Target: Member<L, Index2>,
+    {
         located.value.unwrap()
     }
 
@@ -665,52 +629,63 @@ where
                 &self,
                 _location: L1,
                 computation: impl Fn(Unwrapper<L1>) -> V,
-            ) -> Located<V, L1> {
+            ) -> MultiplyLocated<V, LocationSet!(L1)> {
                 if L1::name() == Target::name() {
                     let unwrapper = Unwrapper {
                         phantom: PhantomData,
                     };
                     let value = computation(unwrapper);
-                    Located::local(value)
+                    MultiplyLocated::local(value)
                 } else {
-                    Located::remote()
+                    MultiplyLocated::remote()
                 }
             }
 
             fn comm<
-                L1: ChoreographyLocation,
-                L2: ChoreographyLocation,
+                L: LocationSet,
+                Sender: ChoreographyLocation,
+                Receiver: ChoreographyLocation,
+                V: Portable,
+                Index1,
+                Index2,
+                Index3,
+            >(
+                &self,
+                _sender: Sender,
+                _receiver: Receiver,
+                data: &MultiplyLocated<V, L>,
+            ) -> MultiplyLocated<V, LocationSet!(Receiver)> {
+                if Sender::name() == Target::name() && Sender::name() == Receiver::name() {
+                    let s = serde_json::to_string(data.value.as_ref().unwrap()).unwrap();
+                    return MultiplyLocated::local(serde_json::from_str(s.as_str()).unwrap());
+                }
+                if Sender::name() == Target::name() {
+                    self.transport.send(
+                        Sender::name(),
+                        Receiver::name(),
+                        data.value.as_ref().unwrap(),
+                    );
+                    MultiplyLocated::remote()
+                } else if Receiver::name() == Target::name() {
+                    let value = self.transport.receive(Sender::name(), Receiver::name());
+                    MultiplyLocated::local(value)
+                } else {
+                    MultiplyLocated::remote()
+                }
+            }
+
+            fn broadcast<
+                L: LocationSet,
+                Sender: ChoreographyLocation,
                 V: Portable,
                 Index1,
                 Index2,
             >(
                 &self,
-                _sender: L1,
-                _receiver: L2,
-                data: &Located<V, L1>,
-            ) -> Located<V, L2> {
-                if L1::name() == Target::name() && L1::name() == L2::name() {
-                    let s = serde_json::to_string(data.value.as_ref().unwrap()).unwrap();
-                    return Located::local(serde_json::from_str(s.as_str()).unwrap());
-                }
-                if L1::name() == Target::name() {
-                    self.transport
-                        .send(L1::name(), L2::name(), data.value.as_ref().unwrap());
-                    Located::remote()
-                } else if L2::name() == Target::name() {
-                    let value = self.transport.receive(L1::name(), L2::name());
-                    Located::local(value)
-                } else {
-                    Located::remote()
-                }
-            }
-
-            fn broadcast<L1: ChoreographyLocation, V: Portable, Index>(
-                &self,
-                _sender: L1,
-                data: Located<V, L1>,
+                _sender: Sender,
+                data: MultiplyLocated<V, L>,
             ) -> V {
-                if L1::name() == Target::name() {
+                if Sender::name() == Target::name() {
                     for dest in &self.locations {
                         if Target::name() != *dest {
                             self.transport.send(
@@ -722,7 +697,7 @@ where
                     }
                     return data.value.unwrap();
                 } else {
-                    self.transport.receive(L1::name(), &Target::name())
+                    self.transport.receive(Sender::name(), &Target::name())
                 }
             }
 
@@ -965,36 +940,44 @@ impl<RunnerLS: LocationSet> Runner<RunnerLS> {
                 &self,
                 _location: L1,
                 computation: impl Fn(Unwrapper<L1>) -> V,
-            ) -> Located<V, L1> {
+            ) -> MultiplyLocated<V, LocationSet!(L1)> {
                 let unwrapper = Unwrapper {
                     phantom: PhantomData,
                 };
                 let value = computation(unwrapper);
-                Located::local(value)
+                MultiplyLocated::local(value)
             }
 
             fn comm<
-                L1: ChoreographyLocation,
-                L2: ChoreographyLocation,
+                S: LocationSet,
+                Sender: ChoreographyLocation,
+                Receiver: ChoreographyLocation,
+                V: Portable,
+                Index1,
+                Index2,
+                Index3,
+            >(
+                &self,
+                _sender: Sender,
+                _receiver: Receiver,
+                data: &MultiplyLocated<V, S>,
+            ) -> MultiplyLocated<V, LocationSet!(Receiver)> {
+                // clone the value by encoding and decoding it. Requiring `Clone` could improve the performance but is not necessary.
+                // Also, this is closer to what happens to the value with end-point projection.
+                let s = serde_json::to_string(data.value.as_ref().unwrap()).unwrap();
+                MultiplyLocated::local(serde_json::from_str(s.as_str()).unwrap())
+            }
+
+            fn broadcast<
+                S: LocationSet,
+                Sender: ChoreographyLocation,
                 V: Portable,
                 Index1,
                 Index2,
             >(
                 &self,
-                _sender: L1,
-                _receiver: L2,
-                data: &Located<V, L1>,
-            ) -> Located<V, L2> {
-                // clone the value by encoding and decoding it. Requiring `Clone` could improve the performance but is not necessary.
-                // Also, this is closer to what happens to the value with end-point projection.
-                let s = serde_json::to_string(data.value.as_ref().unwrap()).unwrap();
-                Located::local(serde_json::from_str(s.as_str()).unwrap())
-            }
-
-            fn broadcast<L1: ChoreographyLocation, V: Portable, Index>(
-                &self,
-                _sender: L1,
-                data: Located<V, L1>,
+                _sender: Sender,
+                data: MultiplyLocated<V, S>,
             ) -> V {
                 data.value.unwrap()
             }

@@ -36,11 +36,11 @@ impl Choreography for MulticastChoreography {
         let msg_at_bob_and_carol =
             op.multicast(MulticastBuilder::new(Alice, msg_at_alice).to(Bob).to(Carol));
         op.locally(Bob, |un| {
-            let msg = un.unwrap2(&msg_at_bob_and_carol);
+            let msg = un.unwrap(&msg_at_bob_and_carol);
             println!("Bob received: {}", msg);
         });
         op.locally(Carol, |un| {
-            let msg = un.unwrap2(&msg_at_bob_and_carol);
+            let msg = un.unwrap(&msg_at_bob_and_carol);
             println!("Carol received: {}", msg);
         });
     }

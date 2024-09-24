@@ -5,7 +5,10 @@ use std::sync::Arc;
 use std::thread;
 
 use chorus_lib::{
-    core::{ChoreoOp, Choreography, ChoreographyLocation, Located, LocationSet, Projector},
+    core::{
+        ChoreoOp, Choreography, ChoreographyLocation, Located, LocationSet, MultiplyLocated,
+        Projector,
+    },
     transport::local::{LocalTransport, LocalTransportChannelBuilder},
 };
 use chrono::NaiveDate;
@@ -22,22 +25,22 @@ struct Seller;
 type Inventory = HashMap<String, (i32, NaiveDate)>;
 
 trait Decider {
-    fn new(price: Located<i32, Buyer1>) -> Self;
+    fn new(price: MultiplyLocated<i32, LocationSet!(Buyer1)>) -> Self;
 }
 
 struct OneBuyerDecider {
-    price: Located<i32, Buyer1>,
+    price: MultiplyLocated<i32, LocationSet!(Buyer1)>,
 }
 
 impl Decider for OneBuyerDecider {
-    fn new(price: Located<i32, Buyer1>) -> Self {
+    fn new(price: MultiplyLocated<i32, LocationSet!(Buyer1)>) -> Self {
         Self { price }
     }
 }
 
-impl Choreography<Located<bool, Buyer1>> for OneBuyerDecider {
+impl Choreography<MultiplyLocated<bool, LocationSet!(Buyer1)>> for OneBuyerDecider {
     type L = LocationSet!(Buyer1, Buyer2);
-    fn run(self, op: &impl ChoreoOp<Self::L>) -> Located<bool, Buyer1> {
+    fn run(self, op: &impl ChoreoOp<Self::L>) -> MultiplyLocated<bool, LocationSet!(Buyer1)> {
         let price = op.broadcast(Buyer1, self.price);
         return op.locally(Buyer1, |_| {
             const BUYER1_BUDGET: i32 = 100;
@@ -47,18 +50,18 @@ impl Choreography<Located<bool, Buyer1>> for OneBuyerDecider {
 }
 
 struct TwoBuyerDecider {
-    price: Located<i32, Buyer1>,
+    price: MultiplyLocated<i32, LocationSet!(Buyer1)>,
 }
 
 impl Decider for TwoBuyerDecider {
-    fn new(price: Located<i32, Buyer1>) -> Self {
+    fn new(price: MultiplyLocated<i32, LocationSet!(Buyer1)>) -> Self {
         Self { price }
     }
 }
 
-impl Choreography<Located<bool, Buyer1>> for TwoBuyerDecider {
+impl Choreography<MultiplyLocated<bool, LocationSet!(Buyer1)>> for TwoBuyerDecider {
     type L = LocationSet!(Buyer1, Buyer2);
-    fn run(self, op: &impl ChoreoOp<Self::L>) -> Located<bool, Buyer1> {
+    fn run(self, op: &impl ChoreoOp<Self::L>) -> MultiplyLocated<bool, LocationSet!(Buyer1)> {
         let remaining = op.locally(Buyer1, |un| {
             const BUYER1_BUDGET: i32 = 100;
             return un.unwrap(&self.price) - BUYER1_BUDGET;
