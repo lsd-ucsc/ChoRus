@@ -73,6 +73,24 @@ where
     }
 }
 
+impl<V, LS1, LS2> MultiplyLocated<MultiplyLocated<V, LS1>, LS2>
+where
+    LS1: LocationSet,
+    LS2: LocationSet,
+{
+    /// Flattens a located value located at multiple locations.
+    pub fn flatten<LS1SubsetLS2>(self) -> MultiplyLocated<V, LS1>
+    where
+        LS1: Subset<LS2, LS1SubsetLS2>,
+    {
+        let value = self.value.unwrap().value;
+        MultiplyLocated {
+            value,
+            phantom: PhantomData,
+        }
+    }
+}
+
 impl<V, L> Clone for MultiplyLocated<V, L>
 where
     V: Clone,
@@ -428,10 +446,10 @@ pub trait ChoreoOp<ChoreoLS: LocationSet> {
         M: LocationSet + Subset<ChoreoLS, Index>;
 
     /// Calls a choreography on a subset of locations.
-    fn enclave<R: Superposition, S: LocationSet, C: Choreography<R, L = S>, Index>(
+    fn enclave<R, S: LocationSet, C: Choreography<R, L = S>, Index>(
         &self,
         choreo: C,
-    ) -> R
+    ) -> MultiplyLocated<R, S>
     where
         S: Subset<ChoreoLS, Index>;
 
@@ -757,10 +775,10 @@ where
                 choreo.run(&op)
             }
 
-            fn enclave<R: Superposition, S: LocationSet, C: Choreography<R, L = S>, Index>(
+            fn enclave<R, S: LocationSet, C: Choreography<R, L = S>, Index>(
                 &self,
                 choreo: C,
-            ) -> R {
+            ) -> MultiplyLocated<R, S> {
                 let locs_vec = S::to_string_list();
 
                 for location in &locs_vec {
@@ -772,10 +790,10 @@ where
                             marker: PhantomData::<S>,
                             projector_location_set: PhantomData::<TransportLS>,
                         };
-                        return choreo.run(&op);
+                        return MultiplyLocated::local(choreo.run(&op));
                     }
                 }
-                R::remote()
+                MultiplyLocated::remote()
             }
 
             fn parallel<V, S: LocationSet, Index>(
@@ -1008,12 +1026,12 @@ impl<RunnerLS: LocationSet> Runner<RunnerLS> {
                 choreo.run(&op)
             }
 
-            fn enclave<R: Superposition, S: LocationSet, C: Choreography<R, L = S>, Index>(
+            fn enclave<R, S: LocationSet, C: Choreography<R, L = S>, Index>(
                 &self,
                 choreo: C,
-            ) -> R {
+            ) -> MultiplyLocated<R, S> {
                 let op = RunOp::<S>(PhantomData);
-                choreo.run(&op)
+                MultiplyLocated::local(choreo.run(&op))
             }
 
             fn parallel<V, S: LocationSet, Index>(

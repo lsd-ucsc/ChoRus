@@ -39,8 +39,12 @@ impl Choreography for MainChoreography {
                 Choice::Bob
             }
         });
-        let ChoiceAndQuery(choice, query_at_alice) = op.enclave(ChooseQueryChoreography {
+        let choice_and_query = op.enclave(ChooseQueryChoreography {
             alice_choice: choice,
+        });
+        let query_at_alice = op.locally(Alice, |un| {
+            let query = un.unwrap(&choice_and_query);
+            String::from(un.unwrap(&query.1))
         });
         let query_at_carol = op.comm(Alice, Carol, &query_at_alice);
         let response_at_carol = op.locally(Carol, |un| {
@@ -50,11 +54,13 @@ impl Choreography for MainChoreography {
             return r;
         });
         let response = op.broadcast(Carol, response_at_carol);
-        op.enclave(TerminalChoreography { choice, response });
+        op.enclave(TerminalChoreography {
+            choice_and_query,
+            response,
+        });
     }
 }
 
-#[derive(Superposition)]
 struct ChoiceAndQuery(
     MultiplyLocated<Choice, LocationSet!(Alice, Bob)>,
     Located<Query, Alice>,
@@ -80,15 +86,15 @@ impl Choreography<ChoiceAndQuery> for ChooseQueryChoreography {
 }
 
 struct TerminalChoreography {
-    choice: MultiplyLocated<Choice, LocationSet!(Alice, Bob)>,
+    choice_and_query: MultiplyLocated<ChoiceAndQuery, LocationSet!(Alice, Bob)>,
     response: String,
 }
 
 impl Choreography for TerminalChoreography {
     type L = LocationSet!(Alice, Bob);
     fn run(self, op: &impl ChoreoOp<Self::L>) {
-        let choice = op.naked(self.choice);
-        match choice {
+        let ChoiceAndQuery(choice, _) = op.naked(self.choice_and_query);
+        match op.naked(choice) {
             Choice::Alice => {
                 op.locally(Alice, |_| {
                     println!("Alice received response: {}", self.response);
