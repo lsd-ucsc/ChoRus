@@ -117,6 +117,15 @@ where
     }
 }
 
+/// Represents a mapping from location names to values
+pub struct Quire<V, L>
+where
+    L: LocationSet,
+{
+    value: HashMap<String, V>,
+    phantom: PhantomData<L>,
+}
+
 /// Represents possibly different values located at multiple locations
 #[derive(Debug)]
 pub struct Faceted<V, L>
@@ -481,9 +490,33 @@ pub trait ChoreoOp<ChoreoLS: LocationSet> {
     where
         QS: Subset<ChoreoLS, QSSubsetL>,
         QS: LocationSetFoldable<ChoreoLS, QS, QSFoldable>;
+
+    /// Performs fanin computation.
+    fn fanin<
+        // return value type
+        V,
+        // locations looping over
+        QS: LocationSet,
+        // Recipient locations
+        RS: LocationSet,
+        // FanIn Choreography over L iterating over QS returning V
+        FIC: FanInChoreography<V, L = ChoreoLS, QS = QS, RS = RS>,
+        // Proof that QS is a subset of L
+        QSSubsetL,
+        RSSubsetL,
+        QSFoldable,
+    >(
+        &self,
+        locations: QS,
+        c: FIC,
+    ) -> MultiplyLocated<Quire<V, QS>, RS>
+    where
+        QS: Subset<ChoreoLS, QSSubsetL>,
+        RS: Subset<ChoreoLS, RSSubsetL>,
+        QS: LocationSetFoldable<ChoreoLS, QS, QSFoldable>;
 }
 
-/// TODO: documentation
+/// Special choreography for fanout
 pub trait FanOutChoreography<V> {
     /// All locations involved in the choreography
     type L: LocationSet;
@@ -498,6 +531,28 @@ pub trait FanOutChoreography<V> {
     ) -> Located<V, Q>
     where
         Self::QS: Subset<Self::L, QSSubsetL>,
+        Q: Member<Self::L, QMemberL>,
+        Q: Member<Self::QS, QMemberQS>;
+}
+
+/// Special choreography for fanin
+pub trait FanInChoreography<V> {
+    /// All locations involved in the choreography
+    type L: LocationSet;
+    /// Locations looping over
+    type QS: LocationSet;
+    /// Recipient locations
+    type RS: LocationSet;
+    /// Constructor
+    fn new() -> Self;
+    /// run a choreography
+    fn run<Q: ChoreographyLocation, QSSubsetL, RSSubsetL, QMemberL, QMemberQS>(
+        self,
+        op: &impl ChoreoOp<Self::L>,
+    ) -> MultiplyLocated<V, Self::RS>
+    where
+        Self::QS: Subset<Self::L, QSSubsetL>,
+        Self::RS: Subset<Self::L, RSSubsetL>,
         Q: Member<Self::L, QMemberL>,
         Q: Member<Self::QS, QMemberQS>;
 }
@@ -878,7 +933,7 @@ where
                     fn f<Q: ChoreographyLocation, QSSubsetL2, QMemberL, QMemberQS>(
                         &self,
                         mut acc: HashMap<String, V>,
-                        curr: Q,
+                        _: Q,
                     ) -> HashMap<String, V>
                     where
                         Self::QS: Subset<Self::L, QSSubsetL2>,
@@ -907,6 +962,120 @@ where
                     value: values,
                     phantom: PhantomData,
                 }
+            }
+            fn fanin<
+                // return value type
+                V,
+                // locations looping over
+                QS: LocationSet,
+                // Recipient locations
+                RS: LocationSet,
+                // FanIn Choreography over L iterating over QS returning V
+                FIC: FanInChoreography<V, L = ChoreoLS, QS = QS, RS = RS>,
+                // Proof that QS is a subset of L
+                QSSubsetL,
+                RSSubsetL,
+                QSFoldable,
+            >(
+                &self,
+                locations: QS,
+                c: FIC,
+            ) -> MultiplyLocated<Quire<V, QS>, RS>
+            where
+                QS: Subset<ChoreoLS, QSSubsetL>,
+                RS: Subset<ChoreoLS, RSSubsetL>,
+                QS: LocationSetFoldable<ChoreoLS, QS, QSFoldable>,
+            {
+                let op: EppOp<ChoreoLS, Target, TransportLS, B> = EppOp {
+                    target: PhantomData::<Target>,
+                    transport: self.transport,
+                    locations: self.transport.locations(),
+                    marker: PhantomData::<ChoreoLS>,
+                    projector_location_set: PhantomData::<TransportLS>,
+                };
+
+                struct Loop<
+                    'a,
+                    ChoreoLS: LocationSet,
+                    Target: ChoreographyLocation,
+                    TransportLS: LocationSet,
+                    B: Transport<TransportLS, Target>,
+                    V,
+                    QSSubsetL,
+                    QS: LocationSet + Subset<ChoreoLS, QSSubsetL>,
+                    RSSubsetL,
+                    RS: LocationSet + Subset<ChoreoLS, RSSubsetL>,
+                    FIC: FanInChoreography<V, L = ChoreoLS, QS = QS, RS = RS>,
+                > {
+                    phantom: PhantomData<(V, QS, QSSubsetL, RS, RSSubsetL, FIC)>,
+                    op: EppOp<'a, ChoreoLS, Target, TransportLS, B>,
+                }
+
+                impl<
+                        'a,
+                        ChoreoLS: LocationSet,
+                        Target: ChoreographyLocation,
+                        TransportLS: LocationSet,
+                        B: Transport<TransportLS, Target>,
+                        V,
+                        QSSubsetL,
+                        QS: LocationSet + Subset<ChoreoLS, QSSubsetL>,
+                        RSSubsetL,
+                        RS: LocationSet + Subset<ChoreoLS, RSSubsetL>,
+                        FIC: FanInChoreography<V, L = ChoreoLS, QS = QS, RS = RS>,
+                    > LocationSetFolder<HashMap<String, V>>
+                    for Loop<
+                        'a,
+                        ChoreoLS,
+                        Target,
+                        TransportLS,
+                        B,
+                        V,
+                        QSSubsetL,
+                        QS,
+                        RSSubsetL,
+                        RS,
+                        FIC,
+                    >
+                {
+                    type L = ChoreoLS;
+                    type QS = QS;
+
+                    fn f<Q: ChoreographyLocation, QSSubsetL2, QMemberL, QMemberQS>(
+                        &self,
+                        mut acc: HashMap<String, V>,
+                        _: Q,
+                    ) -> HashMap<String, V>
+                    where
+                        Self::QS: Subset<Self::L, QSSubsetL2>,
+                        Q: Member<Self::L, QMemberL>,
+                        Q: Member<Self::QS, QMemberQS>,
+                    {
+                        let c = FIC::new();
+                        let v = c.run::<Q, QSSubsetL, RSSubsetL, QMemberL, QMemberQS>(&self.op);
+                        // if the target is in RS, `v` has a value (`Some`)
+                        match v.value {
+                            Some(value) => {
+                                acc.insert(String::from(Q::name()), value);
+                            }
+                            None => {}
+                        }
+                        acc
+                    }
+                }
+
+                let values = QS::foldr(
+                    Loop::<ChoreoLS, Target, TransportLS, B, V, QSSubsetL, QS, RSSubsetL, RS, FIC> {
+                        phantom: PhantomData,
+                        op,
+                    },
+                    HashMap::new(),
+                );
+
+                MultiplyLocated::<Quire<V, QS>, RS>::local(Quire {
+                    value: values,
+                    phantom: PhantomData,
+                })
             }
         }
         let op: EppOp<'a, ChoreoLS, Target, TransportLS, B> = EppOp {
@@ -1071,7 +1240,33 @@ impl<RunnerLS: LocationSet> Runner<RunnerLS> {
                 QS: Subset<L, QSSubsetL>,
                 QS: LocationSetFoldable<L, QS, QSFoldable>,
             {
-                unimplemented!()
+                todo!()
+            }
+
+            fn fanin<
+                // return value type
+                V,
+                // locations looping over
+                QS: LocationSet,
+                // Recipient locations
+                RS: LocationSet,
+                // FanIn Choreography over L iterating over QS returning V
+                FIC: FanInChoreography<V, L = L, QS = QS, RS = RS>,
+                // Proof that QS is a subset of L
+                QSSubsetL,
+                RSSubsetL,
+                QSFoldable,
+            >(
+                &self,
+                locations: QS,
+                c: FIC,
+            ) -> MultiplyLocated<Quire<V, QS>, RS>
+            where
+                QS: Subset<L, QSSubsetL>,
+                RS: Subset<L, RSSubsetL>,
+                QS: LocationSetFoldable<L, QS, QSFoldable>,
+            {
+                todo!()
             }
         }
         let op: RunOp<RunnerLS> = RunOp(PhantomData);
