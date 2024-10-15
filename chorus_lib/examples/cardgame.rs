@@ -190,24 +190,40 @@ impl<
                 Q: Member<Self::QS, QMemberQS>,
             {
                 // TODO: enclave
-                let choice_at_q = op.locally(Q::new(), |un| *un.unwrap3(self.wants_next_card));
-                let choice = op.broadcast(Q::new(), choice_at_q);
-                if choice {
-                    let card2 = op.locally(Dealer, |_| {
-                        println!("Player {:?} wants another card", Q::name());
-                        let mut input = String::new();
-                        std::io::stdin()
-                            .read_line(&mut input)
-                            .expect("Failed to read line");
-                        input.trim().parse::<i32>().expect("Failed to parse input")
-                    });
-                    let card2 = op.comm(Dealer, Q::new(), &card2);
-                    op.locally(Q::new(), |un| {
-                        vec![*un.unwrap3(self.hand1), *un.unwrap(&card2)]
-                    })
-                } else {
-                    op.locally(Q::new(), |un| vec![*un.unwrap3(self.hand1)])
+                struct Enclave<Player: ChoreographyLocation> {
+                    hand1: Located<i32, Player>,
+                    wants_next_card: Located<bool, Player>,
                 }
+                impl<Player: ChoreographyLocation> Choreography<Located<Vec<i32>, Player>> for Enclave<Player> {
+                    type L = LocationSet!(Dealer, Player);
+
+                    fn run(self, op: &impl ChoreoOp<Self::L>) -> Located<Vec<i32>, Player> {
+                        let choice = op.broadcast(Player::new(), self.wants_next_card.clone());
+                        if choice {
+                            let card2 = op.locally(Dealer, |_| {
+                                println!("Player {:?} wants another card", Player::name());
+                                let mut input = String::new();
+                                std::io::stdin()
+                                    .read_line(&mut input)
+                                    .expect("Failed to read line");
+                                input.trim().parse::<i32>().expect("Failed to parse input")
+                            });
+                            let card2 = op.comm(Dealer, Player::new(), &card2);
+                            op.locally(Player::new(), |un| {
+                                vec![*un.unwrap(&self.hand1), *un.unwrap(&card2)]
+                            })
+                        } else {
+                            op.locally(Player::new(), |un| vec![*un.unwrap(&self.hand1)])
+                        }
+                    }
+                }
+                let hand1 = op.locally(Q::new(), |un| *un.unwrap3(self.hand1));
+                let wants_next_card = op.locally(Q::new(), |un| *un.unwrap3(self.wants_next_card));
+                op.enclave(Enclave::<Q> {
+                    hand1,
+                    wants_next_card,
+                })
+                .flatten()
             }
         }
         let hand2 = op.fanout(
