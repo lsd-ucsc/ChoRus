@@ -34,7 +34,7 @@ impl Choreography for MulticastChoreography {
             "Hello from Alice!".to_string()
         });
         let msg_at_bob_and_carol =
-            op.multicast(MulticastBuilder::new(Alice, msg_at_alice).to(Bob).to(Carol));
+            op.multicast(Alice, <LocationSet!(Bob, Carol)>::new(), &msg_at_alice);
         op.locally(Bob, |un| {
             let msg = un.unwrap(&msg_at_bob_and_carol);
             println!("Bob received: {}", msg);

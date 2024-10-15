@@ -47,13 +47,8 @@ where
 {
     type L = L;
     type QS = QS;
-    fn new() -> Self {
-        FanOut {
-            phantom: PhantomData,
-        }
-    }
     fn run<Q: ChoreographyLocation, QSSubsetL, QMemberL, QMemberQS>(
-        self,
+        &self,
         op: &impl ChoreoOp<Self::L>,
     ) -> Located<String, Q>
     where

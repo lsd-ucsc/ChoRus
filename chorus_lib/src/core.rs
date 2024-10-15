@@ -2,7 +2,7 @@
 //!
 //! This module provides core choreography constructs, such as `Choreography`, `Located`, and `Projector`.
 
-use std::{collections::HashMap, marker::PhantomData};
+use std::{collections::HashMap, fmt::Debug, marker::PhantomData};
 
 use serde::de::DeserializeOwned;
 // re-export so that users can use derive macros without importing serde
@@ -126,6 +126,16 @@ where
     phantom: PhantomData<L>,
 }
 
+impl<V, L> Debug for Quire<V, L>
+where
+    L: LocationSet,
+    V: Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_map().entries(self.value.iter()).finish()
+    }
+}
+
 /// Represents possibly different values located at multiple locations
 #[derive(Debug)]
 pub struct Faceted<V, L>
@@ -191,7 +201,7 @@ impl<
         HeadMemberL,
         HeadMemberQS,
         ITail,
-    > LocationSetFoldable<L, QS, HCons<QSSubsetL, HCons<HeadMemberL, HCons<HeadMemberQS, ITail>>>>
+    > LocationSetFoldable<L, QS, (QSSubsetL, HeadMemberL, HeadMemberQS, ITail)>
     for HCons<Head, Tail>
 where
     QS: Subset<L, QSSubsetL>,
@@ -267,6 +277,8 @@ pub use __ChoRus_Internal_LocationSet as LocationSet;
 /// Marker
 #[doc(hidden)]
 pub struct Here;
+#[doc(hidden)]
+pub struct Here2;
 /// Marker
 #[doc(hidden)]
 pub struct There<Index>(Index);
@@ -303,17 +315,16 @@ where
 ///
 /// It takes two type parameters `L` and `Index`. `L` is a location set and `Index` is some type that is inferred by the compiler.
 /// If a location set `M` is a subset of `L`, then there exists a type `Index` such that `M` implements `Subset<L, Index>`.
-pub trait Subset<L: LocationSet, Index> {}
+pub trait Subset<S, Index> {}
 
-// Base case: HNil is a subset of any set
-impl<L: LocationSet> Subset<L, Here> for HNil {}
+// Base case: `HNil` is a subset of any collection
+impl<S> Subset<S, Here> for HNil {}
 
-// Recursive case
-impl<L: LocationSet, Head, Tail: LocationSet, IHead, ITail> Subset<L, HCons<IHead, ITail>>
-    for HCons<Head, Tail>
+// Recursive case: `Head` is a `Member<S, Index1>` and `Tail` is a `Subset<S, Index2>`
+impl<Head, Tail, S, Index1, Index2> Subset<S, (Index1, Index2)> for HCons<Head, Tail>
 where
-    Head: Member<L, IHead>,
-    Tail: Subset<L, ITail>,
+    Head: Member<S, Index1>,
+    Tail: Subset<S, Index2>,
 {
 }
 
@@ -435,7 +446,9 @@ pub trait ChoreoOp<ChoreoLS: LocationSet> {
     /// TODO: documentation
     fn multicast<Sender: ChoreographyLocation, V: Portable, D: LocationSet, Index1, Index2>(
         &self,
-        builder: MulticastBuilder<ChoreoLS, V, Sender, D>,
+        src: Sender,
+        destination: D,
+        data: &MultiplyLocated<V, LocationSet!(Sender)>,
     ) -> MultiplyLocated<V, D>
     where
         Sender: Member<ChoreoLS, Index1>,
@@ -523,10 +536,8 @@ pub trait FanOutChoreography<V> {
     /// Locations looping over
     type QS: LocationSet;
     /// TODO: documentation
-    fn new() -> Self;
-    /// TODO: documentation
     fn run<Q: ChoreographyLocation, QSSubsetL, QMemberL, QMemberQS>(
-        self,
+        &self,
         op: &impl ChoreoOp<Self::L>,
     ) -> Located<V, Q>
     where
@@ -543,11 +554,9 @@ pub trait FanInChoreography<V> {
     type QS: LocationSet;
     /// Recipient locations
     type RS: LocationSet;
-    /// Constructor
-    fn new() -> Self;
     /// run a choreography
     fn run<Q: ChoreographyLocation, QSSubsetL, RSSubsetL, QMemberL, QMemberQS>(
-        self,
+        &self,
         op: &impl ChoreoOp<Self::L>,
     ) -> MultiplyLocated<V, Self::RS>
     where
@@ -774,24 +783,30 @@ where
                 }
             }
 
-            fn multicast<L1: ChoreographyLocation, V: Portable, D: LocationSet, Index1, Index2>(
+            fn multicast<
+                Sender: ChoreographyLocation,
+                V: Portable,
+                D: LocationSet,
+                Index1,
+                Index2,
+            >(
                 &self,
-                builder: MulticastBuilder<ChoreoLS, V, L1, D>,
+                src: Sender,
+                destination: D,
+                data: &MultiplyLocated<V, LocationSet!(Sender)>,
             ) -> MultiplyLocated<V, D> {
-                if L1::name() == Target::name() {
+                if Sender::name() == Target::name() {
                     for dest in D::to_string_list() {
                         if Target::name() != dest {
                             self.transport.send(
                                 &Target::name(),
                                 dest,
-                                builder.data.value.as_ref().unwrap(),
+                                data.value.as_ref().unwrap(),
                             );
                         }
                     }
-                    return MultiplyLocated {
-                        value: builder.data.value,
-                        phantom: PhantomData,
-                    };
+                    let s = serde_json::to_string(data.value.as_ref().unwrap()).unwrap();
+                    return MultiplyLocated::local(serde_json::from_str(s.as_str()).unwrap());
                 } else {
                     let mut is_receiver = false;
                     for dest in D::to_string_list() {
@@ -800,7 +815,7 @@ where
                         }
                     }
                     if is_receiver {
-                        let v = self.transport.receive(L1::name(), Target::name());
+                        let v = self.transport.receive(Sender::name(), Target::name());
                         return MultiplyLocated::local(v);
                     } else {
                         return MultiplyLocated::remote();
@@ -913,6 +928,7 @@ where
                 > {
                     phantom: PhantomData<(V, QS, QSSubsetL, FOC)>,
                     op: EppOp<'a, ChoreoLS, Target, TransportLS, B>,
+                    foc: FOC,
                 }
 
                 impl<
@@ -940,8 +956,7 @@ where
                         Q: Member<Self::L, QMemberL>,
                         Q: Member<Self::QS, QMemberQS>,
                     {
-                        let c = FOC::new();
-                        let v = c.run::<Q, QSSubsetL, QMemberL, QMemberQS>(&self.op);
+                        let v = self.foc.run::<Q, QSSubsetL, QMemberL, QMemberQS>(&self.op);
                         match v.value {
                             Some(value) => {
                                 acc.insert(String::from(Q::name()), value);
@@ -955,6 +970,7 @@ where
                     Loop::<ChoreoLS, Target, TransportLS, B, V, QSSubsetL, QS, FOC> {
                         phantom: PhantomData,
                         op,
+                        foc: c,
                     },
                     values,
                 );
@@ -1009,6 +1025,7 @@ where
                 > {
                     phantom: PhantomData<(V, QS, QSSubsetL, RS, RSSubsetL, FIC)>,
                     op: EppOp<'a, ChoreoLS, Target, TransportLS, B>,
+                    fic: FIC,
                 }
 
                 impl<
@@ -1051,8 +1068,9 @@ where
                         Q: Member<Self::L, QMemberL>,
                         Q: Member<Self::QS, QMemberQS>,
                     {
-                        let c = FIC::new();
-                        let v = c.run::<Q, QSSubsetL, RSSubsetL, QMemberL, QMemberQS>(&self.op);
+                        let v = self
+                            .fic
+                            .run::<Q, QSSubsetL, RSSubsetL, QMemberL, QMemberQS>(&self.op);
                         // if the target is in RS, `v` has a value (`Some`)
                         match v.value {
                             Some(value) => {
@@ -1068,6 +1086,7 @@ where
                     Loop::<ChoreoLS, Target, TransportLS, B, V, QSSubsetL, QS, RSSubsetL, RS, FIC> {
                         phantom: PhantomData,
                         op,
+                        fic: c,
                     },
                     HashMap::new(),
                 );
@@ -1169,14 +1188,20 @@ impl<RunnerLS: LocationSet> Runner<RunnerLS> {
                 data.value.unwrap()
             }
 
-            fn multicast<L1: ChoreographyLocation, V: Portable, D: LocationSet, Index1, Index2>(
+            fn multicast<
+                Sender: ChoreographyLocation,
+                V: Portable,
+                D: LocationSet,
+                Index1,
+                Index2,
+            >(
                 &self,
-                builder: MulticastBuilder<L, V, L1, D>,
+                src: Sender,
+                destination: D,
+                data: &MultiplyLocated<V, LocationSet!(Sender)>,
             ) -> MultiplyLocated<V, D> {
-                MultiplyLocated {
-                    value: builder.data.value,
-                    phantom: PhantomData,
-                }
+                let s = serde_json::to_string(data.value.as_ref().unwrap()).unwrap();
+                return MultiplyLocated::local(serde_json::from_str(s.as_str()).unwrap());
             }
 
             fn naked<S: LocationSet, V, Index>(&self, data: MultiplyLocated<V, S>) -> V {
