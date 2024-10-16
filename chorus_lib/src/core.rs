@@ -83,7 +83,7 @@ where
     where
         LS1: Subset<LS2, LS1SubsetLS2>,
     {
-        let value = self.value.unwrap().value;
+        let value = self.value.map(|x| x.value).flatten();
         MultiplyLocated {
             value,
             phantom: PhantomData,

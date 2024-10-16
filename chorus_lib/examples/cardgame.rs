@@ -19,6 +19,14 @@ struct Player2;
 #[derive(ChoreographyLocation)]
 struct Player3;
 
+fn read_i32() -> i32 {
+    let mut input = String::new();
+    std::io::stdin()
+        .read_line(&mut input)
+        .expect("Failed to read line");
+    input.trim().parse::<i32>().expect("Failed to parse input")
+}
+
 struct Game<
     Players: LocationSet
         + Subset<HCons<Dealer, Players>, PlayersSubsetAll>
@@ -73,11 +81,7 @@ impl<
             {
                 let card1 = op.locally(Dealer, |_| {
                     println!("Enter the first card for {:?}", Q::name());
-                    let mut input = String::new();
-                    std::io::stdin()
-                        .read_line(&mut input)
-                        .expect("Failed to read line");
-                    input.trim().parse::<i32>().expect("Failed to parse input")
+                    read_i32()
                 });
                 op.comm(Dealer, Q::new(), &card1)
             }
@@ -202,11 +206,8 @@ impl<
                         if choice {
                             let card2 = op.locally(Dealer, |_| {
                                 println!("Player {:?} wants another card", Player::name());
-                                let mut input = String::new();
-                                std::io::stdin()
-                                    .read_line(&mut input)
-                                    .expect("Failed to read line");
-                                input.trim().parse::<i32>().expect("Failed to parse input")
+                                println!("Enter the second card for {:?}", Player::name());
+                                read_i32()
                             });
                             let card2 = op.comm(Dealer, Player::new(), &card2);
                             op.locally(Player::new(), |un| {
@@ -235,11 +236,7 @@ impl<
         );
         let tbl_card = op.locally(Dealer, |_| {
             println!("Enter a single card for everyone ");
-            let mut input = String::new();
-            std::io::stdin()
-                .read_line(&mut input)
-                .expect("Failed to read line");
-            input.trim().parse::<i32>().expect("Failed to parse input")
+            read_i32()
         });
         let table_card = op.broadcast(Dealer, tbl_card);
 
@@ -264,7 +261,7 @@ impl<
                     hand2.push(self.table_card);
                     println!("Final hands: {:?}", hand2);
                     let sum: i32 = hand2.iter().sum();
-                    println!("My win result: {}", sum > 19);
+                    println!("My win result: {}", sum % 21 > 19);
                     return ();
                 })
             }
