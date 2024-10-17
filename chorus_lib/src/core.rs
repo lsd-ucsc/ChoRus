@@ -187,7 +187,7 @@ pub trait LocationSetFoldable<L: LocationSet, QS: LocationSet, Index> {
 }
 
 impl<L: LocationSet, QS: LocationSet> LocationSetFoldable<L, QS, Here> for HNil {
-    fn foldr<B, F: LocationSetFolder<B, L = L>>(f: F, acc: B) -> B {
+    fn foldr<B, F: LocationSetFolder<B, L = L>>(_f: F, acc: B) -> B {
         acc
     }
 }
@@ -361,7 +361,7 @@ impl<L: LocationSet, V: Portable, S: ChoreographyLocation> MulticastBuilder<L, V
     ///
     /// - `source` is the source location of the multicast.
     /// - `data` is the located value to be multicast.
-    pub fn new(source: S, data: Located<V, S>) -> MulticastBuilder<L, V, S, HNil> {
+    pub fn new(_source: S, data: Located<V, S>) -> MulticastBuilder<L, V, S, HNil> {
         MulticastBuilder {
             data,
             phantom: PhantomData,
@@ -791,8 +791,8 @@ where
                 Index2,
             >(
                 &self,
-                src: Sender,
-                destination: D,
+                _src: Sender,
+                _destination: D,
                 data: &MultiplyLocated<V, LocationSet!(Sender)>,
             ) -> MultiplyLocated<V, D> {
                 if Sender::name() == Target::name() {
@@ -868,7 +868,7 @@ where
 
             fn parallel<V, S: LocationSet, Index>(
                 &self,
-                locations: S,
+                _locations: S,
                 computation: impl Fn() -> V, // TODO: add unwrapper for S
             ) -> Faceted<V, S>
             where
@@ -899,7 +899,7 @@ where
                 QSFoldable,
             >(
                 &self,
-                locations: QS,
+                _locations: QS,
                 c: FOC,
             ) -> Faceted<V, QS>
             where
@@ -994,7 +994,7 @@ where
                 QSFoldable,
             >(
                 &self,
-                locations: QS,
+                _locations: QS,
                 c: FIC,
             ) -> MultiplyLocated<Quire<V, QS>, RS>
             where
@@ -1196,8 +1196,8 @@ impl<RunnerLS: LocationSet> Runner<RunnerLS> {
                 Index2,
             >(
                 &self,
-                src: Sender,
-                destination: D,
+                _src: Sender,
+                _destination: D,
                 data: &MultiplyLocated<V, LocationSet!(Sender)>,
             ) -> MultiplyLocated<V, D> {
                 let s = serde_json::to_string(data.value.as_ref().unwrap()).unwrap();
@@ -1230,7 +1230,7 @@ impl<RunnerLS: LocationSet> Runner<RunnerLS> {
 
             fn parallel<V, S: LocationSet, Index>(
                 &self,
-                locations: S,
+                _locations: S,
                 computation: impl Fn() -> V, // TODO: add unwrapper for S
             ) -> Faceted<V, S>
             where
@@ -1258,8 +1258,8 @@ impl<RunnerLS: LocationSet> Runner<RunnerLS> {
                 QSFoldable,
             >(
                 &self,
-                locations: QS,
-                c: FOC,
+                _locations: QS,
+                _c: FOC,
             ) -> Faceted<V, QS>
             where
                 QS: Subset<L, QSSubsetL>,
@@ -1283,8 +1283,8 @@ impl<RunnerLS: LocationSet> Runner<RunnerLS> {
                 QSFoldable,
             >(
                 &self,
-                locations: QS,
-                c: FIC,
+                _locations: QS,
+                _c: FIC,
             ) -> MultiplyLocated<Quire<V, QS>, RS>
             where
                 QS: Subset<L, QSSubsetL>,

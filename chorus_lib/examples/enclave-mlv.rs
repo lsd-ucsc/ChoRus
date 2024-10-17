@@ -1,7 +1,7 @@
 use chorus_lib::{
     core::{
         ChoreoOp, Choreography, ChoreographyLocation, Located, LocationSet, MultiplyLocated,
-        Projector, Superposition,
+        Projector,
     },
     transport::local::{LocalTransport, LocalTransportChannelBuilder},
 };

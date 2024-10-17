@@ -3,7 +3,7 @@ extern crate chorus_lib;
 use std::thread;
 
 use chorus_lib::core::{
-    ChoreoOp, Choreography, ChoreographyLocation, LocationSet, MulticastBuilder, Projector,
+    ChoreoOp, Choreography, ChoreographyLocation, LocationSet, Projector,
 };
 use chorus_lib::transport::local::{LocalTransport, LocalTransportChannelBuilder};
 
