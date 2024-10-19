@@ -1,6 +1,7 @@
 extern crate chorus_lib;
 
 use std::collections::HashMap;
+use std::cmp::max;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::thread;
@@ -107,30 +108,36 @@ impl Choreography<Located<bool, Buyer1>> for Unilateral {
 }
 
 
-//fn collaborative(budget1: Located<Money, Buyer1>, budget2: Located<Money, Buyer2>) -> Decider {
-//    |price| {
-//    impl Choreography<Located<bool, Buyer1>> for TwoBuyerDecider {
- //   type L = LocationSet!(Buyer1, Buyer2);
-  //  fn run(self, op: &impl ChoreoOp<Self::L>) -> Located<bool, Buyer1> {
-   //     let remaining = op.locally(Buyer1, |un| {
-    //        const BUYER1_BUDGET: Money = 100;
-     //       return un.unwrap(&self.price) - BUYER1_BUDGET;
-      //  });
-       // let remaining = op.comm(Buyer1, Buyer2, &remaining);
-        //let decision = op.locally(Buyer2, |un| {
- //           const BUYER2_BUDGET: Money = 200;
-  //          return *un.unwrap(&remaining) < BUYER2_BUDGET;
-   //     });
-    //    op.comm(Buyer2, Buyer1, &decision)
-    //}
-//}
-//    }
-//}
-
-
+////////////////////////////////////////////////////////////////////////
+struct Colaborative {
+    price: Located<Option<Money>, Buyer1>,
+    budget1: Located<Money, Buyer1>,
+    budget2: Located<Money, Buyer2>,
+}
+impl Decider for Colaborative {
+    type Budgets = (Located<Money, Buyer1>, Located<Money, Buyer2>);
+    fn new(price: Located<Option<Money>, Buyer1>, (budget1, budget2): (Located<Money, Buyer1>, Located<Money, Buyer2>)) -> Self{
+        return Self{price: price, budget1: budget1, budget2: budget2}
+    }
+}
+impl Choreography<Located<bool, Buyer1>> for Colaborative {
+    type L = LocationSet!(Buyer1, Buyer2);
+    fn run(self, op: &impl ChoreoOp<Self::L>) -> Located<bool, Buyer1> {
+        match op.broadcast(Buyer1, self.price) {
+            Some(price) => {
+                    let remainder = op.comm(Buyer2, Buyer1, &op.locally(Buyer2, |un| {
+                        max(0, price - un.unwrap(&self.budget2))
+                    }));
+                    op.locally(Buyer1, |un| {un.unwrap(&remainder) <= un.unwrap(&self.budget1)})
+                },
+            None => op.locally(Buyer1, |_| {false})
+        }
+    }
+}
 
 
 fn run_test(inventory: Inventory, title: Title, budget1: Money, budget2: Option<Money>, answer: Option<NaiveDate>) {
+    let central_runner = Runner::new();
     let transport_channel = LocalTransportChannelBuilder::new()
         .with(Seller).with(Buyer1).with(Buyer2)
         .build();
@@ -148,11 +155,52 @@ fn run_test(inventory: Inventory, title: Title, budget1: Money, budget2: Option<
     ));
     let mut handles = Vec::new();
 
-    if let Some(_) = budget2 {
-        panic!() //TODO
+    if let Some(budget2) = budget2 {
+        {
+            let choreo : Booksellers<Colaborative, (Located<Money, Buyer1>, Located<Money, Buyer2>)> = Booksellers{
+                inventory: central_runner.local(inventory.clone()),
+                title: central_runner.local(title.clone()),
+                budgets: (central_runner.local(budget1), central_runner.local(budget2)),
+                _marker: PhantomData,
+            };
+            let central_result = central_runner.run(choreo);
+            assert_eq!(central_result, answer);
+        }
+        {
+            handles.push(thread::spawn(move || {
+                let choreo : Booksellers<Colaborative, (Located<Money, Buyer1>, Located<Money, Buyer2>)> = Booksellers{
+                    inventory: seller_projector.local(inventory.clone()),
+                    title: seller_projector.remote(Buyer1),
+                    budgets: (seller_projector.remote(Buyer1), seller_projector.remote(Buyer2)),
+                    _marker: PhantomData,
+                };
+                seller_projector.epp_and_run(choreo)
+            }));
+        }
+        {
+            handles.push(thread::spawn(move || {
+                let choreo : Booksellers<Colaborative, (Located<Money, Buyer1>, Located<Money, Buyer2>)> = Booksellers{
+                    inventory: buyer1_projector.remote(Seller),
+                    title: buyer1_projector.local(title).clone(),
+                    budgets: (buyer1_projector.local(budget1), buyer1_projector.remote(Buyer2)),
+                    _marker: PhantomData,
+                };
+                buyer1_projector.epp_and_run(choreo)
+            }));
+        }
+        {
+            handles.push(thread::spawn(move || {
+                let choreo : Booksellers<Colaborative, (Located<Money, Buyer1>, Located<Money, Buyer2>)> = Booksellers{
+                    inventory: buyer2_projector.remote(Seller),
+                    title: buyer2_projector.remote(Buyer1),
+                    budgets: (buyer2_projector.remote(Buyer1), buyer2_projector.local(budget2)),
+                    _marker: PhantomData,
+                };
+                buyer2_projector.epp_and_run(choreo)
+            }));
+        }
     } else {
         {
-            let central_runner = Runner::new();
             let choreo : Booksellers<Unilateral, Located<Money, Buyer1>> = Booksellers{
                 inventory: central_runner.local(inventory.clone()),
                 title: central_runner.local(title.clone()),
@@ -163,7 +211,6 @@ fn run_test(inventory: Inventory, title: Title, budget1: Money, budget2: Option<
             assert_eq!(central_result, answer);
         }
         {
-            let seller_projector = seller_projector.clone();
             handles.push(thread::spawn(move || {
                 let choreo : Booksellers<Unilateral, Located<Money, Buyer1>> = Booksellers{
                     inventory: seller_projector.local(inventory.clone()),
@@ -175,7 +222,6 @@ fn run_test(inventory: Inventory, title: Title, budget1: Money, budget2: Option<
             }));
         }
         {
-            let buyer1_projector = buyer1_projector.clone();
             handles.push(thread::spawn(move || {
                 let choreo : Booksellers<Unilateral, Located<Money, Buyer1>> = Booksellers{
                     inventory: buyer1_projector.remote(Seller),
@@ -187,7 +233,6 @@ fn run_test(inventory: Inventory, title: Title, budget1: Money, budget2: Option<
             }));
         }
         {
-            let buyer2_projector = buyer2_projector.clone();
             handles.push(thread::spawn(move || {
                 let choreo : Booksellers<Unilateral, Located<Money, Buyer1>> = Booksellers{
                     inventory: buyer2_projector.remote(Seller),
@@ -219,7 +264,10 @@ fn main() {
         );
         i
     };
-    let title = "TAPL".to_string();
-    let budget = 300;
-    run_test(inventory, title, budget, None, Some(NaiveDate::from_ymd_opt(2023, 8, 3).unwrap()))
+    let tapl = "TAPL".to_string();
+    let hott = "HoTT".to_string();
+    run_test(inventory.clone(), tapl.clone(), 100, None, Some(NaiveDate::from_ymd_opt(2023, 8, 3).unwrap()));
+    run_test(inventory.clone(), hott.clone(), 25, None, None);
+    run_test(inventory.clone(), tapl.clone(), 30, Some(30), Some(NaiveDate::from_ymd_opt(2023, 8, 3).unwrap()));
+    run_test(inventory.clone(), hott.clone(), 30, Some(30), None);
 }
