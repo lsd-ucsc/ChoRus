@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::thread;
 
 use chorus_lib::{
-    core::{ChoreoOp, Choreography, ChoreographyLocation, Located, LocationSet, Projector, Runner},
+    core::{ChoreoOp, Choreography, ChoreographyLocation, HCons, Here, Located, LocationSet, Member, Projector, Runner, Subset, There},
     transport::local::{LocalTransport, LocalTransportChannelBuilder},
 };
 use chrono::NaiveDate;
@@ -32,17 +32,24 @@ trait Decider {
     fn new(price: Located<Option<Money>, Buyer1>, budgets: Self::Budgets) -> Self;
 }
 
-struct Booksellers<D: Choreography<Located<bool, Buyer1>> + Decider<Budgets=Budgets>, Budgets> {
+struct Booksellers<D: Choreography<Located<bool, Buyer1>> + Decider<Budgets=Budgets>, Budgets, Buyers, B1Index, BSIndex> {
     inventory: Located<Inventory, Seller>,
     title: Located<Title, Buyer1>,
     budgets: Budgets,
-    _marker: PhantomData<D>,
+    _phantoms: PhantomData<(D, Buyers, B1Index, BSIndex)>,
 }
 
-impl<D: Choreography<Located<bool, Buyer1>, L = LocationSet!(Buyer1, Buyer2)> + Decider<Budgets=Budgets>, Budgets>
-     Choreography<Option<NaiveDate>> for Booksellers<D, Budgets>
+impl<Buyers: LocationSet
+    ,D: Choreography<Located<bool, Buyer1>, L = Buyers> + Decider<Budgets=Budgets>
+    ,Budgets
+    ,B1Index
+    ,BSIndex
+    > Choreography<Option<NaiveDate>> for Booksellers<D, Budgets, Buyers, B1Index, BSIndex>
+    where Buyer1: Member<Buyers, B1Index>
+        , Buyer1: Member<HCons<Seller, Buyers>, There<B1Index>>
+        , Buyers: Subset<HCons<Seller, Buyers>, BSIndex>
 {
-    type L = LocationSet!(Buyer1, Buyer2, Seller);
+    type L = HCons<Seller, Buyers>;
     fn run(self, op: &impl ChoreoOp<Self::L>) -> Option<NaiveDate> {
         let title_at_seller = op.comm(Buyer1, Seller, &self.title);
         let price_at_seller = op.locally(Seller, |un| {
@@ -51,7 +58,7 @@ impl<D: Choreography<Located<bool, Buyer1>, L = LocationSet!(Buyer1, Buyer2)> + 
             inventory.get(title).map(|(price, _)|{*price})        });
         let price_at_buyer1 = op.comm(Seller, Buyer1, &price_at_seller);
         let decider = D::new(price_at_buyer1, self.budgets);
-        let decision_at_buyer1 = op.call(decider);
+        let decision_at_buyer1 = op.enclave(decider).flatten();
 
         struct GetDeliveryDateChoreography {
             inventory: Located<Inventory, Seller>,
@@ -96,7 +103,7 @@ impl Decider for Unilateral {
     }
 }
 impl Choreography<Located<bool, Buyer1>> for Unilateral {
-    type L = LocationSet!(Buyer1, Buyer2);
+    type L = LocationSet!(Buyer1);
     fn run(self, op: &impl ChoreoOp<Self::L>) -> Located<bool, Buyer1> {
         op.locally(Buyer1, |un| {
             match un.unwrap(&self.price) {
@@ -137,7 +144,6 @@ impl Choreography<Located<bool, Buyer1>> for Colaborative {
 
 
 fn run_test(inventory: Inventory, title: Title, budget1: Money, budget2: Option<Money>, answer: Option<NaiveDate>) {
-    let central_runner = Runner::new();
     let transport_channel = LocalTransportChannelBuilder::new()
         .with(Seller).with(Buyer1).with(Buyer2)
         .build();
@@ -157,88 +163,122 @@ fn run_test(inventory: Inventory, title: Title, budget1: Money, budget2: Option<
 
     if let Some(budget2) = budget2 {
         {
-            let choreo : Booksellers<Colaborative, (Located<Money, Buyer1>, Located<Money, Buyer2>)> = Booksellers{
+            let central_runner = Runner::new();
+            let choreo : Booksellers<Colaborative,
+                                     (Located<Money, Buyer1>, Located<Money, Buyer2>),
+                                     LocationSet!(Buyer1, Buyer2),
+                                     Here,
+                                     (There<Here>, (There<There<Here>>, Here))> = Booksellers{
                 inventory: central_runner.local(inventory.clone()),
                 title: central_runner.local(title.clone()),
                 budgets: (central_runner.local(budget1), central_runner.local(budget2)),
-                _marker: PhantomData,
+                _phantoms: PhantomData,
             };
             let central_result = central_runner.run(choreo);
             assert_eq!(central_result, answer);
         }
         {
             handles.push(thread::spawn(move || {
-                let choreo : Booksellers<Colaborative, (Located<Money, Buyer1>, Located<Money, Buyer2>)> = Booksellers{
+                let choreo : Booksellers<Colaborative,
+                                         (Located<Money, Buyer1>, Located<Money, Buyer2>),
+                                         LocationSet!(Buyer1, Buyer2),
+                                         Here,
+                                         (There<Here>, (There<There<Here>>, Here))> = Booksellers{
                     inventory: seller_projector.local(inventory.clone()),
                     title: seller_projector.remote(Buyer1),
                     budgets: (seller_projector.remote(Buyer1), seller_projector.remote(Buyer2)),
-                    _marker: PhantomData,
+                    _phantoms: PhantomData,
                 };
                 seller_projector.epp_and_run(choreo)
             }));
         }
         {
             handles.push(thread::spawn(move || {
-                let choreo : Booksellers<Colaborative, (Located<Money, Buyer1>, Located<Money, Buyer2>)> = Booksellers{
+                let choreo : Booksellers<Colaborative,
+                                         (Located<Money, Buyer1>, Located<Money, Buyer2>),
+                                         LocationSet!(Buyer1, Buyer2),
+                                         Here,
+                                         (There<Here>, (There<There<Here>>, Here))> = Booksellers{
                     inventory: buyer1_projector.remote(Seller),
                     title: buyer1_projector.local(title).clone(),
                     budgets: (buyer1_projector.local(budget1), buyer1_projector.remote(Buyer2)),
-                    _marker: PhantomData,
+                    _phantoms: PhantomData,
                 };
                 buyer1_projector.epp_and_run(choreo)
             }));
         }
         {
             handles.push(thread::spawn(move || {
-                let choreo : Booksellers<Colaborative, (Located<Money, Buyer1>, Located<Money, Buyer2>)> = Booksellers{
+                let choreo : Booksellers<Colaborative,
+                                         (Located<Money, Buyer1>, Located<Money, Buyer2>),
+                                         LocationSet!(Buyer1, Buyer2),
+                                         Here,
+                                         (There<Here>, (There<There<Here>>, Here))> = Booksellers{
                     inventory: buyer2_projector.remote(Seller),
                     title: buyer2_projector.remote(Buyer1),
                     budgets: (buyer2_projector.remote(Buyer1), buyer2_projector.local(budget2)),
-                    _marker: PhantomData,
+                    _phantoms: PhantomData,
                 };
                 buyer2_projector.epp_and_run(choreo)
             }));
         }
     } else {
         {
-            let choreo : Booksellers<Unilateral, Located<Money, Buyer1>> = Booksellers{
+            let central_runner = Runner::new();
+            let choreo : Booksellers<Unilateral,
+                                     Located<Money, Buyer1>,
+                                     LocationSet!(Buyer1),
+                                     Here,
+                                     (There<Here>, Here)> = Booksellers{
                 inventory: central_runner.local(inventory.clone()),
                 title: central_runner.local(title.clone()),
                 budgets: central_runner.local(budget1),
-                _marker: PhantomData,
+                _phantoms: PhantomData,
             };
             let central_result = central_runner.run(choreo);
             assert_eq!(central_result, answer);
         }
         {
             handles.push(thread::spawn(move || {
-                let choreo : Booksellers<Unilateral, Located<Money, Buyer1>> = Booksellers{
+                let choreo : Booksellers<Unilateral,
+                                         Located<Money, Buyer1>,
+                                         LocationSet!(Buyer1),
+                                         Here,
+                                         (There<Here>, Here)> = Booksellers{
                     inventory: seller_projector.local(inventory.clone()),
                     title: seller_projector.remote(Buyer1),
                     budgets: seller_projector.remote(Buyer1),
-                    _marker: PhantomData,
+                    _phantoms: PhantomData,
                 };
                 seller_projector.epp_and_run(choreo)
             }));
         }
         {
             handles.push(thread::spawn(move || {
-                let choreo : Booksellers<Unilateral, Located<Money, Buyer1>> = Booksellers{
+                let choreo : Booksellers<Unilateral,
+                                         Located<Money, Buyer1>,
+                                         LocationSet!(Buyer1),
+                                         Here,
+                                         (There<Here>, Here)> = Booksellers{
                     inventory: buyer1_projector.remote(Seller),
                     title: buyer1_projector.local(title).clone(),
                     budgets: buyer1_projector.local(budget1),
-                    _marker: PhantomData,
+                    _phantoms: PhantomData,
                 };
                 buyer1_projector.epp_and_run(choreo)
             }));
         }
         {
             handles.push(thread::spawn(move || {
-                let choreo : Booksellers<Unilateral, Located<Money, Buyer1>> = Booksellers{
+                let choreo : Booksellers<Unilateral,
+                                         Located<Money, Buyer1>,
+                                         LocationSet!(Buyer1),
+                                         Here,
+                                         (There<Here>, Here)> = Booksellers{
                     inventory: buyer2_projector.remote(Seller),
                     title: buyer2_projector.remote(Buyer1),
                     budgets: buyer2_projector.remote(Buyer1),
-                    _marker: PhantomData,
+                    _phantoms: PhantomData,
                 };
                 buyer2_projector.epp_and_run(choreo)
             }));
