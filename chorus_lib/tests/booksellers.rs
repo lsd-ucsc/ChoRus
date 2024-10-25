@@ -8,8 +8,10 @@ use std::thread;
 use chorus_lib::{
     core::{ChoreoOp, Choreography, ChoreographyLocation, Faceted,
            FanInChoreography,
-           HCons, Here, Located, LocationSet, Member, MultiplyLocated,
-           Projector, Runner, Subset, There},
+           HCons, HNil,
+           Here, Located, LocationSet, Member,
+           Projector,
+           Quire, Runner, Subset, There},
     transport::local::{LocalTransport, LocalTransportChannelBuilder},
 };
 use chrono::NaiveDate;
@@ -128,7 +130,7 @@ where Buyer1: Member<Buyers, B1Index>
 {
     type Budgets = Faceted<Money, Buyers>;
     fn new(price: Located<Option<Money>, Buyer1>, budgets: Faceted<Money, Buyers>) -> Self{
-        return Self{price: price, budgets: budgets}
+        return Self{price: price, budgets: budgets, _phantoms: PhantomData}
     }
 }
 impl<Buyers: LocationSet, B1Index> Choreography<Located<bool, Buyer1>> for Colaborative<Buyers, B1Index>
@@ -159,21 +161,26 @@ where Buyer1: Member<Buyers, B1Index>
                             Q: Member<Self::L, QMemberL>,
                             Q: Member<Self::QS, QMemberQS>,
                         {
-                            op.comm(Q::new(),
-                                    Buyer1,
-                                    op.locally(Q::new(), |un| *un.unwrap3(&self.budgets)))
+                            op.comm::<HCons<Q, HNil>, Q, Buyer1, Money, (QMemberL, Here), QMemberL, B1Index>(
+                                Q::new(),
+                                Buyer1,
+                                &op.locally::<Money, Q, QMemberL>(Q::new(),
+                                                                  |un| *un.unwrap3::<Money, Buyers, QMemberQS>(&self.budgets))
+                            )
                         }
                     }
                     let budgets = op.fanin(
                         Buyers::new(),
                         Gather {
-                            budgets: &self.budget,
+                            budgets: &self.budgets,
                             _phantoms: PhantomData,
                         },
                     );
 
-                    let total = op.locally(Buyer1, |un| { un.unwrap(budgets).into_iter().sum() });
-                    return price <= total
+                    op.locally(Buyer1, |un| {
+                        let budget = un.unwrap::<Quire<Money, Buyers>, HCons<Buyer1, HNil>, Here>(&budgets).get_map().into_values().sum();
+                        return price <= budget
+                    })
                 },
             None => op.locally(Buyer1, |_| {false})
         }
@@ -202,14 +209,20 @@ fn run_test(inventory: Inventory, title: Title, budget1: Money, budget2: Option<
     if let Some(budget2) = budget2 {
         {
             let central_runner = Runner::new();
-            let choreo : Booksellers<Colaborative,
-                                     (Located<Money, Buyer1>, Located<Money, Buyer2>),
+            let choreo : Booksellers<Colaborative<LocationSet!(Buyer1, Buyer2), Here>,
+                                     Faceted<Money, LocationSet!(Buyer1, Buyer2)>,
                                      LocationSet!(Buyer1, Buyer2),
                                      Here,
                                      (There<Here>, (There<There<Here>>, Here))> = Booksellers{
                 inventory: central_runner.local(inventory.clone()),
                 title: central_runner.local(title.clone()),
-                budgets: (central_runner.local(budget1), central_runner.local(budget2)),
+                budgets: Faceted {
+                    value: HashMap::from([
+                               (String::from(Buyer1::name()), budget1),
+                               (String::from(Buyer2::name()), budget2),
+                    ]),
+                    phantom: PhantomData,
+                },
                 _phantoms: PhantomData,
             };
             let central_result = central_runner.run(choreo);
@@ -217,14 +230,20 @@ fn run_test(inventory: Inventory, title: Title, budget1: Money, budget2: Option<
         }
         {
             handles.push(thread::spawn(move || {
-                let choreo : Booksellers<Colaborative,
-                                         (Located<Money, Buyer1>, Located<Money, Buyer2>),
+                let choreo : Booksellers<Colaborative<LocationSet!(Buyer1, Buyer2), Here>,
+                                         Faceted<Money, LocationSet!(Buyer1, Buyer2)>,
                                          LocationSet!(Buyer1, Buyer2),
                                          Here,
                                          (There<Here>, (There<There<Here>>, Here))> = Booksellers{
                     inventory: seller_projector.local(inventory.clone()),
                     title: seller_projector.remote(Buyer1),
-                    budgets: (seller_projector.remote(Buyer1), seller_projector.remote(Buyer2)),
+                    budgets: Faceted {
+                        value: HashMap::from([
+                                   (String::from(Buyer1::name()), budget1),
+                                   (String::from(Buyer2::name()), budget2),
+                        ]),
+                        phantom: PhantomData,
+                    },
                     _phantoms: PhantomData,
                 };
                 seller_projector.epp_and_run(choreo)
@@ -232,14 +251,20 @@ fn run_test(inventory: Inventory, title: Title, budget1: Money, budget2: Option<
         }
         {
             handles.push(thread::spawn(move || {
-                let choreo : Booksellers<Colaborative,
-                                         (Located<Money, Buyer1>, Located<Money, Buyer2>),
+                let choreo : Booksellers<Colaborative<LocationSet!(Buyer1, Buyer2), Here>,
+                                         Faceted<Money, LocationSet!(Buyer1, Buyer2)>,
                                          LocationSet!(Buyer1, Buyer2),
                                          Here,
                                          (There<Here>, (There<There<Here>>, Here))> = Booksellers{
                     inventory: buyer1_projector.remote(Seller),
                     title: buyer1_projector.local(title).clone(),
-                    budgets: (buyer1_projector.local(budget1), buyer1_projector.remote(Buyer2)),
+                    budgets: Faceted {
+                        value: HashMap::from([
+                                   (String::from(Buyer1::name()), budget1),
+                                   (String::from(Buyer2::name()), budget2),
+                        ]),
+                        phantom: PhantomData,
+                    },
                     _phantoms: PhantomData,
                 };
                 buyer1_projector.epp_and_run(choreo)
@@ -247,14 +272,20 @@ fn run_test(inventory: Inventory, title: Title, budget1: Money, budget2: Option<
         }
         {
             handles.push(thread::spawn(move || {
-                let choreo : Booksellers<Colaborative,
-                                         (Located<Money, Buyer1>, Located<Money, Buyer2>),
+                let choreo : Booksellers<Colaborative<LocationSet!(Buyer1, Buyer2), Here>,
+                                         Faceted<Money, LocationSet!(Buyer1, Buyer2)>,
                                          LocationSet!(Buyer1, Buyer2),
                                          Here,
                                          (There<Here>, (There<There<Here>>, Here))> = Booksellers{
                     inventory: buyer2_projector.remote(Seller),
                     title: buyer2_projector.remote(Buyer1),
-                    budgets: (buyer2_projector.remote(Buyer1), buyer2_projector.local(budget2)),
+                    budgets: Faceted {
+                        value: HashMap::from([
+                                   (String::from(Buyer1::name()), budget1),
+                                   (String::from(Buyer2::name()), budget2),
+                        ]),
+                        phantom: PhantomData,
+                    },
                     _phantoms: PhantomData,
                 };
                 buyer2_projector.epp_and_run(choreo)
@@ -348,4 +379,6 @@ fn main() {
     run_test(inventory.clone(), hott.clone(), 25, None, None);
     run_test(inventory.clone(), tapl.clone(), 30, Some(30), Some(NaiveDate::from_ymd_opt(2023, 8, 3).unwrap()));
     run_test(inventory.clone(), hott.clone(), 30, Some(30), None);
+    run_test(inventory.clone(), "nonesuch".to_string(), 25, None, None);
+    run_test(inventory.clone(), "nonesuch".to_string(), 30, Some(30), None);
 }
