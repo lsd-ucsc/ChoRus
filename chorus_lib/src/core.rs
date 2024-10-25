@@ -136,6 +136,35 @@ where
     }
 }
 
+impl<V> Quire<V, HNil> {
+    /// Constructs a struct located at the current location with value
+    pub fn new() -> Self {
+        Quire {
+            value: HashMap::new(),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<V, L> Quire<V, L>
+where
+    L: LocationSet,
+{
+    /// Add a value located at a location
+    pub fn add<L1: ChoreographyLocation>(self, _location: L1, value: V) -> Quire<V, HCons<L1, L>> {
+        let mut map = self.value;
+        map.insert(L1::name().to_string(), value);
+        Quire {
+            value: map,
+            phantom: PhantomData,
+        }
+    }
+    /// Get as a hash map
+    pub fn get_map(self) -> HashMap<String, V> {
+        self.value
+    }
+}
+
 /// Represents possibly different values located at multiple locations
 #[derive(Debug)]
 pub struct Faceted<V, L>
