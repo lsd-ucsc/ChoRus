@@ -350,43 +350,6 @@ impl<L1: ChoreographyLocation> Unwrapper<L1> {
     }
 }
 
-/// TODO: documentation
-pub struct MulticastBuilder<L: LocationSet, V: Portable, S: ChoreographyLocation, D: LocationSet> {
-    data: Located<V, S>,
-    phantom: PhantomData<(L, D)>,
-}
-
-impl<L: LocationSet, V: Portable, S: ChoreographyLocation> MulticastBuilder<L, V, S, HNil> {
-    /// Constructs a `MulticastBuilder` struct.
-    ///
-    /// - `source` is the source location of the multicast.
-    /// - `data` is the located value to be multicast.
-    pub fn new(source: S, data: Located<V, S>) -> MulticastBuilder<L, V, S, HNil> {
-        MulticastBuilder {
-            data,
-            phantom: PhantomData,
-        }
-    }
-}
-
-impl<L: LocationSet, V: Portable, S: ChoreographyLocation, D: LocationSet>
-    MulticastBuilder<L, V, S, D>
-{
-    /// Adds a destination to the multicast.
-    pub fn to<D1: ChoreographyLocation, Index>(
-        self,
-        _destination: D1,
-    ) -> MulticastBuilder<L, V, S, HCons<D1, D>>
-    where
-        D1: Member<L, Index>,
-    {
-        MulticastBuilder {
-            data: self.data,
-            phantom: PhantomData,
-        }
-    }
-}
-
 /// Provides choreographic operations.
 ///
 /// The trait provides methods to work with located values. An implementation of the trait is "injected" into
@@ -443,7 +406,9 @@ pub trait ChoreoOp<ChoreoLS: LocationSet> {
         L: Subset<ChoreoLS, Index1>,
         Sender: Member<ChoreoLS, Index2>;
 
-    /// TODO: documentation
+    /// Performs a multicast from a location to a set of locations.
+    ///
+    /// Use `<LocationSet!(L1, L2, ...)>::new()` to create a value of location set.
     fn multicast<Sender: ChoreographyLocation, V: Portable, D: LocationSet, Index1, Index2>(
         &self,
         src: Sender,
