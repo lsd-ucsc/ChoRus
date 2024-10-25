@@ -1,13 +1,15 @@
 extern crate chorus_lib;
 
 use std::collections::HashMap;
-use std::cmp::max;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::thread;
 
 use chorus_lib::{
-    core::{ChoreoOp, Choreography, ChoreographyLocation, HCons, Here, Located, LocationSet, Member, Projector, Runner, Subset, There},
+    core::{ChoreoOp, Choreography, ChoreographyLocation, Faceted,
+           FanInChoreography,
+           HCons, Here, Located, LocationSet, Member, MultiplyLocated,
+           Projector, Runner, Subset, There},
     transport::local::{LocalTransport, LocalTransportChannelBuilder},
 };
 use chrono::NaiveDate;
@@ -116,26 +118,62 @@ impl Choreography<Located<bool, Buyer1>> for Unilateral {
 
 
 ////////////////////////////////////////////////////////////////////////
-struct Colaborative {
+struct Colaborative<Buyers: LocationSet, B1Index> {
     price: Located<Option<Money>, Buyer1>,
-    budget1: Located<Money, Buyer1>,
-    budget2: Located<Money, Buyer2>,
+    budgets: Faceted<Money, Buyers>,
+    _phantoms: PhantomData<B1Index>,
 }
-impl Decider for Colaborative {
-    type Budgets = (Located<Money, Buyer1>, Located<Money, Buyer2>);
-    fn new(price: Located<Option<Money>, Buyer1>, (budget1, budget2): (Located<Money, Buyer1>, Located<Money, Buyer2>)) -> Self{
-        return Self{price: price, budget1: budget1, budget2: budget2}
+impl<Buyers: LocationSet, B1Index> Decider for Colaborative<Buyers, B1Index>
+where Buyer1: Member<Buyers, B1Index>
+{
+    type Budgets = Faceted<Money, Buyers>;
+    fn new(price: Located<Option<Money>, Buyer1>, budgets: Faceted<Money, Buyers>) -> Self{
+        return Self{price: price, budgets: budgets}
     }
 }
-impl Choreography<Located<bool, Buyer1>> for Colaborative {
-    type L = LocationSet!(Buyer1, Buyer2);
+impl<Buyers: LocationSet, B1Index> Choreography<Located<bool, Buyer1>> for Colaborative<Buyers, B1Index>
+where Buyer1: Member<Buyers, B1Index>
+{
+    type L = Buyers;
     fn run(self, op: &impl ChoreoOp<Self::L>) -> Located<bool, Buyer1> {
         match op.broadcast(Buyer1, self.price) {
             Some(price) => {
-                    let remainder = op.comm(Buyer2, Buyer1, &op.locally(Buyer2, |un| {
-                        max(0, price - un.unwrap(&self.budget2))
-                    }));
-                    op.locally(Buyer1, |un| {un.unwrap(&remainder) <= un.unwrap(&self.budget1)})
+
+                    struct Gather<'a, Buyers: LocationSet, B1Index> {
+                        budgets: &'a Faceted<Money, Buyers>,
+                        _phantoms: PhantomData<B1Index>,
+                    }
+                    impl<'a, Buyers: LocationSet, B1Index> FanInChoreography<Money> for Gather<'a, Buyers, B1Index>
+                    where Buyer1: Member<Buyers, B1Index>
+                    {
+                        type L = Buyers;
+                        type QS = Buyers;
+                        type RS = LocationSet!(Buyer1);
+                        fn run<Q: ChoreographyLocation, QSSubsetL, RSSubsetL, QMemberL, QMemberQS>(
+                            &self,
+                            op: &impl ChoreoOp<Self::L>,
+                        ) -> Located<Money, Buyer1>
+                        where
+                            Self::QS: Subset<Self::L, QSSubsetL>,
+                            Self::RS: Subset<Self::L, RSSubsetL>,
+                            Q: Member<Self::L, QMemberL>,
+                            Q: Member<Self::QS, QMemberQS>,
+                        {
+                            op.comm(Q::new(),
+                                    Buyer1,
+                                    op.locally(Q::new(), |un| *un.unwrap3(&self.budgets)))
+                        }
+                    }
+                    let budgets = op.fanin(
+                        Buyers::new(),
+                        Gather {
+                            budgets: &self.budget,
+                            _phantoms: PhantomData,
+                        },
+                    );
+
+                    let total = op.locally(Buyer1, |un| { un.unwrap(budgets).into_iter().sum() });
+                    return price <= total
                 },
             None => op.locally(Buyer1, |_| {false})
         }
