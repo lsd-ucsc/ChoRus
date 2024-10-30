@@ -159,9 +159,20 @@ where
             phantom: PhantomData,
         }
     }
-    /// Get as a hash map
-    pub fn get_map(self) -> HashMap<String, V> {
+    /// Turn into a hash map
+    pub fn into_map(self) -> HashMap<String, V> {
         self.value
+    }
+}
+
+impl<V, L> Quire<V, L>
+where
+    L: LocationSet,
+    V: Clone,
+{
+    /// Get a copy as a hash map
+    pub fn get_map(&self) -> HashMap<String, V> {
+        self.value.clone()
     }
 }
 

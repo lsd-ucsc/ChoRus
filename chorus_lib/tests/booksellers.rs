@@ -9,7 +9,9 @@ use chorus_lib::{
     core::{ChoreoOp, Choreography, ChoreographyLocation, Faceted,
            FanInChoreography,
            HCons, HNil,
-           Here, Located, LocationSet, Member,
+           Here, Located, LocationSet,
+           LocationSetFoldable,
+           Member,
            Projector,
            Quire, Runner, Subset, There},
     transport::local::{LocalTransport, LocalTransportChannelBuilder},
@@ -120,21 +122,25 @@ impl Choreography<Located<bool, Buyer1>> for Unilateral {
 
 
 ////////////////////////////////////////////////////////////////////////
-struct Colaborative<Buyers: LocationSet, B1Index> {
+struct Colaborative<Buyers: LocationSet, B1Index, BSRefl, BSFld> {
     price: Located<Option<Money>, Buyer1>,
     budgets: Faceted<Money, Buyers>,
-    _phantoms: PhantomData<B1Index>,
+    _phantoms: PhantomData<(B1Index, BSRefl, BSFld)>,
 }
-impl<Buyers: LocationSet, B1Index> Decider for Colaborative<Buyers, B1Index>
-where Buyer1: Member<Buyers, B1Index>
+impl<Buyers: LocationSet, B1Index, BSRefl, BSFld> Decider for Colaborative<Buyers, B1Index, BSRefl, BSFld>
+where Buyer1: Member<Buyers, B1Index>,
+      Buyers: Subset<Buyers, BSRefl>
 {
     type Budgets = Faceted<Money, Buyers>;
     fn new(price: Located<Option<Money>, Buyer1>, budgets: Faceted<Money, Buyers>) -> Self{
         return Self{price: price, budgets: budgets, _phantoms: PhantomData}
     }
 }
-impl<Buyers: LocationSet, B1Index> Choreography<Located<bool, Buyer1>> for Colaborative<Buyers, B1Index>
-where Buyer1: Member<Buyers, B1Index>
+impl<Buyers: LocationSet, B1Index, BSRefl, BSFld>
+    Choreography<Located<bool, Buyer1>> for Colaborative<Buyers, B1Index, BSRefl, BSFld>
+where Buyer1: Member<Buyers, B1Index>,
+      Buyers: Subset<Buyers, BSRefl>,
+      Buyers: LocationSetFoldable<Buyers, Buyers, BSFld>
 {
     type L = Buyers;
     fn run(self, op: &impl ChoreoOp<Self::L>) -> Located<bool, Buyer1> {
@@ -209,7 +215,7 @@ fn run_test(inventory: Inventory, title: Title, budget1: Money, budget2: Option<
     if let Some(budget2) = budget2 {
         {
             let central_runner = Runner::new();
-            let choreo : Booksellers<Colaborative<LocationSet!(Buyer1, Buyer2), Here>,
+            let choreo : Booksellers<Colaborative<LocationSet!(Buyer1, Buyer2), Here, _, _>,
                                      Faceted<Money, LocationSet!(Buyer1, Buyer2)>,
                                      LocationSet!(Buyer1, Buyer2),
                                      Here,
@@ -230,7 +236,7 @@ fn run_test(inventory: Inventory, title: Title, budget1: Money, budget2: Option<
         }
         {
             handles.push(thread::spawn(move || {
-                let choreo : Booksellers<Colaborative<LocationSet!(Buyer1, Buyer2), Here>,
+                let choreo : Booksellers<Colaborative<LocationSet!(Buyer1, Buyer2), Here, _, _>,
                                          Faceted<Money, LocationSet!(Buyer1, Buyer2)>,
                                          LocationSet!(Buyer1, Buyer2),
                                          Here,
@@ -251,7 +257,7 @@ fn run_test(inventory: Inventory, title: Title, budget1: Money, budget2: Option<
         }
         {
             handles.push(thread::spawn(move || {
-                let choreo : Booksellers<Colaborative<LocationSet!(Buyer1, Buyer2), Here>,
+                let choreo : Booksellers<Colaborative<LocationSet!(Buyer1, Buyer2), Here, _, _>,
                                          Faceted<Money, LocationSet!(Buyer1, Buyer2)>,
                                          LocationSet!(Buyer1, Buyer2),
                                          Here,
@@ -272,7 +278,7 @@ fn run_test(inventory: Inventory, title: Title, budget1: Money, budget2: Option<
         }
         {
             handles.push(thread::spawn(move || {
-                let choreo : Booksellers<Colaborative<LocationSet!(Buyer1, Buyer2), Here>,
+                let choreo : Booksellers<Colaborative<LocationSet!(Buyer1, Buyer2), Here, _, _>,
                                          Faceted<Money, LocationSet!(Buyer1, Buyer2)>,
                                          LocationSet!(Buyer1, Buyer2),
                                          Here,
