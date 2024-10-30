@@ -657,12 +657,33 @@ where
     /// Constructs a `Located` struct *NOT* located at the projection target.
     ///
     /// Use this method to run a choreography that takes a located value as an input.
-    pub fn remote<V, L: ChoreographyLocation, Index2>(&self, at: L) -> Located<V, L>
+    pub fn remote<V, L: ChoreographyLocation, Index2>(&self, _: L) -> Located<V, L>
     where
         L: Member<<Target as Member<TransportLS, Index>>::Remainder, Index2>,
     {
-        _ = at;
         Located::remote()
+    }
+
+    /// Construct a `Faceted` struct owned by the projection target.
+    ///
+    /// Use this method to run a choreography that takes a Faceted value as an input.
+    pub fn local_faceted<V, Owners: LocationSet, Index2>(&self, value: V, _: Owners) -> Faceted<V, Owners>
+    where Target: Member<Owners, Index2>,
+    {
+        Faceted {value: HashMap::from([(String::from(Target::name()), value)]),
+                 phantom: PhantomData,
+        }
+    }
+
+    /// Construct a `Faceted` struct *NOT* owned by the projection target.
+    ///
+    /// Use this method to run a choreography that takes a Faceted value as an input.
+    pub fn remote_faceted<V, Owners: LocationSet, Index2>(&self, _: Owners) -> Faceted<V, Owners>
+    where Owners: Subset<<Target as Member<TransportLS, Index>>::Remainder, Index2>,
+    {
+        Faceted {value: HashMap::new(),
+                 phantom: PhantomData,
+        }
     }
 
     /// Unwraps a located value at the projection target.
@@ -1131,6 +1152,16 @@ impl<RunnerLS: LocationSet> Runner<RunnerLS> {
     /// To execute a choreography with a runner, you must provide located values at all locations
     pub fn local<V, L1: ChoreographyLocation>(&self, value: V) -> Located<V, L1> {
         Located::local(value)
+    }
+
+    /// Construct a `Faceted` struct from a lookup table.
+    /// Will almost certainly cause errors if you don't correctly populate the mapping.
+    ///
+    /// Use this method to run a choreography that takes a Faceted value as an input.
+    pub fn unsafe_faceted<V, Owners: LocationSet, const N: usize>(&self, values: [(String, V); N], _: Owners) -> Faceted<V, Owners> {
+        Faceted {value: HashMap::from(values),
+                 phantom: PhantomData,
+        }
     }
 
     /// Unwraps a located value
