@@ -3,10 +3,7 @@ extern crate chorus_lib;
 use std::io;
 use std::thread;
 
-use chorus_lib::{
-    core::{Located},
-    transport::local::{LocalTransportChannelBuilder},
-};
+use chorus_lib::{core::Located, transport::local::LocalTransportChannelBuilder};
 use chrono::NaiveDate;
 
 use chorus_lib::core::{ChoreoOp, Choreography, ChoreographyLocation, LocationSet, Projector};
@@ -28,7 +25,7 @@ struct Seller;
 #[derive(ChoreographyLocation)]
 struct Buyer;
 
-struct BooksellerChoreography{
+struct BooksellerChoreography {
     title: Located<String, Buyer>,
     budget: Located<i32, Buyer>,
 }
@@ -90,13 +87,13 @@ fn main() {
 
     let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
     handles.push(thread::spawn(move || {
-        seller_projector.epp_and_run(BooksellerChoreography{
+        seller_projector.epp_and_run(BooksellerChoreography {
             title: seller_projector.remote(Buyer),
             budget: seller_projector.remote(Buyer),
         });
     }));
     handles.push(thread::spawn(move || {
-        buyer_projector.epp_and_run(BooksellerChoreography{
+        buyer_projector.epp_and_run(BooksellerChoreography {
             title: buyer_projector.local(title),
             budget: buyer_projector.local(BUDGET),
         });
@@ -112,7 +109,7 @@ mod tests {
 
     #[test]
     fn distributed_tapl() {
-        let title = String::new("TAPL");
+        let title = String::from("TAPL");
 
         let transport_channel = LocalTransportChannelBuilder::new()
             .with(Seller)
@@ -126,19 +123,19 @@ mod tests {
 
         let mut handles: Vec<thread::JoinHandle<()>> = Vec::new();
         handles.push(thread::spawn(move || {
-            seller_projector.epp_and_run(BooksellerChoreography{
+            seller_projector.epp_and_run(BooksellerChoreography {
                 title: seller_projector.remote(Buyer),
                 budget: seller_projector.remote(Buyer),
             });
         }));
         handles.push(thread::spawn(move || {
-            buyer_projector.epp_and_run(BooksellerChoreography{
+            buyer_projector.epp_and_run(BooksellerChoreography {
                 title: buyer_projector.local(title),
                 budget: buyer_projector.local(BUDGET),
             });
         }));
         for h in handles {
-            assert!(h.join().unwrap());
+            h.join().unwrap();
         }
     }
 }
