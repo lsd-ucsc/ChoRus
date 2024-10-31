@@ -4,8 +4,8 @@ use std::marker::PhantomData;
 use std::thread;
 
 use chorus_lib::core::{
-    ChoreoOp, Choreography, ChoreographyLocation, FanOutChoreography, Located, LocationSet, Member,
-    Projector, Subset,
+    ChoreoOp, Choreography, ChoreographyLocation, FanInChoreography, Located, LocationSet, Member,
+    MultiplyLocated, Projector, Quire, Subset,
 };
 use chorus_lib::transport::local::{LocalTransport, LocalTransportChannelBuilder};
 
@@ -18,7 +18,7 @@ struct Bob;
 #[derive(ChoreographyLocation, Debug)]
 struct Carol;
 
-struct FanOut<L: LocationSet, QS: LocationSet, Alice: ChoreographyLocation, AliceMemberL>
+struct FanIn<L: LocationSet, QS: LocationSet, Alice: ChoreographyLocation, AliceMemberL>
 where
     Alice: Member<L, AliceMemberL>,
 {
@@ -26,7 +26,7 @@ where
 }
 
 impl<L: LocationSet, QS: LocationSet, Alice: ChoreographyLocation, AliceMemberL>
-    FanOut<L, QS, Alice, AliceMemberL>
+    FanIn<L, QS, Alice, AliceMemberL>
 where
     Alice: Member<L, AliceMemberL>,
 {
@@ -34,55 +34,57 @@ where
     where
         Alice: Member<L, AliceMemberL>,
     {
-        FanOut {
+        FanIn {
             phantom: PhantomData,
         }
     }
 }
 
 impl<L: LocationSet, QS: LocationSet, Alice: ChoreographyLocation, AliceMemberL>
-    FanOutChoreography<String> for FanOut<L, QS, Alice, AliceMemberL>
+    FanInChoreography<String> for FanIn<L, QS, Alice, AliceMemberL>
 where
     Alice: Member<L, AliceMemberL>,
 {
     type L = L;
     type QS = QS;
-    fn run<Q: ChoreographyLocation, QSSubsetL, QMemberL, QMemberQS>(
+    type RS = LocationSet!(Alice);
+
+    fn run<Q: ChoreographyLocation, QSSubsetL, RSSubsetL, QMemberL, QMemberQS>(
         &self,
         op: &impl ChoreoOp<Self::L>,
-    ) -> Located<String, Q>
+    ) -> MultiplyLocated<String, Self::RS>
     where
         Self::QS: Subset<Self::L, QSSubsetL>,
+        Self::RS: Subset<Self::L, RSSubsetL>,
         Q: Member<Self::L, QMemberL>,
         Q: Member<Self::QS, QMemberQS>,
     {
-        let msg_at_alice = op.locally(Alice::new(), |_| {
-            format!("{} says hi to {}", Alice::name(), Q::name())
+        let msg_at_q = op.locally(Q::new(), |_| {
+            format!("{} says hi to {}", Q::name(), Alice::name())
         });
-        let msg_at_q = op.comm(Alice::new(), Q::new(), &msg_at_alice);
-        op.locally(Q::new(), |un| {
-            println!("{} received: \"{}\"", Q::name(), un.unwrap(&msg_at_q))
-        });
-        msg_at_q
+        let msg_at_alice = op.comm(Q::new(), Alice::new(), &msg_at_q);
+        return msg_at_alice;
     }
 }
 
 struct MainChoreography;
-impl Choreography<(Located<String, Bob>, Located<String, Carol>)> for MainChoreography {
+impl Choreography<Located<Quire<String, LocationSet!(Bob, Carol)>, Alice>> for MainChoreography {
     type L = LocationSet!(Alice, Bob, Carol);
-    fn run(self, op: &impl ChoreoOp<Self::L>) -> (Located<String, Bob>, Located<String, Carol>) {
-        let v = op.fanout(<LocationSet!(Bob, Carol)>::new(), FanOut::new(Alice));
-        let value_at_bob = op.locally(Bob, |un| {
-            let v = un.unwrap3(&v);
-            println!("{}", v);
-            v.clone()
+
+    fn run(
+        self,
+        op: &impl ChoreoOp<Self::L>,
+    ) -> Located<Quire<String, LocationSet!(Bob, Carol)>, Alice> {
+        let v = op.fanin(<LocationSet!(Bob, Carol)>::new(), FanIn::new(Alice));
+        op.locally(Alice, |un| {
+            let m = un.unwrap(&v).get_map();
+            println!(
+                "Alice received: \"{}\" from Bob and \"{}\" from Carol",
+                m.get(Bob::name()).unwrap_or(&String::from("ERROR")),
+                m.get(Carol::name()).unwrap_or(&String::from("ERROR"))
+            )
         });
-        let value_at_carol = op.locally(Carol, |un| {
-            let v = un.unwrap3(&v);
-            println!("{}", v);
-            v.clone()
-        });
-        return (value_at_bob, value_at_carol);
+        return v;
     }
 }
 
@@ -129,6 +131,7 @@ fn main() {
         handle.join().unwrap();
     }
 }
+
 #[cfg(test)]
 mod tests {
     use chorus_lib::core::Runner;
@@ -155,7 +158,10 @@ mod tests {
             thread::Builder::new()
                 .name("Alice".to_string())
                 .spawn(move || {
-                    alice_projector.epp_and_run(MainChoreography);
+                    let quire_at_alice = alice_projector.epp_and_run(MainChoreography);
+                    let m = alice_projector.unwrap(quire_at_alice).get_map();
+                    assert_eq!(m.get(Bob::name()).unwrap(), "Bob says hi to Alice");
+                    assert_eq!(m.get(Carol::name()).unwrap(), "Carol says hi to Alice");
                 })
                 .unwrap(),
         );
@@ -163,8 +169,7 @@ mod tests {
             thread::Builder::new()
                 .name("Bob".to_string())
                 .spawn(move || {
-                    let v = bob_projector.epp_and_run(MainChoreography);
-                    assert_eq!(bob_projector.unwrap(v.0), "Alice says hi to Bob");
+                    bob_projector.epp_and_run(MainChoreography);
                 })
                 .unwrap(),
         );
@@ -172,8 +177,7 @@ mod tests {
             thread::Builder::new()
                 .name("Carol".to_string())
                 .spawn(move || {
-                    let v = carol_projector.epp_and_run(MainChoreography);
-                    assert_eq!(carol_projector.unwrap(v.1), "Alice says hi to Carol");
+                    carol_projector.epp_and_run(MainChoreography);
                 })
                 .unwrap(),
         );
@@ -185,8 +189,9 @@ mod tests {
     #[test]
     fn test_runner() {
         let runner = Runner::new();
-        let (v1, v2) = runner.run(MainChoreography);
-        assert_eq!(runner.unwrap(v1), "Alice says hi to Bob");
-        assert_eq!(runner.unwrap(v2), "Alice says hi to Carol");
+        let quire_at_alice = runner.run(MainChoreography);
+        let m = runner.unwrap(quire_at_alice).get_map();
+        assert_eq!(m.get(Bob::name()).unwrap(), "Bob says hi to Alice");
+        assert_eq!(m.get(Carol::name()).unwrap(), "Carol says hi to Alice");
     }
 }

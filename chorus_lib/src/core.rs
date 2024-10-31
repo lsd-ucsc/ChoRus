@@ -667,11 +667,17 @@ where
     /// Construct a `Faceted` struct owned by the projection target.
     ///
     /// Use this method to run a choreography that takes a Faceted value as an input.
-    pub fn local_faceted<V, Owners: LocationSet, Index2>(&self, value: V, _: Owners) -> Faceted<V, Owners>
-    where Target: Member<Owners, Index2>,
+    pub fn local_faceted<V, Owners: LocationSet, Index2>(
+        &self,
+        value: V,
+        _: Owners,
+    ) -> Faceted<V, Owners>
+    where
+        Target: Member<Owners, Index2>,
     {
-        Faceted {value: HashMap::from([(String::from(Target::name()), value)]),
-                 phantom: PhantomData,
+        Faceted {
+            value: HashMap::from([(String::from(Target::name()), value)]),
+            phantom: PhantomData,
         }
     }
 
@@ -679,10 +685,12 @@ where
     ///
     /// Use this method to run a choreography that takes a Faceted value as an input.
     pub fn remote_faceted<V, Owners: LocationSet, Index2>(&self, _: Owners) -> Faceted<V, Owners>
-    where Owners: Subset<<Target as Member<TransportLS, Index>>::Remainder, Index2>,
+    where
+        Owners: Subset<<Target as Member<TransportLS, Index>>::Remainder, Index2>,
     {
-        Faceted {value: HashMap::new(),
-                 phantom: PhantomData,
+        Faceted {
+            value: HashMap::new(),
+            phantom: PhantomData,
         }
     }
 
@@ -1158,9 +1166,14 @@ impl<RunnerLS: LocationSet> Runner<RunnerLS> {
     /// Will almost certainly cause errors if you don't correctly populate the mapping.
     ///
     /// Use this method to run a choreography that takes a Faceted value as an input.
-    pub fn unsafe_faceted<V, Owners: LocationSet, const N: usize>(&self, values: [(String, V); N], _: Owners) -> Faceted<V, Owners> {
-        Faceted {value: HashMap::from(values),
-                 phantom: PhantomData,
+    pub fn unsafe_faceted<V, Owners: LocationSet, const N: usize>(
+        &self,
+        values: [(String, V); N],
+        _: Owners,
+    ) -> Faceted<V, Owners> {
+        Faceted {
+            value: HashMap::from(values),
+            phantom: PhantomData,
         }
     }
 
@@ -1294,14 +1307,71 @@ impl<RunnerLS: LocationSet> Runner<RunnerLS> {
                 QSFoldable,
             >(
                 &self,
-                _locations: QS,
-                _c: FOC,
+                _: QS,
+                c: FOC,
             ) -> Faceted<V, QS>
             where
                 QS: Subset<L, QSSubsetL>,
                 QS: LocationSetFoldable<L, QS, QSFoldable>,
             {
-                todo!()
+                let op = RunOp::<L>(PhantomData);
+                let values = HashMap::new();
+
+                struct Loop<
+                    ChoreoLS: LocationSet,
+                    V,
+                    QSSubsetL,
+                    QS: LocationSet + Subset<ChoreoLS, QSSubsetL>,
+                    FOC: FanOutChoreography<V, L = ChoreoLS, QS = QS>,
+                > {
+                    phantom: PhantomData<(V, QSSubsetL, QS)>,
+                    op: RunOp<ChoreoLS>,
+                    foc: FOC,
+                }
+
+                impl<
+                        ChoreoLS: LocationSet,
+                        V,
+                        QSSubsetL,
+                        QS: LocationSet + Subset<ChoreoLS, QSSubsetL>,
+                        FOC: FanOutChoreography<V, L = ChoreoLS, QS = QS>,
+                    > LocationSetFolder<HashMap<String, V>>
+                    for Loop<ChoreoLS, V, QSSubsetL, QS, FOC>
+                {
+                    type L = ChoreoLS;
+                    type QS = QS;
+                    fn f<Q: ChoreographyLocation, QSSubsetL2, QMemberL, QMemberQS>(
+                        &self,
+                        mut acc: HashMap<String, V>,
+                        _: Q,
+                    ) -> HashMap<String, V>
+                    where
+                        Self::QS: Subset<Self::L, QSSubsetL>,
+                        Q: Member<Self::L, QMemberL>,
+                        Q: Member<Self::QS, QMemberQS>,
+                    {
+                        let v = self.foc.run::<Q, QSSubsetL, QMemberL, QMemberQS>(&self.op);
+                        match v.value {
+                            Some(value) => {
+                                acc.insert(String::from(Q::name()), value);
+                            }
+                            None => {}
+                        };
+                        acc
+                    }
+                }
+                let values = QS::foldr(
+                    Loop::<L, V, QSSubsetL, QS, FOC> {
+                        phantom: PhantomData,
+                        op,
+                        foc: c,
+                    },
+                    values,
+                );
+                Faceted {
+                    value: values,
+                    phantom: PhantomData,
+                }
             }
 
             fn fanin<
@@ -1319,15 +1389,78 @@ impl<RunnerLS: LocationSet> Runner<RunnerLS> {
                 QSFoldable,
             >(
                 &self,
-                _locations: QS,
-                _c: FIC,
+                _: QS,
+                c: FIC,
             ) -> MultiplyLocated<Quire<V, QS>, RS>
             where
                 QS: Subset<L, QSSubsetL>,
                 RS: Subset<L, RSSubsetL>,
                 QS: LocationSetFoldable<L, QS, QSFoldable>,
             {
-                todo!()
+                let op: RunOp<L> = RunOp(PhantomData);
+                struct Loop<
+                    ChoreoLS: LocationSet,
+                    V,
+                    QSSubsetL,
+                    QS: LocationSet + Subset<ChoreoLS, QSSubsetL>,
+                    RSSubsetL,
+                    RS: LocationSet + Subset<ChoreoLS, RSSubsetL>,
+                    FIC: FanInChoreography<V, L = ChoreoLS, QS = QS, RS = RS>,
+                > {
+                    phantom: PhantomData<(V, QSSubsetL, QS, RSSubsetL, RS)>,
+                    op: RunOp<ChoreoLS>,
+                    fic: FIC,
+                }
+                impl<
+                        ChoreoLS: LocationSet,
+                        V,
+                        QSSubsetL,
+                        QS: LocationSet + Subset<ChoreoLS, QSSubsetL>,
+                        RSSubsetL,
+                        RS: LocationSet + Subset<ChoreoLS, RSSubsetL>,
+                        FIC: FanInChoreography<V, L = ChoreoLS, QS = QS, RS = RS>,
+                    > LocationSetFolder<HashMap<String, V>>
+                    for Loop<ChoreoLS, V, QSSubsetL, QS, RSSubsetL, RS, FIC>
+                {
+                    type L = ChoreoLS;
+                    type QS = QS;
+
+                    fn f<Q: ChoreographyLocation, QSSubsetL2, QMemberL, QMemberQS>(
+                        &self,
+                        mut acc: HashMap<String, V>,
+                        _: Q,
+                    ) -> HashMap<String, V>
+                    where
+                        Self::QS: Subset<Self::L, QSSubsetL>,
+                        Q: Member<Self::L, QMemberL>,
+                        Q: Member<Self::QS, QMemberQS>,
+                    {
+                        let v = self
+                            .fic
+                            .run::<Q, QSSubsetL, RSSubsetL, QMemberL, QMemberQS>(&self.op);
+                        // if the target is in RS, `v` has a value (`Some`)
+                        match v.value {
+                            Some(value) => {
+                                acc.insert(String::from(Q::name()), value);
+                            }
+                            None => {}
+                        }
+                        acc
+                    }
+                }
+                let values = QS::foldr(
+                    Loop::<L, V, QSSubsetL, QS, RSSubsetL, RS, FIC> {
+                        phantom: PhantomData,
+                        op,
+                        fic: c,
+                    },
+                    HashMap::new(),
+                );
+
+                MultiplyLocated::<Quire<V, QS>, RS>::local(Quire {
+                    value: values,
+                    phantom: PhantomData,
+                })
             }
         }
         let op: RunOp<RunnerLS> = RunOp(PhantomData);
