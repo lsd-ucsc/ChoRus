@@ -174,17 +174,6 @@ fn run_test(request: Request, answer: Response) {
     let mut handles: Vec<thread::JoinHandle<Located<Response, Client>>> = Vec::new();
     handles.push(
         thread::Builder::new()
-            .name("Client".to_string())
-            .spawn(move || {
-                client_projector.epp_and_run(KVS::<HCons<Backup1, HCons<Backup2, HNil>>, _, _, _>{
-                    request: client_projector.local(request),
-                    _phantoms: PhantomData,
-                })
-            })
-            .unwrap(),
-    );
-    handles.push(
-        thread::Builder::new()
             .name("Server".to_string())
             .spawn(move || {
                 server_projector.epp_and_run(KVS::<HCons<Backup1, HCons<Backup2, HNil>>, _, _, _>{
@@ -216,12 +205,14 @@ fn run_test(request: Request, answer: Response) {
             })
             .unwrap(),
     );
-    let retval = Projector::new(Client, LocalTransport::new(Client, transport_channel.clone()))
-        .unwrap(handles.pop().unwrap().join().unwrap());
+    let retval = client_projector.epp_and_run(KVS::<HCons<Backup1, HCons<Backup2, HNil>>, _, _, _>{
+        request: client_projector.local(request),
+        _phantoms: PhantomData,
+    });
     for handle in handles {
         handle.join().unwrap();
     }
-    assert_eq!(retval, answer);
+    assert_eq!(client_projector.unwrap(retval), answer);
 }
 
 #[test]
