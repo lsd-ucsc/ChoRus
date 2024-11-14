@@ -6,8 +6,8 @@ resolver = "2"
 [workspace.package]
 version = "0.3.0"
 edition = "2021"
-authors = ["Shun Kashiwa <shunthedev@gmail.com>"]
-homepage = "https://lsd-ucsc.github.io/ChoRus/"
-repository = "https://github.com/lsd-ucsc/ChoRus"
+authors = ["Anonymous <anonymous@example.com>"]
+homepage = "http://example.com"
+repository = "http://example.com"
 readme = "crates-io.md"
 license = "MIT"

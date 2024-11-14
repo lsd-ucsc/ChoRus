@@ -2,6 +2,4 @@
 
 Here are some links you might find useful:
 
-- [Chorus website](https://lsd-ucsc.github.io/ChoRus/)
-- [Chorus API documentation](https://docs.rs/chorus_lib)
-- [Chorus GitHub repository](https://github.com/lsd-ucsc/ChoRus)
+- The links to the website, GitHub, and documentation are deleted for anonymity.

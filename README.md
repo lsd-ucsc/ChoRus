@@ -6,19 +6,36 @@
 
 <p align="center"><b>Choreographic Programming in Rust</b></p>
 
-<p align="center">
-  <a href="https://github.com/lsd-ucsc/ChoRus/actions/workflows/rust.yml" target="_blank" rel="noreferrer">
-    <img alt="GitHub Workflow Status" src="https://img.shields.io/github/actions/workflow/status/lsd-ucsc/ChoRus/rust.yml">
-  </a>
-  <a href="https://crates.io/crates/chorus_lib" target="_blank" rel="noreferrer">
-    <img alt="Crates.io" src="https://img.shields.io/crates/v/chorus_lib">
-  </a>
-  <a href="https://docs.rs/chorus_lib/latest/chorus_lib/" target="_blank" rel="noreferrer">
-    <img alt="docs.rs" src="https://img.shields.io/docsrs/chorus_lib">
-  </a>
-  <a href="https://github.com/lsd-ucsc/ChoRus/blob/main/LICENSE" target="_blank" rel="noreferrer">
-    <img alt="GitHub" src="https://img.shields.io/github/license/lsd-ucsc/ChoRus">
-  </a>
-</p>
+This supplementary material contains the source code of the ChoRus library, examples, and benchmarks.
 
-Please see the [ChoRus website](https://lsd-ucsc.github.io/ChoRus/) and [API document](https://docs.rs/chorus_lib) for more information.
+## Setup
+
+You need to install [Rust](https://www.rust-lang.org/tools/install) to compile the library and examples. The code is tested with Rust 1.81.0.
+
+Alternatively, you can use [Docker](https://www.docker.com/). The following command will create a ephemeral container with Rust 1.81.0 and mount the current directory as `/usr/src/chorus`.
+
+```bash
+docker run -it --rm -v "$PWD":/usr/src/chorus -w /usr/src/chorus rust:1.81.0-slim-bullseye bash
+```
+
+## `chorus_lib`
+
+`chorus_lib` contains the source code of the ChoRus library, examples, and micro-benchmarks.
+
+### Library Source Code
+
+The source code of the library is located in `chorus_lib/src`. The `core` module contains the core definitions of the library and the `transport` module contains the transport implementations.
+
+The API documentation of the library can be generated with the following command:
+
+```bash
+cargo doc --open -p chorus_lib
+```
+
+### Examples
+
+`chorus_lib/examples` contains examples that illustrate how to use the library. You can run an example with the following command:
+
+```bash
+cargo run --example $(EXAMPLE_NAME)
+```
