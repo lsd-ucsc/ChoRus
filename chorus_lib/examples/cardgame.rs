@@ -115,7 +115,7 @@ impl<
                 Q: Member<Self::L, QMemberL>,
                 Q: Member<Self::QS, QMemberQS>,
             {
-                let x = op.locally(Q::new(), |un| *un.unwrap3(&self.hand1));
+                let x = op.locally(Q::new(), |un| *un.unwrap(self.hand1));
                 let x = op.multicast::<Q, i32, Players, QMemberL, PlayersSubset>(
                     Q::new(),
                     <Self::RS>::new(),
@@ -150,8 +150,8 @@ impl<
                 Q: Member<Self::QS, QMemberQS>,
             {
                 op.locally(Q::new(), |un| {
-                    let hand1 = *un.unwrap3(&self.hand1);
-                    let on_the_table = un.unwrap(&self.on_the_table);
+                    let hand1 = *un.unwrap(self.hand1);
+                    let on_the_table = un.unwrap(self.on_the_table);
                     println!("My first card is: {}", hand1);
                     println!("On the table: {:?}", on_the_table);
                     println!("I'll ask for another? [True/False]");
@@ -193,7 +193,6 @@ impl<
                 Q: Member<Self::L, QMemberL>,
                 Q: Member<Self::QS, QMemberQS>,
             {
-                // TODO: enclave
                 struct Enclave<Player: ChoreographyLocation> {
                     hand1: Located<i32, Player>,
                     wants_next_card: Located<bool, Player>,
@@ -218,8 +217,8 @@ impl<
                         }
                     }
                 }
-                let hand1 = op.locally(Q::new(), |un| *un.unwrap3(self.hand1));
-                let wants_next_card = op.locally(Q::new(), |un| *un.unwrap3(self.wants_next_card));
+                let hand1 = op.locally(Q::new(), |un| *un.unwrap(self.hand1));
+                let wants_next_card = op.locally(Q::new(), |un| *un.unwrap(self.wants_next_card));
                 op.enclave(Enclave::<Q> {
                     hand1,
                     wants_next_card,
@@ -257,7 +256,7 @@ impl<
                 Q: Member<Self::QS, QMemberQS>,
             {
                 op.locally(Q::new(), |un| {
-                    let mut hand2 = un.unwrap3(self.hand2).clone();
+                    let mut hand2 = un.unwrap(self.hand2).clone();
                     hand2.push(self.table_card);
                     println!("Final hands: {:?}", hand2);
                     let sum: i32 = hand2.iter().sum();

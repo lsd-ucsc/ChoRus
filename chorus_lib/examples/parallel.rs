@@ -25,15 +25,15 @@ impl Choreography for ParallelChoreography {
             rand::thread_rng().gen_range(1..=10)
         });
         op.locally(Alice, |un| {
-            let x = un.unwrap3(&faceted);
+            let x = un.unwrap(&faceted);
             println!("Alice picked {}", x);
         });
         op.locally(Bob, |un| {
-            let x = un.unwrap3(&faceted);
+            let x = un.unwrap(&faceted);
             println!("Bob picked {}", x);
         });
         op.locally(Carol, |un| {
-            let x = un.unwrap3(&faceted);
+            let x = un.unwrap(&faceted);
             println!("Carol picked {}", x);
         });
     }

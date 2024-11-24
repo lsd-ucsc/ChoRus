@@ -73,12 +73,12 @@ impl Choreography<(Located<String, Bob>, Located<String, Carol>)> for MainChoreo
     fn run(self, op: &impl ChoreoOp<Self::L>) -> (Located<String, Bob>, Located<String, Carol>) {
         let v = op.fanout(<LocationSet!(Bob, Carol)>::new(), FanOut::new(Alice));
         let value_at_bob = op.locally(Bob, |un| {
-            let v = un.unwrap3(&v);
+            let v = un.unwrap(&v);
             println!("{}", v);
             v.clone()
         });
         let value_at_carol = op.locally(Carol, |un| {
-            let v = un.unwrap3(&v);
+            let v = un.unwrap(&v);
             println!("{}", v);
             v.clone()
         });

@@ -186,6 +186,38 @@ where
     phantom: PhantomData<L>,
 }
 
+/// Represents a value that can be unwrapped at any location in `L`
+pub trait Unwrappable<'a, V> {
+    /// A location set that the value is located at
+    type L: LocationSet;
+    /// Unwraps a located value at a given location
+    fn unwrap_at<L1: ChoreographyLocation, Index>(&'a self, location: L1) -> &'a V
+    where
+        L1: Member<Self::L, Index>;
+}
+
+impl<'a, V, L: LocationSet> Unwrappable<'a, V> for MultiplyLocated<V, L> {
+    type L = L;
+
+    fn unwrap_at<L1: ChoreographyLocation, Index>(&'a self, _: L1) -> &'a V
+    where
+        L1: Member<Self::L, Index>,
+    {
+        self.value.as_ref().unwrap()
+    }
+}
+
+impl<'a, V, L: LocationSet> Unwrappable<'a, V> for Faceted<V, L> {
+    type L = L;
+
+    fn unwrap_at<L1: ChoreographyLocation, Index>(&'a self, _: L1) -> &'a V
+    where
+        L1: Member<Self::L, Index>,
+    {
+        self.value.get(&L1::name().to_string()).unwrap()
+    }
+}
+
 // --- HList and Helpers ---
 
 /// xx
@@ -374,19 +406,13 @@ pub struct Unwrapper<L1: ChoreographyLocation> {
 }
 
 impl<L1: ChoreographyLocation> Unwrapper<L1> {
-    /// TODO: documentation
-    pub fn unwrap<'a, V, S: LocationSet, Index>(&self, mlv: &'a MultiplyLocated<V, S>) -> &'a V
+    /// Unwraps a located value at the current location
+    pub fn unwrap<'a, V, S: LocationSet, Index, U>(&self, unwrappable: &'a U) -> &'a V
     where
+        U: Unwrappable<'a, V, L = S> + 'a,
         L1: Member<S, Index>,
     {
-        mlv.value.as_ref().unwrap()
-    }
-    /// TODO: documentation
-    pub fn unwrap3<'a, V, S: LocationSet, Index>(&self, faceted: &'a Faceted<V, S>) -> &'a V
-    where
-        L1: Member<S, Index>,
-    {
-        faceted.value.get(L1::name()).unwrap()
+        unwrappable.unwrap_at::<L1, Index>(L1::new())
     }
 }
 

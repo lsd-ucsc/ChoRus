@@ -187,7 +187,7 @@ where
                             Q::new(),
                             Buyer1,
                             &op.locally::<Money, Q, QMemberL>(Q::new(), |un| {
-                                *un.unwrap3::<Money, Buyers, QMemberQS>(&self.budgets)
+                                *un.unwrap::<_, _, QMemberQS, _>(self.budgets)
                             }),
                         )
                     }
@@ -202,7 +202,7 @@ where
 
                 op.locally(Buyer1, |un| {
                     let budget = un
-                        .unwrap::<Quire<Money, Buyers>, _, Here>(&budgets)
+                        .unwrap::<Quire<Money, Buyers>, _, Here, _>(&budgets)
                         .get_map()
                         .into_values()
                         .sum();

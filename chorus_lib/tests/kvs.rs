@@ -6,7 +6,7 @@ use std::thread;
 use chorus_lib::core::{
     ChoreoOp, Choreography, ChoreographyLocation, Deserialize, Faceted, FanInChoreography, HCons,
     HNil, Located, LocationSet, LocationSetFoldable, Member, MultiplyLocated, Portable, Projector,
-    Quire, Serialize, Subset,
+    Serialize, Subset,
 };
 use chorus_lib::transport::local::{LocalTransport, LocalTransportChannelBuilder};
 
@@ -82,7 +82,7 @@ impl<
         Sender: Member<Self::L, SenderPresent>,
         Sender: Member<Self::QS, SenderInSenders>,
     {
-        let x = op.locally(Sender::new(), |un| *un.unwrap3(&self.values));
+        let x = op.locally(Sender::new(), |un| *un.unwrap(self.values));
         let x = op.multicast::<Sender, V, Self::RS, SenderPresent, RecieversPresent>(
             Sender::new(),
             <Self::RS>::new(),
@@ -116,7 +116,7 @@ where
                 );
                 op.locally(Server, |un| {
                     let ok = un
-                        .unwrap::<Quire<Response, Backups>, _, _>(&gathered)
+                        .unwrap(&gathered)
                         .get_map()
                         .into_values()
                         .all(|response| response == 0);
