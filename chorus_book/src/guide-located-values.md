@@ -17,7 +17,7 @@ where
 
 The `MultiplyLocated` struct can be in one of the two states: `Local` and `Remote`. The `Local` state represents a located value that is available at the current location (that is, the current location is a member of the location set `L`). The `Remote` state represents a located value that is available at a different location.
 
-## `Located` struct
+## `Located` type
 
 In some cases, we may want to represent a located value that is available at a single location. For example, the return value of the `locally` operator is a (singly) located value that is available at the location given as an argument to the operator. The `Located` is used to represent such located values. It is a type alias for the `MultiplyLocated` struct with the location set containing only one location.
 

@@ -46,3 +46,18 @@ use chorus_lib::core::LocationSet;
 
 type L = LocationSet!(Alice, Bob);
 ```
+
+Some operators, such as `multicast`, requires a value of `LocationSet` to be passed as an argument. You can obtain a value of `LocationSet` by using the `new` method.
+
+```rust
+# extern crate chorus_lib;
+# use chorus_lib::core::ChoreographyLocation;
+# #[derive(ChoreographyLocation)]
+# struct Alice;
+#
+# #[derive(ChoreographyLocation)]
+# struct Bob;
+# use chorus_lib::core::LocationSet;
+#
+let alice_and_bob = <LocationSet!(Alice, Bob);>::new();
+```
