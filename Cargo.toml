@@ -1,5 +1,6 @@
 [workspace]
 
+edition = "2021"
 members = ["chorus_lib", "chorus_derive"]
 resolver = "2"
 

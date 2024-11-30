@@ -59,5 +59,5 @@ Some operators, such as `multicast`, requires a value of `LocationSet` to be pas
 # struct Bob;
 # use chorus_lib::core::LocationSet;
 #
-let alice_and_bob = <LocationSet!(Alice, Bob);>::new();
+let alice_and_bob = <LocationSet!(Alice, Bob)>::new();
 ```

@@ -4,7 +4,7 @@ As we have seen in the [Choreography](./guide-choreography.md) section, a locate
 
 ## `MultiplyLocated` struct
 
-The `MultiplyLocated` struct represents a located value that is available at multiple locations. It is a generic struct that takes two type parameters: a type parameter `V` that represents the type of the value, and a type parameter `L` that represents the location set where the value is available.
+The `MultiplyLocated` struct represents a multiply located value (MLV) that is available at multiple locations. It is a generic struct that takes two type parameters: a type parameter `V` that represents the type of the value, and a type parameter `L` that represents the location set where the value is available.
 
 ```rust,ignore
 pub struct MultiplyLocated<V, L>

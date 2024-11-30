@@ -5,6 +5,9 @@ multilingual = false
 src = "src"
 title = "ChoRus"
 
+[rust]
+edition = "2021"
+
 [output.html]
 git-repository-url = "https://github.com/lsd-ucsc/Chorus"
 git-repository-icon = "fa-github"
