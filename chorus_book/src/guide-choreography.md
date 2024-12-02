@@ -161,6 +161,43 @@ if num == 42 {
 }
 ```
 
+### Multicast
+
+The `multicast` operator is similar to the `broadcast` operator, but it allows you to manually specify the recipients instead of sending the value to all locations. The operator returns a `MultiplyLocated` value that is available at the all recipient locations.
+
+```rust
+{{#include ./header.txt}}
+#
+# struct HelloWorldChoreography;
+# impl Choreography for HelloWorldChoreography {
+#     type L = LocationSet!(Alice, Bob, Carol);
+#     fn run(self, op: &impl ChoreoOp<Self::L>) {
+// This value is only available at Alice
+let num_at_alice: Located<i32, Alice> = op.locally(Alice, |_| {
+    42
+});
+
+// Send the value from Alice to Bob and Carol
+let num_at_bob_and_carol: MultiplyLocated<i32, LocationSet!(Bob, Carol)> =
+    op.multicast(Alice, <LocationSet!(Bob, Carol)>::new(), &num_at_alice);
+
+// Bob and Carol can now access the value
+op.locally(Bob, |un| {
+    let num_at_bob: &i32 = un.unwrap(&num_at_bob_and_carol);
+    println!("The number at Bob is {}", num_at_bob);
+});
+op.locally(Carol, |un| {
+    let num_at_carol: &i32 = un.unwrap(&num_at_bob_and_carol);
+    println!("The number at Carol is {}", num_at_carol);
+});
+#     }
+# }
+```
+
+The second parameter of the `multicast` is a value of the `LocationSet` type. You can use the `new()` method of the `LocationSet` type to obtain a value representation of the location set.
+
+Both `Bob` and `Carol` can access the value sent from `Alice` inside their local computation using the same `unwrap` method.
+
 ### Note on invalid values for Choreography::L
 
 You'll get a compile error if you try to work with a `ChoreographyLocation` that is not a member of `L`.

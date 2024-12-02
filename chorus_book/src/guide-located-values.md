@@ -2,20 +2,28 @@
 
 As we have seen in the [Choreography](./guide-choreography.md) section, a located value is a value that is available only at a specific location. In this section, we will discuss located values in more detail.
 
-## `Located` struct
+## `MultiplyLocated` struct
 
-The `Located` struct represents a located value. It is a generic struct that takes two type parameters: a type parameter `V` that represents the type of the value, and a type parameter `L1` that represents the location where the value is available.
+The `MultiplyLocated` struct represents a multiply located value (MLV) that is available at multiple locations. It is a generic struct that takes two type parameters: a type parameter `V` that represents the type of the value, and a type parameter `L` that represents the location set where the value is available.
 
 ```rust,ignore
-pub struct Located<V, L1>
+pub struct MultiplyLocated<V, L>
 where
-    L1: ChoreographyLocation,
+    L: LocationSet,
 {
     // ...
 }
 ```
 
-The `Located` struct can be in one of the two states: `Local` and `Remote`. The `Local` state represents a located value that is available at the current location. The `Remote` state represents a located value that is available at a different location.
+The `MultiplyLocated` struct can be in one of the two states: `Local` and `Remote`. The `Local` state represents a located value that is available at the current location (that is, the current location is a member of the location set `L`). The `Remote` state represents a located value that is available at a different location.
+
+## `Located` type
+
+In some cases, we may want to represent a located value that is available at a single location. For example, the return value of the `locally` operator is a (singly) located value that is available at the location given as an argument to the operator. The `Located` is used to represent such located values. It is a type alias for the `MultiplyLocated` struct with the location set containing only one location.
+
+```rust,ignore
+type Located<V, L1> = MultiplyLocated<V, LocationSet!(L1)>;
+```
 
 ## `Portable` trait
 

@@ -110,7 +110,6 @@ struct PlayerX;
 struct PlayerO;
 
 trait Brain {
-    fn get_player(&self) -> char;
     fn think(&self, board: &Board) -> Board;
 }
 
@@ -125,9 +124,6 @@ impl UserBrain {
 }
 
 impl Brain for UserBrain {
-    fn get_player(&self) -> char {
-        self.player
-    }
     fn think(&self, board: &Board) -> Board {
         println!("Current board:");
         board.draw();
@@ -210,9 +206,6 @@ impl MinimaxBrain {
 }
 
 impl Brain for MinimaxBrain {
-    fn get_player(&self) -> char {
-        self.player
-    }
     fn think(&self, board: &Board) -> Board {
         // return the board with the best move
         board.draw();
