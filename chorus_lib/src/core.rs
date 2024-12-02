@@ -466,12 +466,12 @@ pub trait ChoreoOp<ChoreoLS: LocationSet> {
         Sender: Member<ChoreoLS, Index1>,
         D: Subset<ChoreoLS, Index2>;
 
-    /// TODO: documentation
+    /// Obtains a normal value from a value located at all locations in the census
     fn naked<S: LocationSet, V, Index>(&self, data: MultiplyLocated<V, S>) -> V
     where
         ChoreoLS: Subset<S, Index>;
 
-    /// TODO: documentation
+    /// Wraps a value into a located value at the current census
     fn unnaked<V>(&self, data: V) -> MultiplyLocated<V, ChoreoLS>;
 
     /// Calls a choreography.
@@ -547,7 +547,9 @@ pub trait FanOutChoreography<V> {
     type L: LocationSet;
     /// Locations looping over
     type QS: LocationSet;
-    /// TODO: documentation
+    /// The body of the choreography defined in terms of the operators provided by `ChoreoOp`
+    ///
+    /// `Q` is the location that the loop variable and is guaranteed to be a member of `L` and `QS`.
     fn run<Q: ChoreographyLocation, QSSubsetL, QMemberL, QMemberQS>(
         &self,
         op: &impl ChoreoOp<Self::L>,
@@ -566,7 +568,9 @@ pub trait FanInChoreography<V> {
     type QS: LocationSet;
     /// Recipient locations
     type RS: LocationSet;
-    /// run a choreography
+    /// The body of the choreography defined in terms of the operators provided by `ChoreoOp`
+    ///
+    /// `Q` is the location that the loop variable and is guaranteed to be a member of `L` and `QS`.
     fn run<Q: ChoreographyLocation, QSSubsetL, RSSubsetL, QMemberL, QMemberQS>(
         &self,
         op: &impl ChoreoOp<Self::L>,
