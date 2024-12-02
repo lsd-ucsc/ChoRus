@@ -34,20 +34,6 @@ pub trait ChoreographyLocation: Copy {
 pub trait Portable: Serialize + DeserializeOwned {}
 impl<T: Serialize + DeserializeOwned> Portable for T {}
 
-/// Represents a value that might *NOT* be located at a location. Values returned by `enclave` must satisfy this trait.
-///
-/// In most cases, you don't need to implement this trait manually. You can derive it using `#[derive(Superposition)]` as long as all the fields consist of located values.
-pub trait Superposition {
-    /// Constructs a struct that is *NOT* located at a location.
-    fn remote() -> Self;
-}
-
-impl Superposition for () {
-    fn remote() -> Self {
-        ()
-    }
-}
-
 /// Represents a value located at a location.
 pub type Located<V, L1> = MultiplyLocated<V, LocationSet!(L1)>;
 
@@ -68,6 +54,14 @@ where
     pub fn local(value: V) -> Self {
         MultiplyLocated {
             value: Some(value),
+            phantom: PhantomData,
+        }
+    }
+
+    /// Constructs a struct located at another location
+    fn remote() -> Self {
+        MultiplyLocated {
+            value: None,
             phantom: PhantomData,
         }
     }
@@ -99,19 +93,6 @@ where
     fn clone(&self) -> Self {
         MultiplyLocated {
             value: self.value.clone(),
-            phantom: PhantomData,
-        }
-    }
-}
-
-impl<V, L> Superposition for MultiplyLocated<V, L>
-where
-    L: LocationSet,
-{
-    /// Constructs a struct located at another location
-    fn remote() -> Self {
-        MultiplyLocated {
-            value: None,
             phantom: PhantomData,
         }
     }
@@ -1495,4 +1476,4 @@ impl<RunnerLS: LocationSet> Runner<RunnerLS> {
 }
 
 extern crate chorus_derive;
-pub use chorus_derive::{ChoreographyLocation, Superposition};
+pub use chorus_derive::ChoreographyLocation;

@@ -1,6 +1,6 @@
 extern crate chorus_lib;
 use chorus_lib::core::{
-    ChoreoOp, Choreography, ChoreographyLocation, Located, LocationSet, Runner, Superposition,
+    ChoreoOp, Choreography, ChoreographyLocation, Located, LocationSet, Runner,
 };
 
 #[derive(ChoreographyLocation)]
@@ -14,7 +14,6 @@ fn get_random_number() -> u32 {
     42 // for presentation purpose
 }
 
-#[derive(Superposition)]
 struct BobCarolResult {
     is_even_at_bob: Located<bool, Bob>,
     is_even_at_carol: Located<bool, Carol>,
