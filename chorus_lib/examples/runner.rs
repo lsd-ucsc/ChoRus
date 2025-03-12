@@ -52,7 +52,7 @@ impl Choreography for MainChoreography {
     fn run(self, op: &impl ChoreoOp<Self::L>) {
         let x_at_alice = op.locally(Alice, |_| get_random_number());
         let x_at_bob = op.comm(Alice, Bob, &x_at_alice);
-        let result = op.enclave(BobCarolChoreography { x_at_bob });
+        let result = op.conclave(BobCarolChoreography { x_at_bob });
         op.locally(Bob, |un| {
             let is_even = un.unwrap(&un.unwrap(&result).is_even_at_bob);
             assert!(is_even);

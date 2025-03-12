@@ -39,7 +39,7 @@ impl Choreography for MainChoreography {
                 Choice::Bob
             }
         });
-        let choice_and_query = op.enclave(ChooseQueryChoreography {
+        let choice_and_query = op.conclave(ChooseQueryChoreography {
             alice_choice: choice,
         });
         let query_at_alice = op.locally(Alice, |un| {
@@ -54,7 +54,7 @@ impl Choreography for MainChoreography {
             return r;
         });
         let response = op.broadcast(Carol, response_at_carol);
-        op.enclave(TerminalChoreography {
+        op.conclave(TerminalChoreography {
             choice_and_query,
             response,
         });

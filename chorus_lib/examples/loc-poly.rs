@@ -48,7 +48,7 @@ impl Choreography<Located<i32, Alice>> for MainChoreography {
         });
         let v2 = op.locally(Bob, |un| un.unwrap(&v2) + 10);
         return op
-            .enclave(CommAndPrint {
+            .conclave(CommAndPrint {
                 sender: Bob,
                 receiver: Alice,
                 data: v2,

@@ -13,5 +13,5 @@
   - [Runner](./guide-runner.md)
   - [Higher-order Choreography](./guide-higher-order-choreography.md)
   - [Location Polymorphism](./guide-location-polymorphism.md)
-  - [Efficient Conditionals with Enclaves and MLVs](./guide-efficient-conditionals.md)
+  - [Efficient Conditionals with Conclaves and MLVs](./guide-efficient-conditionals.md)
 - [Links](./links.md)

@@ -30,7 +30,7 @@ At high level, ChoRus provides the following features:
   - Passing located arguments to / receiving located return values from choreographies.
   - Location polymorphism.
   - Higher-order choreographies.
-  - Efficient conditional with choreographic enclaves.
+  - Efficient conditional with choreographic conclaves.
 - Performing end-point projection.
 - Pluggable message transports.
   - Two built-in transports: `Local` and `HTTP`.
