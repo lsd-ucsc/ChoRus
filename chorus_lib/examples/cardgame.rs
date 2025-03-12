@@ -193,11 +193,11 @@ impl<
                 Q: Member<Self::L, QMemberL>,
                 Q: Member<Self::QS, QMemberQS>,
             {
-                struct Enclave<Player: ChoreographyLocation> {
+                struct Conclave<Player: ChoreographyLocation> {
                     hand1: Located<i32, Player>,
                     wants_next_card: Located<bool, Player>,
                 }
-                impl<Player: ChoreographyLocation> Choreography<Located<Vec<i32>, Player>> for Enclave<Player> {
+                impl<Player: ChoreographyLocation> Choreography<Located<Vec<i32>, Player>> for Conclave<Player> {
                     type L = LocationSet!(Dealer, Player);
 
                     fn run(self, op: &impl ChoreoOp<Self::L>) -> Located<Vec<i32>, Player> {
@@ -219,7 +219,7 @@ impl<
                 }
                 let hand1 = op.locally(Q::new(), |un| *un.unwrap(self.hand1));
                 let wants_next_card = op.locally(Q::new(), |un| *un.unwrap(self.wants_next_card));
-                op.enclave(Enclave::<Q> {
+                op.conclave(Conclave::<Q> {
                     hand1,
                     wants_next_card,
                 })

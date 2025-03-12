@@ -148,7 +148,7 @@ where
     fn run(self, op: &impl ChoreoOp<Self::L>) -> Located<Response, Client> {
         let request = op.comm(Client, Server, &self.request);
         let response = op
-            .enclave(HandleRequest::<Backups, _, _> {
+            .conclave(HandleRequest::<Backups, _, _> {
                 request: request,
                 _phantoms: PhantomData,
             })

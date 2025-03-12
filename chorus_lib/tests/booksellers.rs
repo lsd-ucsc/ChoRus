@@ -68,7 +68,7 @@ where
         });
         let price_at_buyer1 = op.comm(Seller, Buyer1, &price_at_seller);
         let decider = D::new(price_at_buyer1, self.budgets);
-        let decision_at_buyer1 = op.enclave(decider).flatten();
+        let decision_at_buyer1 = op.conclave(decider).flatten();
 
         struct GetDeliveryDateChoreography {
             inventory: Located<Inventory, Seller>,
@@ -97,7 +97,7 @@ where
 
         return op.broadcast(
             Buyer1,
-            op.enclave(GetDeliveryDateChoreography {
+            op.conclave(GetDeliveryDateChoreography {
                 inventory: self.inventory.clone(),
                 title_at_seller: title_at_seller.clone(),
                 decision_at_buyer1,

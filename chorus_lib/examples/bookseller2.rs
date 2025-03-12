@@ -97,7 +97,7 @@ impl<D: Choreography<Located<bool, Buyer1>, L = LocationSet!(Buyer1, Buyer2)> + 
             return i32::MAX;
         });
         let price_at_buyer1 = op.comm(Seller, Buyer1, &price_at_seller);
-        let decision_at_buyer1 = op.enclave(D::new(price_at_buyer1)).flatten();
+        let decision_at_buyer1 = op.conclave(D::new(price_at_buyer1)).flatten();
 
         struct GetDeliveryDateChoreography {
             inventory: Located<Inventory, Seller>,
@@ -124,7 +124,7 @@ impl<D: Choreography<Located<bool, Buyer1>, L = LocationSet!(Buyer1, Buyer2)> + 
         }
 
         return op
-            .enclave(GetDeliveryDateChoreography {
+            .conclave(GetDeliveryDateChoreography {
                 inventory: self.inventory.clone(),
                 title_at_seller: title_at_seller.clone(),
                 decision_at_buyer1,

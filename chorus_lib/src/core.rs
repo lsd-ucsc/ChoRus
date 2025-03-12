@@ -480,7 +480,7 @@ pub trait ChoreoOp<ChoreoLS: LocationSet> {
         M: LocationSet + Subset<ChoreoLS, Index>;
 
     /// Calls a choreography on a subset of locations.
-    fn enclave<R, S: LocationSet, C: Choreography<R, L = S>, Index>(
+    fn conclave<R, S: LocationSet, C: Choreography<R, L = S>, Index>(
         &self,
         choreo: C,
     ) -> MultiplyLocated<R, S>
@@ -890,7 +890,7 @@ where
                 choreo.run(&op)
             }
 
-            fn enclave<R, S: LocationSet, C: Choreography<R, L = S>, Index>(
+            fn conclave<R, S: LocationSet, C: Choreography<R, L = S>, Index>(
                 &self,
                 choreo: C,
             ) -> MultiplyLocated<R, S> {
@@ -1280,7 +1280,7 @@ impl<RunnerLS: LocationSet> Runner<RunnerLS> {
                 choreo.run(&op)
             }
 
-            fn enclave<R, S: LocationSet, C: Choreography<R, L = S>, Index>(
+            fn conclave<R, S: LocationSet, C: Choreography<R, L = S>, Index>(
                 &self,
                 choreo: C,
             ) -> MultiplyLocated<R, S> {
