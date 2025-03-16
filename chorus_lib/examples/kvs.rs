@@ -342,6 +342,7 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chorus_lib::transport::local::{LocalTransport, LocalTransportChannelBuilder};
 
     fn clear_data() {
         if Path::new(".data").exists() {
