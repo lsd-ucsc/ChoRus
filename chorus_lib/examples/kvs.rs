@@ -1,30 +1,110 @@
 extern crate chorus_lib;
 
+use std::env;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::marker::PhantomData;
-use std::thread;
+use std::{
+    collections::HashMap,
+    fs::{self, OpenOptions},
+    io::{Read, Write},
+    path::Path,
+};
+use std::{io, process, thread};
 
 use chorus_lib::core::{
     ChoreoOp, Choreography, ChoreographyLocation, Deserialize, Faceted, FanInChoreography, HCons,
     HNil, Located, LocationSet, LocationSetFoldable, Member, MultiplyLocated, Portable, Projector,
     Serialize, Subset,
 };
-use chorus_lib::transport::local::{LocalTransport, LocalTransportChannelBuilder};
+use chorus_lib::transport::http::{HttpTransport, HttpTransportConfigBuilder};
 
 type Response = i32;
+type Value = i32;
 type Key = String;
 
 #[derive(Serialize, Deserialize)]
 enum Request {
     Get(Key),
-    Put(Key, i32),
+    Put(Key, Value),
 }
 
-fn handle_get(key: Key) -> Response {
-    key.len().try_into().unwrap()
+#[derive(Serialize, Deserialize, Debug)]
+struct KeyValueStore {
+    store: HashMap<String, i32>,
 }
 
-fn handle_put(key: Key, val: i32) -> Response {
-    (val != handle_get(key)) as Response
+impl KeyValueStore {
+    fn load_from_file(file_path: &str) -> Self {
+        if Path::new(file_path).exists() {
+            let mut file = OpenOptions::new().read(true).open(file_path).unwrap();
+            let mut contents = String::new();
+            file.read_to_string(&mut contents).unwrap();
+            serde_json::from_str(&contents).unwrap_or(Self {
+                store: HashMap::new(),
+            })
+        } else {
+            Self {
+                store: HashMap::new(),
+            }
+        }
+    }
+
+    fn save_to_file(&self, file_path: &str) {
+        let json_data = serde_json::to_string(&self).unwrap();
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(file_path)
+            .unwrap();
+        file.write_all(json_data.as_bytes()).unwrap();
+    }
+}
+
+fn get_thread_id() -> String {
+    let pid = process::id();
+    let thread_id = thread::current().id();
+
+    let mut hasher = DefaultHasher::new();
+    pid.hash(&mut hasher);
+    thread_id.hash(&mut hasher);
+    format!("{:x}", hasher.finish()) // Convert to hexadecimal for compactness
+}
+
+fn create_data_dir_if_necessary() {
+    if !Path::new(".data").exists() {
+        fs::create_dir(".data").unwrap();
+        let gitignore_path = Path::new(".data/.gitignore");
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(gitignore_path)
+            .unwrap();
+        file.write_all(b"*").unwrap();
+    }
+}
+
+fn handle_get(key: String) -> i32 {
+    let thread_id = get_thread_id();
+    let file_path = format!(".data/{}", thread_id);
+
+    create_data_dir_if_necessary();
+
+    let kv_store = KeyValueStore::load_from_file(&file_path);
+    kv_store.store.get(&key).cloned().unwrap_or(-1)
+}
+
+fn handle_put(key: String, value: i32) -> i32 {
+    let thread_id = get_thread_id();
+    let file_path = format!(".data/{}", thread_id);
+
+    create_data_dir_if_necessary();
+
+    let mut kv_store = KeyValueStore::load_from_file(&file_path);
+    kv_store.store.insert(key, value);
+    kv_store.save_to_file(&file_path);
+    0
 }
 
 #[derive(ChoreographyLocation, Debug)]
@@ -157,78 +237,199 @@ where
     }
 }
 
-fn run_test(request: Request, answer: Response) {
-    let transport_channel = LocalTransportChannelBuilder::new()
-        .with(Client)
-        .with(Server)
-        .with(Backup1)
-        .with(Backup2)
-        .build();
-    let transport_client = LocalTransport::new(Client, transport_channel.clone());
-    let transport_server = LocalTransport::new(Server, transport_channel.clone());
-    let transport_backup1 = LocalTransport::new(Backup1, transport_channel.clone());
-    let transport_backup2 = LocalTransport::new(Backup2, transport_channel.clone());
-
-    let client_projector = Projector::new(Client, transport_client);
-    let server_projector = Projector::new(Server, transport_server);
-    let backup1_projector = Projector::new(Backup1, transport_backup1);
-    let backup2_projector = Projector::new(Backup2, transport_backup2);
-
-    let mut handles: Vec<thread::JoinHandle<Located<Response, Client>>> = Vec::new();
-    handles.push(
-        thread::Builder::new()
-            .name("Server".to_string())
-            .spawn(move || {
-                server_projector.epp_and_run(KVS::<HCons<Backup1, HCons<Backup2, HNil>>, _, _, _> {
-                    request: server_projector.remote(Client),
-                    _phantoms: PhantomData,
-                })
-            })
-            .unwrap(),
-    );
-    handles.push(
-        thread::Builder::new()
-            .name("Backup1".to_string())
-            .spawn(move || {
-                backup1_projector.epp_and_run(
-                    KVS::<HCons<Backup1, HCons<Backup2, HNil>>, _, _, _> {
-                        request: backup1_projector.remote(Client),
-                        _phantoms: PhantomData,
-                    },
-                )
-            })
-            .unwrap(),
-    );
-    handles.push(
-        thread::Builder::new()
-            .name("Backup2".to_string())
-            .spawn(move || {
-                backup2_projector.epp_and_run(
-                    KVS::<HCons<Backup1, HCons<Backup2, HNil>>, _, _, _> {
-                        request: backup2_projector.remote(Client),
-                        _phantoms: PhantomData,
-                    },
-                )
-            })
-            .unwrap(),
-    );
-    let retval =
-        client_projector.epp_and_run(KVS::<HCons<Backup1, HCons<Backup2, HNil>>, _, _, _> {
-            request: client_projector.local(request),
-            _phantoms: PhantomData,
-        });
-    for handle in handles {
-        handle.join().unwrap();
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    if args.len() != 2 || !["client", "server", "backup1", "backup2"].contains(&args[1].as_str()) {
+        eprintln!("Usage: {} [client|server|backup1|backup2]", args[0]);
+        process::exit(1);
     }
-    assert_eq!(client_projector.unwrap(retval), answer);
+    let role = args[1].as_str();
+    match role {
+        "client" => {
+            let config = HttpTransportConfigBuilder::for_target(Client, ("0.0.0.0", 9010))
+                .with(Server, ("localhost", 9011))
+                .with(Backup1, ("localhost", 9012))
+                .with(Backup2, ("localhost", 9013))
+                .build();
+            let transport = HttpTransport::new(config);
+            let projector = Projector::new(Client, transport);
+
+            println!("Enter a command in one of the following formats:");
+            println!("  get <key>");
+            println!("  put <key> <value>");
+            println!("Type 'exit' to quit.");
+            loop {
+                // Read input
+                print!("> ");
+                io::stdout().flush().unwrap();
+                let mut input = String::new();
+                io::stdin().read_line(&mut input).unwrap();
+                let input = input.trim();
+
+                // Parse command
+                let parts: Vec<&str> = input.split_whitespace().collect();
+                let request = match parts.as_slice() {
+                    ["get", key] => Request::Get(key.to_string()),
+                    ["put", key, value] if value.parse::<i32>().is_ok() => {
+                        Request::Put(key.to_string(), value.parse::<i32>().unwrap())
+                    }
+                    ["exit"] => break,
+                    _ => {
+                        eprintln!("Invalid command. Use 'get <key>' or 'put <key> <value>'.");
+                        continue;
+                    }
+                };
+                let response =
+                    projector.epp_and_run(KVS::<HCons<Backup1, HCons<Backup2, HNil>>, _, _, _> {
+                        request: projector.local(request),
+                        _phantoms: PhantomData,
+                    });
+                println!("Response: {:?}", projector.unwrap(response));
+            }
+        }
+        "server" => {
+            println!("Server process started.");
+            let config = HttpTransportConfigBuilder::for_target(Server, ("0.0.0.0", 9011))
+                .with(Client, ("localhost", 9010))
+                .with(Backup1, ("localhost", 9012))
+                .with(Backup2, ("localhost", 9013))
+                .build();
+            let transport = HttpTransport::new(config);
+            let projector = Projector::new(Server, transport);
+            loop {
+                projector.epp_and_run(KVS::<HCons<Backup1, HCons<Backup2, HNil>>, _, _, _> {
+                    request: projector.remote(Client),
+                    _phantoms: PhantomData,
+                });
+            }
+        }
+        "backup1" => {
+            println!("Backup1 process started.");
+            let config = HttpTransportConfigBuilder::for_target(Backup1, ("0.0.0.0", 9012))
+                .with(Client, ("localhost", 9010))
+                .with(Server, ("localhost", 9011))
+                .with(Backup2, ("localhost", 9013))
+                .build();
+            let transport = HttpTransport::new(config);
+            let projector = Projector::new(Backup1, transport);
+            loop {
+                projector.epp_and_run(KVS::<HCons<Backup1, HCons<Backup2, HNil>>, _, _, _> {
+                    request: projector.remote(Client),
+                    _phantoms: PhantomData,
+                });
+            }
+        }
+        "backup2" => {
+            println!("Backup2 process started.");
+            let config = HttpTransportConfigBuilder::for_target(Backup2, ("0.0.0.0", 9013))
+                .with(Client, ("localhost", 9010))
+                .with(Server, ("localhost", 9011))
+                .with(Backup1, ("localhost", 9012))
+                .build();
+            let transport = HttpTransport::new(config);
+            let projector = Projector::new(Backup2, transport);
+            loop {
+                projector.epp_and_run(KVS::<HCons<Backup1, HCons<Backup2, HNil>>, _, _, _> {
+                    request: projector.remote(Client),
+                    _phantoms: PhantomData,
+                });
+            }
+        }
+        _ => unreachable!(),
+    }
 }
 
-#[test]
-fn main() {
-    let two = "xx".to_string();
-    let three = "xxx".to_string();
-    run_test(Request::Get(two.clone()), 2);
-    run_test(Request::Get(three.clone()), 3);
-    run_test(Request::Put(two.clone(), 2), 0);
-    run_test(Request::Put(three.clone(), 2), -1);
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn clear_data() {
+        if Path::new(".data").exists() {
+            fs::remove_dir_all(".data").unwrap();
+        }
+    }
+
+    fn handle_requests(scenario: Vec<(Request, Response)>) {
+        let n = scenario.len();
+        type Locations = LocationSet!(Backup1, Backup2);
+
+        let transport_channel = LocalTransportChannelBuilder::new()
+            .with(Client)
+            .with(Server)
+            .with(Backup1)
+            .with(Backup2)
+            .build();
+        let transport_client = LocalTransport::new(Client, transport_channel.clone());
+        let transport_server = LocalTransport::new(Server, transport_channel.clone());
+        let transport_backup1 = LocalTransport::new(Backup1, transport_channel.clone());
+        let transport_backup2 = LocalTransport::new(Backup2, transport_channel.clone());
+
+        let client_projector = Projector::new(Client, transport_client);
+        let server_projector = Projector::new(Server, transport_server);
+        let backup1_projector = Projector::new(Backup1, transport_backup1);
+        let backup2_projector = Projector::new(Backup2, transport_backup2);
+
+        let mut handles = Vec::new();
+        handles.push(
+            thread::Builder::new()
+                .name("Server".to_string())
+                .spawn(move || {
+                    for _ in 0..n {
+                        server_projector.epp_and_run(KVS::<Locations, _, _, _> {
+                            request: server_projector.remote(Client),
+                            _phantoms: PhantomData,
+                        });
+                    }
+                })
+                .unwrap(),
+        );
+        handles.push(
+            thread::Builder::new()
+                .name("Backup1".to_string())
+                .spawn(move || {
+                    for _ in 0..n {
+                        backup1_projector.epp_and_run(KVS::<Locations, _, _, _> {
+                            request: backup1_projector.remote(Client),
+                            _phantoms: PhantomData,
+                        });
+                    }
+                })
+                .unwrap(),
+        );
+        handles.push(
+            thread::Builder::new()
+                .name("Backup2".to_string())
+                .spawn(move || {
+                    for _ in 0..n {
+                        backup2_projector.epp_and_run(KVS::<Locations, _, _, _> {
+                            request: backup2_projector.remote(Client),
+                            _phantoms: PhantomData,
+                        });
+                    }
+                })
+                .unwrap(),
+        );
+        for (req, expected_response) in scenario {
+            let response = client_projector.epp_and_run(KVS::<Locations, _, _, _> {
+                request: client_projector.local(req),
+                _phantoms: PhantomData,
+            });
+            assert_eq!(client_projector.unwrap(response), expected_response);
+        }
+        for handle in handles {
+            handle.join().unwrap();
+        }
+    }
+
+    #[test]
+    fn test_kvs() {
+        clear_data();
+        handle_requests(vec![
+            (Request::Get("foo".to_string()), -1),
+            (Request::Put("foo".to_string(), 42), 0),
+            (Request::Get("foo".to_string()), 42),
+            (Request::Put("foo".to_string(), 43), 0),
+            (Request::Get("foo".to_string()), 43),
+        ]);
+    }
 }
