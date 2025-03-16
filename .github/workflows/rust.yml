@@ -37,7 +37,8 @@ jobs:
       - name: cargo test --examples
         uses: actions-rs/cargo@v1
         with:
-          command: test --examples
+          command: test
+          args: --examples
 
   publish-book:
     runs-on: ubuntu-22.04
