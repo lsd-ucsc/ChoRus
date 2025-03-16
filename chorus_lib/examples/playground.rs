@@ -1,3 +1,6 @@
+use std::env;
+use std::io::{self, Write};
+
 /// # Testing Playground
 ///
 /// This is a place where you can write your own code to test ChoRus.
@@ -8,64 +11,81 @@
 ///
 /// You can run this program by using the following command:
 ///
-/// cargo run --example playground
+/// cargo run --example playground <role>
+/// where <role> is either "alpha" or "beta".
+///
 use chorus_lib::{
-    core::{Choreography, ChoreographyLocation, LocationSet},
-    transport::local::{LocalTransport, LocalTransportChannelBuilder},
+    core::{Choreography, ChoreographyLocation, LocationSet, Projector},
+    transport::http::{HttpTransport, HttpTransportConfigBuilder},
 };
-use rand;
 
 // STEP 1: Add locations
 #[derive(ChoreographyLocation)]
-struct Alice;
+struct Alpha;
 
 #[derive(ChoreographyLocation)]
-struct Bob;
+struct Beta;
 
 // STEP 2: Write a Choreography
 struct MainChoreography;
 
 impl Choreography for MainChoreography {
-    type L = LocationSet!(Alice, Bob);
+    type L = LocationSet!(Alpha, Beta);
 
     fn run(self, op: &impl chorus_lib::core::ChoreoOp<Self::L>) -> () {
-        let random_number_at_alice = op.locally(Alice, |_| {
-            let random_number = rand::random::<u32>();
-            println!("Random number at Alice: {}", random_number);
-            random_number
+        let a = op.locally(Alpha, |_| loop {
+            print!("Enter a number: ");
+            io::stdout().flush().expect("Failed to flush stdout");
+            let mut input = String::new();
+            if io::stdin().read_line(&mut input).is_err() {
+                continue;
+            }
+            if let Ok(num) = input.trim().parse::<i32>() {
+                break num;
+            } else {
+                println!("Please enter a valid integer.");
+            }
         });
-        let random_number_at_bob = op.comm(Alice, Bob, &random_number_at_alice);
-        op.locally(Bob, |un| {
-            let random_number = un.unwrap(&random_number_at_bob);
-            println!("Random number at Bob: {}", random_number);
+        let a = op.comm(Alpha, Beta, &a);
+        let b = op.locally(Beta, |_| {
+            print!("Enter a word for Beta to send to Alpha: ");
+            io::stdout().flush().expect("Failed to flush stdout");
+            let mut input = String::new();
+            io::stdin()
+                .read_line(&mut input)
+                .expect("Failed to read line");
+            input.trim().to_string()
+        });
+        let b = op.comm(Beta, Alpha, &b);
+        op.locally(Alpha, |un| {
+            println!("Alpha received: {}", un.unwrap(&b));
+        });
+        op.locally(Beta, |un| {
+            println!("Beta received: {}", un.unwrap(&a));
         });
     }
 }
 
 // STEP 3: Run the choreography
 fn main() {
-    // In this example, we use the local transport and run the choreography in two threads.
-    // Refer to the documentation for more information on how to use other transports.
-    let mut handles = Vec::new();
-    let transport_channel = LocalTransportChannelBuilder::new()
-        .with(Alice)
-        .with(Bob)
-        .build();
-    {
-        let transport = LocalTransport::new(Alice, transport_channel.clone());
-        handles.push(std::thread::spawn(move || {
-            let projector = chorus_lib::core::Projector::new(Alice, transport);
+    let role = env::args().nth(1).expect("Usage: playground <role>");
+    match role.as_str() {
+        "alpha" => {
+            let config = HttpTransportConfigBuilder::for_target(Alpha, ("0.0.0.0", 8080))
+                .with(Beta, ("127.0.0.1", 8081))
+                .build();
+            let transport = HttpTransport::new(config);
+            let projector = Projector::new(Alpha, transport);
             projector.epp_and_run(MainChoreography);
-        }));
-    }
-    {
-        let transport = LocalTransport::new(Bob, transport_channel.clone());
-        handles.push(std::thread::spawn(move || {
-            let projector = chorus_lib::core::Projector::new(Bob, transport);
+        }
+        "beta" => {
+            let config = HttpTransportConfigBuilder::for_target(Beta, ("0.0.0.0", 8081))
+                .with(Alpha, ("127.0.0.1", 8080))
+                .build();
+            let transport = HttpTransport::new(config);
+            let projector = Projector::new(Beta, transport);
             projector.epp_and_run(MainChoreography);
-        }));
-    }
-    for h in handles {
-        h.join().unwrap();
-    }
+        }
+        _ => panic!("Invalid role"),
+    };
 }
